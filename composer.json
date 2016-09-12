@@ -1,7 +1,7 @@
 {
     "name": "indrig/friday",
-    "description": "File Storage",
-    "keywords": ["ASync", "PHP", "Framework"],
+    "description": "Friday Framework",
+    "keywords": ["async", "PHP", "Framework"],
     "type": "framework",
     "license": "BSD-3-Clause",
     "support": {
