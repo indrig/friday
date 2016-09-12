@@ -1,5 +1,5 @@
 {
-    "name": "frameworksphp/yii2-filestorage",
+    "name": "indrig/friday",
     "description": "File Storage",
     "keywords": ["ASync", "PHP", "Framework"],
     "type": "framework",
