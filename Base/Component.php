@@ -471,6 +471,8 @@ class Component extends BaseObject
      * handler list. If false, the new handler will be inserted at the beginning of the existing
      * handler list.
      * @see off()
+     *
+     * @return static
      */
     public function on($name, $handler, $data = null, $append = true)
     {
@@ -480,6 +482,8 @@ class Component extends BaseObject
         } else {
             array_unshift($this->_events[$name], [$handler, $data]);
         }
+
+        return $this;
     }
 
     /**

@@ -1,6 +1,6 @@
 <?php
 
-namespace Freday\Stream;
+namespace Friday\Stream;
 
 interface DuplexStreamInterface extends ReadableStreamInterface, WritableStreamInterface
 {

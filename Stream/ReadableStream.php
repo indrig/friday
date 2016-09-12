@@ -1,6 +1,6 @@
 <?php
 
-namespace Freday\Stream;
+namespace Friday\Stream;
 
 use Evenement\EventEmitter;
 

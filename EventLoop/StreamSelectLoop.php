@@ -58,7 +58,7 @@ class StreamSelectLoop extends Component implements LoopInterface
     /**
      * {@inheritdoc}
      */
-    public function addReadStream(resource $stream, callable $listener)
+    public function addReadStream($stream, callable $listener)
     {
         $key = (int) $stream;
         if (!isset($this->readStreams[$key])) {
@@ -69,7 +69,7 @@ class StreamSelectLoop extends Component implements LoopInterface
     /**
      * {@inheritdoc}
      */
-    public function addWriteStream(resource $stream, callable $listener)
+    public function addWriteStream($stream, callable $listener)
     {
         $key = (int) $stream;
         if (!isset($this->writeStreams[$key])) {
@@ -80,7 +80,7 @@ class StreamSelectLoop extends Component implements LoopInterface
     /**
      * {@inheritdoc}
      */
-    public function removeReadStream(resource $stream)
+    public function removeReadStream($stream)
     {
         $key = (int) $stream;
         unset(

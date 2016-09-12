@@ -1,37 +1,54 @@
 <?php
+namespace Friday\Stream;
 
-namespace Freday\Stream;
+use Friday;
+use Friday\Base\Component;
+use Friday\Stream\Event\Event;
+use Friday\Stream\Event\ErrorEvent;
+use Friday\Base\Exception\RuntimeException;
 
-use Evenement\EventEmitter;
-use Friday\EventLoop\LoopInterface;
-
-/** @event full-drain */
-class Buffer extends EventEmitter implements WritableStreamInterface
+/**
+ * Class Buffer
+ * @package Friday\Stream
+ */
+class Buffer extends Component implements WritableStreamInterface
 {
+    const EVENT_CLOSE       = 'close';
+    const EVENT_ERROR       = 'error';
+    const EVENT_DRAIN       = 'drain';
+    const EVENT_FULL_DRAIN  = 'full-drain';
     public $stream;
     public $listening = false;
     public $softLimit = 2048;
     private $writable = true;
-    private $loop;
+
     private $data = '';
     private $lastError;
 
-    public function __construct($stream, LoopInterface $loop)
-    {
-        $this->stream = $stream;
-        $this->loop = $loop;
+    /**
+     *
+     */
+    public function init(){
         $this->lastErrorFlush();
+
     }
 
+    /**
+     * @return bool
+     */
     public function isWritable()
     {
         return $this->writable;
     }
 
+    /**
+     * @param $data
+     * @return bool
+     */
     public function write($data)
     {
         if (!$this->writable) {
-            return;
+            return false;
         }
 
         $this->data .= $data;
@@ -39,7 +56,7 @@ class Buffer extends EventEmitter implements WritableStreamInterface
         if (!$this->listening && $this->data !== '') {
             $this->listening = true;
 
-            $this->loop->addWriteStream($this->stream, array($this, 'handleWrite'));
+            Friday::$app->runLoop->addWriteStream($this->stream, array($this, 'handleWrite'));
         }
 
         $belowSoftLimit = strlen($this->data) < $this->softLimit;
@@ -47,6 +64,9 @@ class Buffer extends EventEmitter implements WritableStreamInterface
         return $belowSoftLimit;
     }
 
+    /**
+     * @param null $data
+     */
     public function end($data = null)
     {
         if (null !== $data) {
@@ -62,19 +82,27 @@ class Buffer extends EventEmitter implements WritableStreamInterface
         }
     }
 
+    /**
+     *
+     */
     public function close()
     {
         $this->writable = false;
         $this->listening = false;
         $this->data = '';
 
-        $this->emit('close', array($this));
+        $this->trigger(static::EVENT_CLOSE, new Event());
     }
 
+    /**
+     *
+     */
     public function handleWrite()
     {
         if (!is_resource($this->stream)) {
-            $this->emit('error', array(new \RuntimeException('Tried to write to invalid stream.'), $this));
+            $this->trigger(static::EVENT_ERROR, new ErrorEvent([
+                'error' => new RuntimeException('Tried to write to invalid stream.')
+            ]));
 
             return;
         }
@@ -95,22 +123,23 @@ class Buffer extends EventEmitter implements WritableStreamInterface
         // Should this turn out to be a permanent error later, it will eventually
         // send *nothing* and we can detect this.
         if ($sent === 0 && $this->lastError['number'] > 0) {
-            $this->emit('error', array(
-                new \ErrorException(
+            $this->trigger(static::EVENT_ERROR, new ErrorEvent([
+                'error' => new RuntimeException(
                     $this->lastError['message'],
                     0,
                     $this->lastError['number'],
                     $this->lastError['file'],
                     $this->lastError['line']
-                ),
-                $this
-            ));
+                )
+            ]));
 
             return;
         }
 
         if ($sent === 0) {
-            $this->emit('error', array(new \RuntimeException('Send failed'), $this));
+            $this->trigger(static::EVENT_ERROR, new ErrorEvent([
+                'error' => new RuntimeException('Send failed')
+            ]));
             return;
         }
 
@@ -118,23 +147,23 @@ class Buffer extends EventEmitter implements WritableStreamInterface
         $this->data = (string) substr($this->data, $sent);
 
         if ($len >= $this->softLimit && $len - $sent < $this->softLimit) {
-            $this->emit('drain', array($this));
+            $this->trigger(static::EVENT_DRAIN, new Event());
         }
 
         if (0 === strlen($this->data)) {
-            $this->loop->removeWriteStream($this->stream);
+            Friday::$app->runLoop->removeWriteStream($this->stream);
             $this->listening = false;
 
-            $this->emit('full-drain', array($this));
+            $this->trigger(static::EVENT_FULL_DRAIN, new Event());
         }
     }
 
-    private function errorHandler($errno, $errstr, $errfile, $errline)
+    private function errorHandler($errNo, $errStr, $errFile, $errLine)
     {
-        $this->lastError['number']  = $errno;
-        $this->lastError['message'] = $errstr;
-        $this->lastError['file']    = $errfile;
-        $this->lastError['line']    = $errline;
+        $this->lastError['number']  = $errNo;
+        $this->lastError['message'] = $errStr;
+        $this->lastError['file']    = $errFile;
+        $this->lastError['line']    = $errLine;
     }
 
     private function lastErrorFlush() {

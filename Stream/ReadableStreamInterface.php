@@ -1,6 +1,6 @@
 <?php
 
-namespace Freday\Stream;
+namespace Friday\Stream;
 
 use Evenement\EventEmitterInterface;
 
@@ -10,7 +10,7 @@ use Evenement\EventEmitterInterface;
  * @event error
  * @event close
  */
-interface ReadableStreamInterface extends EventEmitterInterface
+interface ReadableStreamInterface
 {
     public function isReadable();
     public function pause();

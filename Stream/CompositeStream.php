@@ -1,13 +1,23 @@
 <?php
 
-namespace Freday\Stream;
+namespace Friday\Stream;
 
 use Evenement\EventEmitter;
 
 class CompositeStream extends EventEmitter implements DuplexStreamInterface
 {
+    /**
+     * @var ReadableStreamInterface
+     */
     protected $readable;
+
+    /**
+     * @var WritableStreamInterface
+     */
     protected $writable;
+    /**
+     * @var
+     */
     protected $pipeSource;
 
     public function __construct(ReadableStreamInterface $readable, WritableStreamInterface $writable)

@@ -9,20 +9,20 @@ interface LoopInterface
      * @param resource $stream   The PHP stream resource to check.
      * @param callable $listener Invoked when the stream is ready.
      */
-    public function addReadStream(resource $stream, callable $listener);
+    public function addReadStream($stream, callable $listener);
     /**
      * Register a listener to be notified when a stream is ready to write.
      *
      * @param resource $stream   The PHP stream resource to check.
      * @param callable $listener Invoked when the stream is ready.
      */
-    public function addWriteStream(resource $stream, callable $listener);
+    public function addWriteStream($stream, callable $listener);
     /**
      * Remove the read event listener for the given stream.
      *
      * @param resource $stream The PHP stream resource.
      */
-    public function removeReadStream(resource $stream);
+    public function removeReadStream($stream);
     /**
      * Remove the write event listener for the given stream.
      *

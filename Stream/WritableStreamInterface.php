@@ -1,6 +1,5 @@
 <?php
-
-namespace Freday\Stream;
+namespace Friday\Stream;
 
 use Evenement\EventEmitterInterface;
 
@@ -10,7 +9,7 @@ use Evenement\EventEmitterInterface;
  * @event close
  * @event pipe
  */
-interface WritableStreamInterface extends EventEmitterInterface
+interface WritableStreamInterface
 {
     public function isWritable();
     public function write($data);

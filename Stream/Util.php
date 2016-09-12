@@ -1,6 +1,6 @@
 <?php
 
-namespace Freday\Stream;
+namespace Friday\Stream;
 
 // TODO: move to a trait
 
@@ -34,6 +34,11 @@ class Util
         }
     }
 
+    /**
+     * @param $source
+     * @param $target
+     * @param array $events
+     */
     public static function forwardEvents($source, $target, array $events)
     {
         foreach ($events as $event) {

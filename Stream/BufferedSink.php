@@ -1,6 +1,6 @@
 <?php
 
-namespace Freday\Stream;
+namespace Friday\Stream;
 
 use Friday\Promise\Deferred;
 use Friday\Promise\PromisorInterface;
@@ -8,6 +8,9 @@ use Friday\Promise\PromisorInterface;
 class BufferedSink extends WritableStream implements PromisorInterface
 {
     private $buffer = '';
+    /**
+     * @var Deferred
+     */
     private $deferred;
 
     public function __construct()

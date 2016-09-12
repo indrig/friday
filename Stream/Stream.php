@@ -1,26 +1,60 @@
 <?php
+namespace Friday\Stream;
 
-namespace Freday\Stream;
+use Friday;
+use Friday\Base\Component;
 
-use Evenement\EventEmitter;
-use React\EventLoop\LoopInterface;
-use InvalidArgumentException;
+use Friday\Base\Exception\InvalidArgumentException;
+use Friday\Stream\Event\Event;
+use Friday\Stream\Event\ContentEvent;
+use Friday\Stream\Event\ErrorEvent;
+use Friday\Base\Exception\RuntimeException;
 
-class Stream extends EventEmitter implements DuplexStreamInterface
+/**
+ * Class Stream
+ * @package Friday\Stream
+ */
+class Stream extends Component implements DuplexStreamInterface
 {
+    const EVENT_ERROR   = 'error';
+    const EVENT_CONTENT    = 'content';
+    const EVENT_CLOSE   = 'close';
+    const EVENT_END     = 'end';
+    const EVENT_DRAIN     = 'drain';
+
+    /**
+     * @var int
+     */
     public $bufferSize = 4096;
+
+    /**
+     * @var resource
+     */
     public $stream;
+
+    /**
+     * @var bool
+     */
     protected $readable = true;
+
+    /**
+     * @var bool
+     */
     protected $writable = true;
+
+    /**
+     * @var bool
+     */
     protected $closing = false;
-    protected $loop;
+
+    /**
+     * @var Buffer
+     */
     protected $buffer;
 
-    public function __construct($stream, LoopInterface $loop)
-    {
-        $this->stream = $stream;
+    public function init(){
         if (!is_resource($this->stream) || get_resource_type($this->stream) !== "stream") {
-             throw new InvalidArgumentException('First parameter must be a valid stream resource');
+            throw new InvalidArgumentException('Stream parameter must be a valid stream resource');
         }
 
         stream_set_blocking($this->stream, 0);
@@ -35,18 +69,16 @@ class Stream extends EventEmitter implements DuplexStreamInterface
             stream_set_read_buffer($this->stream, 0);
         }
 
-        $this->loop = $loop;
-        $this->buffer = new Buffer($this->stream, $this->loop);
-
-        $that = $this;
-
-        $this->buffer->on('error', function ($error) use ($that) {
-            $that->emit('error', array($error, $that));
-            $that->close();
+        $this->buffer = new Buffer(['stream' => $this->stream]);
+        $this->buffer->on(Buffer::EVENT_ERROR, function ($error) {
+            $this->trigger(static::EVENT_ERROR, new ErrorEvent([
+                'error' => $error
+            ]));
+            $this->close();
         });
 
-        $this->buffer->on('drain', function () use ($that) {
-            $that->emit('drain', array($that));
+        $this->buffer->on(Buffer::EVENT_DRAIN, function ()  {
+            $this->trigger(static::EVENT_DRAIN, new Event());
         });
 
         $this->resume();
@@ -70,14 +102,14 @@ class Stream extends EventEmitter implements DuplexStreamInterface
     public function resume()
     {
         if ($this->readable) {
-            $this->loop->addReadStream($this->stream, array($this, 'handleData'));
+            Friday::$app->runLoop->addReadStream($this->stream, array($this, 'handleData'));
         }
     }
 
     public function write($data)
     {
         if (!$this->writable) {
-            return;
+            return false;
         }
 
         return $this->buffer->write($data);
@@ -94,11 +126,11 @@ class Stream extends EventEmitter implements DuplexStreamInterface
         $this->readable = false;
         $this->writable = false;
 
-        $this->emit('end', array($this));
-        $this->emit('close', array($this));
-        $this->loop->removeStream($this->stream);
-        $this->buffer->removeAllListeners();
-        $this->removeAllListeners();
+        $this->trigger(static::EVENT_END, new Event());
+        $this->trigger(static::EVENT_CLOSE, new Event());
+
+        Friday::$app->runLoop->removeStream($this->stream);
+
 
         $this->handleClose();
     }
@@ -119,23 +151,28 @@ class Stream extends EventEmitter implements DuplexStreamInterface
         $this->buffer->end($data);
     }
 
-    public function pipe(WritableStreamInterface $dest, array $options = array())
+    /**
+     * @param WritableStreamInterface $destination
+     * @param array $options
+     * @return WritableStreamInterface
+     */
+    public function pipe(WritableStreamInterface $destination, array $options = []) : WritableStreamInterface
     {
-        Util::pipe($this, $dest, $options);
+        Util::pipe($this, $destination, $options);
 
-        return $dest;
+        return $destination;
     }
 
     public function handleData($stream)
     {
         $error = null;
-        set_error_handler(function ($errno, $errstr, $errfile, $errline) use (&$error) {
-            $error = new \ErrorException(
-                $errstr,
+        set_error_handler(function ($errNo, $errStr, $errFile, $errLine) use (&$error) {
+            $error = new Friday\Base\Exception\RuntimeException(
+                $errStr,
                 0,
-                $errno,
-                $errfile,
-                $errline
+                $errNo,
+                $errFile,
+                $errLine
             );
         });
 
@@ -144,13 +181,17 @@ class Stream extends EventEmitter implements DuplexStreamInterface
         restore_error_handler();
 
         if ($error !== null) {
-            $this->emit('error', array(new \RuntimeException('Unable to read from stream: ' . $error->getMessage(), 0, $error), $this));
+            $this->trigger(static::EVENT_ERROR, new ErrorEvent([
+                'error' => $error
+            ]));
             $this->close();
             return;
         }
 
         if ($data !== '') {
-            $this->emit('data', array($data, $this));
+            $this->trigger('data', new ContentEvent([
+                'content' => $data
+            ]));
         }
 
         if (!is_resource($stream) || feof($stream)) {
