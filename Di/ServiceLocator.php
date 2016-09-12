@@ -173,7 +173,7 @@ class ServiceLocator extends Component
      *
      * @throws InvalidConfigException if the definition is an invalid configuration array
      */
-    public function set(string $id, mixed $definition)
+    public function set(string $id, $definition)
     {
         if ($definition === null) {
             unset($this->_components[$id], $this->_definitions[$id]);

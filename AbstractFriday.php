@@ -97,6 +97,7 @@ abstract class AbstractFriday{
             }
         } elseif (strpos($className, '\\') !== false) {
             $classFile = AliasHelper::getAlias('@' . str_replace('\\', '/', $className) . '.php', false);
+
             if ($classFile === false || !is_file($classFile)) {
                 return;
             }

@@ -2,6 +2,7 @@
 namespace Friday\Di;
 
 use Friday;
+
 use Friday\Di\Exception\NotInstantiableException;
 use ReflectionClass;
 use Friday\Base\Component;
@@ -345,7 +346,7 @@ class Container extends Component
      * @param string $class the class name
      * @param array $params constructor parameters
      * @param array $config configurations to be applied to the new instance
-     * @return object the newly created instance of the specified class
+     * @return Component the newly created instance of the specified class
      * @throws NotInstantiableException If resolved to an abstract class or an interface (since 2.0.9)
      */
     protected function build(string $class, array $params, array $config) : Component
@@ -384,7 +385,7 @@ class Container extends Component
      * @param array $params the constructor parameters
      * @return array the merged parameters
      */
-    protected function mergeParams($class, $params)
+    protected function mergeParams(string $class, array $params) : array
     {
         if (empty($this->_params[$class])) {
             return $params;
@@ -404,7 +405,7 @@ class Container extends Component
      * @param string $class class name, interface name or alias name
      * @return array the dependencies of the specified class.
      */
-    protected function getDependencies($class)
+    protected function getDependencies(string $class)
     {
         if (isset($this->_reflections[$class])) {
             return [$this->_reflections[$class], $this->_dependencies[$class]];
@@ -438,7 +439,7 @@ class Container extends Component
      * @return array the resolved dependencies
      * @throws InvalidConfigException if a dependency cannot be resolved or if a dependency cannot be fulfilled.
      */
-    protected function resolveDependencies($dependencies, $reflection = null)
+    protected function resolveDependencies(array $dependencies, $reflection = null)
     {
         foreach ($dependencies as $index => $dependency) {
             if ($dependency instanceof Instance) {
@@ -480,7 +481,7 @@ class Container extends Component
      * @throws NotInstantiableException If resolved to an abstract class or an interface (since 2.0.9)
      * @since 2.0.7
      */
-    public function invoke(callable $callback, $params = [])
+    public function invoke(callable $callback, array $params = [])
     {
         if (is_callable($callback)) {
             return call_user_func_array($callback, $this->resolveCallableDependencies($callback, $params));
@@ -502,7 +503,7 @@ class Container extends Component
      * @throws NotInstantiableException If resolved to an abstract class or an interface (since 2.0.9)
      * @since 2.0.7
      */
-    public function resolveCallableDependencies(callable $callback, $params = [])
+    public function resolveCallableDependencies(callable $callback, array $params = [])
     {
         if (is_array($callback)) {
             $reflection = new \ReflectionMethod($callback[0], $callback[1]);

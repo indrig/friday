@@ -159,7 +159,7 @@ class Component extends BaseObject
      * @throws PropertyAccessException if the property is read-only.
      * @see __get()
      */
-    public function __set(string $name, mixed $value)
+    public function __set(string $name, $value)
     {
         $setter = 'set' . $name;
         if (method_exists($this, $setter)) {

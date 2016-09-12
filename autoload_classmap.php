@@ -27,4 +27,12 @@ return [
 
     'Friday\Web\Application' => __DIR__ . '/Web/Application.php',
 
+    'Friday\EventLoop\NextTickQueue'      => __DIR__ . '/EventLoop/NextTickQueue.php',
+    'Friday\EventLoop\FutureTickQueue'    => __DIR__ . '/EventLoop/FutureTickQueue.php',
+    'Friday\EventLoop\LoopInterface'      => __DIR__ . '/EventLoop/LoopInterface.php',
+    'Friday\EventLoop\StreamSelectLoop'   => __DIR__ . '/EventLoop/StreamSelectLoop.php',
+    'Friday\EventLoop\Timer'              => __DIR__ . '/EventLoop/Timer.php',
+    'Friday\EventLoop\Timers'             => __DIR__ . '/EventLoop/Timers.php',
+    'Friday\EventLoop\TimerInterface'     => __DIR__ . '/EventLoop/TimerInterface.php',
+
 ];
