@@ -9,6 +9,10 @@
         "wiki": "http://github.com/indrig/friday/wikis/home",
         "source": "http://github.com/indrig/friday"
     },
+    "require": {
+        "php": ">=7.0.3",
+        "evenement/evenement": "^2.0|^1.0"
+    },
     "authors": [
         {
             "name": "Igor Bubnevich",
