@@ -3,6 +3,6 @@ namespace Friday\Web\Event;
 
 use Friday\Base\Event as BaseEvent;
 
-class RequestEvent extends BaseEvent {
-
+class ErrorEvent extends BaseEvent {
+    public $error;
 }

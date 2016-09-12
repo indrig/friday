@@ -95,7 +95,8 @@ abstract class AbstractFriday{
             if ($classFile[0] === '@') {
                 $classFile = AliasHelper::getAlias($classFile);
             }
-        } elseif (strpos($className, '\\') !== false) {
+        } elseif (strpos($className, '\\') !== false) {            var_dump($className);
+
             $classFile = AliasHelper::getAlias('@' . str_replace('\\', '/', $className) . '.php', false);
 
             if ($classFile === false || !is_file($classFile)) {
@@ -104,7 +105,6 @@ abstract class AbstractFriday{
         } else {
             return;
         }
-
         include($classFile);
 
         if (FRIDAY_DEBUG && !class_exists($className, false) && !interface_exists($className, false) && !trait_exists($className, false)) {

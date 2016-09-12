@@ -91,7 +91,7 @@ class StreamSelectLoop extends Component implements LoopInterface
     /**
      * {@inheritdoc}
      */
-    public function removeWriteStream(resource $stream)
+    public function removeWriteStream($stream)
     {
         $key = (int) $stream;
         unset(
@@ -102,7 +102,7 @@ class StreamSelectLoop extends Component implements LoopInterface
     /**
      * {@inheritdoc}
      */
-    public function removeStream(resource $stream)
+    public function removeStream($stream)
     {
         $this->removeReadStream($stream);
         $this->removeWriteStream($stream);

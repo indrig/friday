@@ -1,9 +1,12 @@
 <?php
 namespace Friday\Web;
 
-use Evenement\EventEmitter;
 use Exception;
+use Friday\Web\Event\ErrorEvent;
+use Friday\Web\Event\RequestParsedEvent;
 use Friday\Base\Component;
+use Friday\SocketServer\Event\ContentEvent;
+use Friday\Base\Exception\OverflowException;
 
 /**
  * @event headers
@@ -11,63 +14,41 @@ use Friday\Base\Component;
  */
 class RequestHeaderParser extends Component
 {
+    const EVENT_ERROR = 'error';
+    const EVENT_PARSED = 'parsed';
     private $buffer = '';
     private $maxSize = 4096;
 
-    public function feed($data)
+    public function feed(ContentEvent $event)
     {
-        if (strlen($this->buffer) + strlen($data) > $this->maxSize) {
-            $this->trigger('error', array(new \OverflowException("Maximum header size of {$this->maxSize} exceeded."), $this));
+        $content = $event->content;
+
+        if (strlen($this->buffer) + strlen($content) > $this->maxSize) {
+            $this->trigger('error', array(new OverflowException("Maximum header size of {$this->maxSize} exceeded."), $this));
 
             return;
         }
 
-        $this->buffer .= $data;
+        $this->buffer .= $content;
 
         if (false !== strpos($this->buffer, "\r\n\r\n")) {
             try {
-                $this->parseAndEmitRequest();
+                $this->parseAndTriggerRequest();
             } catch (Exception $exception) {
-                $this->trigger('error', [$exception]);
+                $this->trigger(static::EVENT_ERROR, new ErrorEvent([
+                    'error' => $exception
+                ]));
             }
         }
     }
 
-    protected function parseAndEmitRequest()
+    protected function parseAndTriggerRequest()
     {
-        list($request, $bodyBuffer) = $this->parseRequest($this->buffer);
-        $this->trigger('headers', array($request, $bodyBuffer));
+        $request = Request::createFromRequestContent($this->buffer);
+
+        $this->trigger(static::EVENT_PARSED, new RequestParsedEvent([
+            'request' => $request
+        ]));
     }
 
-    public function parseRequest($data)
-    {
-        list($headers, $bodyBuffer) = explode("\r\n\r\n", $data, 2);
-
-        $psrRequest = g7\parse_request($headers);
-
-        $parsedQuery = [];
-        $queryString = $psrRequest->getUri()->getQuery();
-        if ($queryString) {
-            parse_str($queryString, $parsedQuery);
-        }
-
-        $headers = array_map(function($val) {
-            if (1 === count($val)) {
-                $val = $val[0];
-            }
-
-            return $val;
-        }, $psrRequest->getHeaders());
-
-        $request = new Request([
-            'method' =>  $psrRequest->getMethod(),
-            'path' =>              $psrRequest->getUri()->getPath(),
-            'query' =>              $parsedQuery,
-            'httpVersion' =>              $psrRequest->getProtocolVersion(),
-            'headers' => $headers
-
-        ]);
-
-        return array($request, $bodyBuffer);
-    }
 }

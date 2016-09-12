@@ -9,15 +9,29 @@ use Friday\Stream\Util;
 
 class Request extends Component implements ReadableStreamInterface
 {
-    private $readable = true;
-    public $method;
-    public $path;
-    public $query;
-    public $httpVersion;
-    public $headers;
+    /**
+     * @var HeaderCollection
+     */
+    private $_headers;
 
-    // metadata, implicitly added externally
-    public $remoteAddress;
+    /**
+     * @var CookieCollection Collection of request cookies.
+     */
+    private $_cookies;
+
+    private $_readable = true;
+
+    public $method;
+
+    public $path;
+
+    public $_queryString;
+
+    public $httpVersion;
+
+    private $_remoteAddress;
+
+    private $_rawBody;
 
     public function getMethod()
     {
@@ -39,10 +53,6 @@ class Request extends Component implements ReadableStreamInterface
         return $this->httpVersion;
     }
 
-    public function getHeaders()
-    {
-        return $this->headers;
-    }
 
     public function expectsContinue()
     {
@@ -51,7 +61,7 @@ class Request extends Component implements ReadableStreamInterface
 
     public function isReadable()
     {
-        return $this->readable;
+        return $this->_readable;
     }
 
     public function pause()
@@ -66,7 +76,7 @@ class Request extends Component implements ReadableStreamInterface
 
     public function close()
     {
-        $this->readable = false;
+        $this->_readable = false;
         $this->trigger('end');
     }
 
@@ -75,5 +85,62 @@ class Request extends Component implements ReadableStreamInterface
         Util::pipe($this, $dest, $options);
 
         return $dest;
+    }
+
+    /**
+     * @return null|HeaderCollection
+     */
+    public function getHeaders(){
+        return $this->_headers;
+    }
+
+
+    /**
+     * @return string
+     */
+    public function getRawBody(){
+        return $this->_rawBody === null ? '' : $this->_rawBody;
+    }
+
+    public static function createFromRequestContent($content){
+        list($headers, $rawBody) = explode("\r\n\r\n", $content, 2);
+
+        $headers = explode("\r\n", $headers);
+
+        $method = null;
+        $path   = null;
+        $query  = null;
+
+        $request = new static();
+        $headerCollection = new HeaderCollection();
+        foreach ($headers as $lineNo => $string) {
+            if($lineNo === 0) {
+                if(preg_match('/^(\S+) (.*?) (\S+)$/m', $string, $matches)){
+                    $requestMethod  = $matches[1];
+                    $requestUri     = $matches[2];
+                    $requestUriExplodes = explode('?', $requestUri, 2);
+
+                    if(count($requestUriExplodes) === 2) {
+                        list($path, $queryString) = $requestUriExplodes;
+                        parse_str($queryString, $get);
+
+                    } else {
+                        $path           = $requestUriExplodes[0];
+                        $queryString    = '';
+                    }
+                }
+            } else {
+                $headerExplodes = explode(':', $string, 2);
+                if(count($headerExplodes) === 2) {
+                    $headerCollection->add(trim($headerExplodes[0]), trim($headerExplodes[1]));
+                }
+            }
+        }
+
+
+        $request->_headers = $headerCollection;
+        $request->_rawBody          = $rawBody;
+
+        return $request;
     }
 }

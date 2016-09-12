@@ -43,6 +43,9 @@ return [
     'Friday\Stream\Util' => __DIR__ . '/Stream/Util.php',
     'Friday\Stream\WritableStream' => __DIR__ . '/Stream/WritableStream.php',
     'Friday\Stream\WritableStreamInterface' => __DIR__ . '/Stream/WritableStreamInterface.php',
+    'Friday\Stream\Event\Event' => __DIR__ . '/Stream/Event/Event.php',
+    'Friday\Stream\Event\ErrorEvent' => __DIR__ . '/Stream/Event/ErrorEvent.php',
+    'Friday\Stream\Event\ContentEvent' => __DIR__ . '/Stream/Event/ContentEvent.php',
 
     'Friday\Web\Application' => __DIR__ . '/Web/Application.php',
     'Friday\Web\Server' => __DIR__ . '/Web/Server.php',
@@ -50,6 +53,11 @@ return [
     'Friday\Web\Response' => __DIR__ . '/Web/Response.php',
     'Friday\Web\ResponseCodes' => __DIR__ . '/Web/ResponseCodes.php',
     'Friday\Web\RequestHeaderParser' => __DIR__ . '/Web/RequestHeaderParser.php',
+    'Friday\Web\HeaderCollection' => __DIR__ . '/Web/HeaderCollection.php',
+
+    'Friday\Web\Event\RequestParsedEvent'   => __DIR__ . '/Web/Event/RequestParsedEvent.php',
+    'Friday\Web\Event\RequestEvent'         => __DIR__ . '/Web/Event/RequestEvent.php',
+    'Friday\Web\Event\ErrorEvent'           => __DIR__ . '/Web/Event/ErrorEvent.php',
 
     'Friday\EventLoop\NextTickQueue'      => __DIR__ . '/EventLoop/NextTickQueue.php',
     'Friday\EventLoop\FutureTickQueue'    => __DIR__ . '/EventLoop/FutureTickQueue.php',

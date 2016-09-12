@@ -28,13 +28,13 @@ interface LoopInterface
      *
      * @param resource $stream The PHP stream resource.
      */
-    public function removeWriteStream(resource $stream);
+    public function removeWriteStream($stream);
     /**
      * Remove all listeners for the given stream.
      *
      * @param resource $stream The PHP stream resource.
      */
-    public function removeStream(resource $stream);
+    public function removeStream($stream);
     /**
      * Enqueue a callback to be invoked once after the given interval.
      *

@@ -12,24 +12,30 @@ class Response extends Component  implements WritableStreamInterface
     /**
      * @var Connection
      */
-    public $connection;
+    private $_connection;
     private $headWritten = false;
     private $chunkedEncoding = true;
+
+    public function __construct(Connection $connection, array $config = [])
+    {
+        $this->_connection = $connection;
+        parent::__construct($config);
+    }
 
     /**
      *
      */
     public function init(){
-        $this->connection->on('end', function () {
+        $this->_connection->on('end', function () {
             $this->close();
         });
 
-        $this->connection->on('error', function ($error) {
+        $this->_connection->on('error', function ($error) {
             $this->trigger('error', array($error, $this));
             $this->close();
         });
 
-        $this->connection->on('drain', function () {
+        $this->_connection->on('drain', function () {
             $this->trigger('drain');
         });
     }
@@ -44,7 +50,7 @@ class Response extends Component  implements WritableStreamInterface
             throw new \Exception('Response head has already been written.');
         }
 
-        $this->connection->write("HTTP/1.1 100 Continue\r\n\r\n");
+        $this->_connection->write("HTTP/1.1 100 Continue\r\n\r\n");
     }
 
     public function writeHead($status = 200, array $headers = array())
@@ -100,9 +106,9 @@ class Response extends Component  implements WritableStreamInterface
         if ($this->chunkedEncoding) {
             $len = strlen($data);
             $chunk = dechex($len)."\r\n".$data."\r\n";
-            $flushed = $this->connection->write($chunk);
+            $flushed = $this->_connection->write($chunk);
         } else {
-            $flushed = $this->connection->write($data);
+            $flushed = $this->_connection->write($data);
         }
 
         return $flushed;
@@ -115,11 +121,11 @@ class Response extends Component  implements WritableStreamInterface
         }
 
         if ($this->chunkedEncoding) {
-            $this->connection->write("0\r\n\r\n");
+            $this->_connection->write("0\r\n\r\n");
         }
 
         $this->trigger('end');
-        $this->connection->end();
+        $this->_connection->end();
     }
 
     public function close()
@@ -132,6 +138,8 @@ class Response extends Component  implements WritableStreamInterface
 
         $this->writable = false;
         $this->trigger('close');
-        $this->connection->close();
+        $this->_connection->close();
     }
+
+
 }
