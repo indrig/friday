@@ -10,23 +10,14 @@ use Friday\Stream\Util;
 class Request extends Component implements ReadableStreamInterface
 {
     private $readable = true;
-    private $method;
-    private $path;
-    private $query;
-    private $httpVersion;
-    private $headers;
+    public $method;
+    public $path;
+    public $query;
+    public $httpVersion;
+    public $headers;
 
     // metadata, implicitly added externally
     public $remoteAddress;
-
-    public function __construct($method, $path, $query = array(), $httpVersion = '1.1', $headers = array())
-    {
-        $this->method = $method;
-        $this->path = $path;
-        $this->query = $query;
-        $this->httpVersion = $httpVersion;
-        $this->headers = $headers;
-    }
 
     public function getMethod()
     {
@@ -65,19 +56,18 @@ class Request extends Component implements ReadableStreamInterface
 
     public function pause()
     {
-        $this->emit('pause');
+        $this->trigger('pause');
     }
 
     public function resume()
     {
-        $this->emit('resume');
+        $this->trigger('resume');
     }
 
     public function close()
     {
         $this->readable = false;
-        $this->emit('end');
-        $this->removeAllListeners();
+        $this->trigger('end');
     }
 
     public function pipe(WritableStreamInterface $dest, array $options = [])

@@ -59,13 +59,14 @@ class RequestHeaderParser extends Component
             return $val;
         }, $psrRequest->getHeaders());
 
-        $request = new Request(
-            $psrRequest->getMethod(),
-            $psrRequest->getUri()->getPath(),
-            $parsedQuery,
-            $psrRequest->getProtocolVersion(),
-            $headers
-        );
+        $request = new Request([
+            'method' =>  $psrRequest->getMethod(),
+            'path' =>              $psrRequest->getUri()->getPath(),
+            'query' =>              $parsedQuery,
+            'httpVersion' =>              $psrRequest->getProtocolVersion(),
+            'headers' => $headers
+
+        ]);
 
         return array($request, $bodyBuffer);
     }
