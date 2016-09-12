@@ -24,8 +24,9 @@ class RequestHeaderParser extends Component
         $content = $event->content;
 
         if (strlen($this->buffer) + strlen($content) > $this->maxSize) {
-            $this->trigger('error', array(new OverflowException("Maximum header size of {$this->maxSize} exceeded."), $this));
-
+            $this->trigger(static::EVENT_ERROR, new ErrorEvent([
+                'error' => new OverflowException("Maximum header size of {$this->maxSize} exceeded.")
+            ]));
             return;
         }
 
@@ -38,6 +39,7 @@ class RequestHeaderParser extends Component
                 $this->trigger(static::EVENT_ERROR, new ErrorEvent([
                     'error' => $exception
                 ]));
+                echo  $exception;
             }
         }
     }

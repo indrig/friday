@@ -1,7 +1,7 @@
 <?php
 namespace Friday\Web;
 
-use Firday\Web\Event\RequestEvent;
+use Friday\Web\Event\RequestEvent;
 use Friday\Base\AbstractApplication;
 
 /**
@@ -12,15 +12,15 @@ use Friday\Base\AbstractApplication;
  *
  */
 class Application extends AbstractApplication {
+    /**
+     *
+     */
     public function run()
     {
-        $server = $this->server;
+        $this->server
+            ->on(Server::EVENT_REQUEST, [$this, 'handleRequest'])
+            ->run();
 
-        $server->on(Server::EVENT_REQUEST, [$this, 'handleRequest']);
-        $server->run();
-        /*$this->runLoop->addPeriodicTimer(10, function (){
-            var_dump('test');
-        });*/
         $this->runLoop->run();
 
     }
@@ -28,9 +28,10 @@ class Application extends AbstractApplication {
     /**
      * @param RequestEvent $event
      */
-    public function handleRequest(RequestEvent $event){
-        echo  'connection';
+    public function handleRequest( $event){
+        var_dump('handleRequest');
     }
+
     /**
      * @inheritdoc
      */

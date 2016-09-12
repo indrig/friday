@@ -12,6 +12,7 @@ use Friday\SocketServer\Server as SocketServer;
 class Server extends Component
 {
     const EVENT_REQUEST = 'request';
+
     /**
      * @var SocketServer $_socket
      */
@@ -62,24 +63,28 @@ class Server extends Component
         });
     }
 
+    /**
+     * @param Connection $connection
+     * @param Request $request
+     */
     public function handleRequest(Connection $connection, Request $request)
     {
         $response = new Response($connection);
         $response->on('close', array($request, 'close'));
 
-        if (!$this->listeners('request')) {
+        if (!$this->hasEventHandlers(Server::EVENT_REQUEST)) {
             $response->end();
-
             return;
         }
-
         $this->trigger(Server::EVENT_REQUEST, new RequestEvent([
-            'request' => $request,
-            'response' => $response
+            'request'   => $request,
+            'response'  => $response
         ]));
-       // $request->emit('data', array($bodyBuffer));
     }
 
+    /**
+     *
+     */
     public function run(){
         $this->_socket->listen($this->port, $this->host);
     }

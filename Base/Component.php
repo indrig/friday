@@ -528,6 +528,7 @@ class Component extends BaseObject
      */
     public function trigger($name, Event $event = null)
     {
+
         $this->ensureBehaviors();
         if (!empty($this->_events[$name])) {
             if ($event === null) {
