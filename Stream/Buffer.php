@@ -3,7 +3,7 @@
 namespace Freday\Stream;
 
 use Evenement\EventEmitter;
-use React\EventLoop\LoopInterface;
+use Friday\EventLoop\LoopInterface;
 
 /** @event full-drain */
 class Buffer extends EventEmitter implements WritableStreamInterface

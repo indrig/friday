@@ -2,8 +2,8 @@
 
 namespace Freday\Stream;
 
-use React\Promise\Deferred;
-use React\Promise\PromisorInterface;
+use Friday\Promise\Deferred;
+use Friday\Promise\PromisorInterface;
 
 class BufferedSink extends WritableStream implements PromisorInterface
 {
