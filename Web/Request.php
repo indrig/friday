@@ -100,11 +100,11 @@ class Request extends Component implements ReadableStreamInterface
         $this->trigger('end');
     }
 
-    public function pipe(WritableStreamInterface $dest, array $options = [])
+    public function pipe(WritableStreamInterface $destination, array $options = [])
     {
-        Util::pipe($this, $dest, $options);
+        Util::pipe($this, $destination, $options);
 
-        return $dest;
+        return $destination;
     }
 
     /**
@@ -140,55 +140,7 @@ class Request extends Component implements ReadableStreamInterface
      */
     public function post($name = null, $defaultValue = null){
         if($this->_post === null) {
-            $contentTypeValues = explode(';', $this->_contentType);
-            $contentType       = reset($contentTypeValues);
-
-            if($contentType === 'application/x-www-form-urlencoded') {
-                parse_str($this->_rawBody, $arr);
-                $this->_post = $arr;
-            } elseif ($contentType === 'multipart/form-data'){
-                $post = [];
-
-                if(preg_match('/boundary=(.*)$/', $this->_contentType, $matches)) {
-                    $boundary = $matches[1];
-
-                    // split content by boundary and get rid of last -- element
-                    $blocks = preg_split("/-+$boundary/", $this->_rawBody);
-
-                    array_pop($blocks);
-
-                    // loop data blocks
-                    foreach ($blocks as $id => $block)
-                    {
-                        if (empty($block))
-                            continue;
-
-                        // you'll have to var_dump $block to understand this and maybe replace \n or \r with a visibile char
-
-                        //TODO: add files and array support
-
-                        // parse uploaded files
-                        if (strpos($block, 'application/octet-stream') !== FALSE)
-                        {
-                            // match "name", then everything after "stream" (optional) except for prepending newlines
-                            //preg_match("/name=\"([^\"]*)\".*stream[\n|\r]+([^\n\r].*)?$/s", $block, $matches);
-                        }
-                        // parse all other fields
-                        else
-                        {
-                            // match "name" and optional value in between newline sequences
-                            if(preg_match('/name=\"([^\"]*)\"[\n|\r]+([^\n\r].*)?\r$/s', $block, $matches)) {
-                                $post[$matches[1]] = $matches[2];
-                            }
-                        }
-
-                    }
-                }
-
-                $this->_post = $post;
-            } else {
-                $this->_post = [];
-            }
+            $this->prepareRawBodyParams();
         }
 
         if($name === null) {
@@ -196,6 +148,112 @@ class Request extends Component implements ReadableStreamInterface
         } else {
             return isset($this->_post[$name]) ? $this->_post[$name] : $defaultValue;
         }
+    }
+
+    /**
+     * Обрабатывает запрос rawBody и разберает его на массивы _post и _files
+     *
+     * @return bool
+     */
+    protected function prepareRawBodyParams(){
+        $contentTypeValues = explode(';', $this->_contentType);
+        $contentType       = reset($contentTypeValues);
+
+        if($contentType === 'application/x-www-form-urlencoded') {
+            parse_str($this->_rawBody, $arr);
+            $this->_post = $arr;
+
+            return true;
+        } elseif ($contentType === 'multipart/form-data'){
+            $post = [];
+
+            if(preg_match('/boundary=(.*)$/', $this->_contentType, $matches)) {
+                $boundary = $matches[1];
+
+                // split content by boundary and get rid of last -- element
+                $blocks = preg_split("/-+$boundary/", $this->_rawBody);
+
+                array_pop($blocks);
+
+                // loop data blocks
+                foreach ($blocks as $id => $part)
+                {
+                    if (empty($part))
+                        continue;
+
+                    // you'll have to var_dump $block to understand this and maybe replace \n or \r with a visibile char
+
+                    //TODO: add files and array support
+                    $part = ltrim($part, "\r\n");
+                    list($partHeadersString, $body) = explode("\r\n\r\n", $part, 2);
+
+                    $parHeaders = explode("\r\n", $partHeadersString);
+                    $headers = array();
+                    foreach ($parHeaders as $headerLine) {
+                        list($name, $value) = explode(':', $headerLine);
+                        $headers[strtolower($name)] = ltrim($value, ' ');
+                    }
+                    if (isset($headers['content-disposition'])) {
+                        if(preg_match(
+                            '/^(.+); *name="([^"]+)"(; *filename="([^"]+)")?/',
+                            $headers['content-disposition'],
+                            $matches
+                        )) {
+                            list(, $paramType, $paramName) = $matches;
+                            $paramValue = mb_substr($body, 0, strlen($body) - 2, '8bit');
+
+                            if(isset($matches[4])) {
+                                //TODO: add process files
+                            } else {
+                                if (preg_match_all('/\[([^\]]*)\]/m', $paramName, $matches)) {
+                                    $paramName      = substr($paramName, 0, strpos($paramName, '['));
+                                    $keys           = array_merge(array($paramName), $matches[1]);
+                                } else {
+                                    $keys           = array($paramName);
+                                }
+
+                                $target         = &$post;
+
+                                foreach ($keys as $index) {
+                                    if ($index === '') {
+                                        if (isset($target)) {
+                                            if (is_array($target)) {
+                                                $intKeys        = array_filter(array_keys($target), 'is_int');
+                                                $index  = count($intKeys) ? max($intKeys)+1 : 0;
+                                            } else {
+                                                $target = array($target);
+                                                $index  = 1;
+                                            }
+                                        } else {
+                                            $target         = array();
+                                            $index          = 0;
+                                        }
+                                    } elseif (isset($target[$index]) && !is_array($target[$index])) {
+                                        $target[$index] = array($target[$index]);
+                                    }
+
+                                    $target         = &$target[$index];
+                                }
+
+                                if (is_array($target)) {
+                                    $target[]   = $paramValue;
+                                } else {
+                                    $target     = $paramValue;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            $this->_post = $post;
+
+            return true;
+        } else {
+            $this->_post = [];
+        }
+
+        return false;
     }
 
     /**
@@ -248,9 +306,10 @@ class Request extends Component implements ReadableStreamInterface
 
                         $request->_path = $path;
                         $request->_get  = $query;
+                        $request->_queryString = $path . '?' .$query;
                     } else {
                         $request->_path           = $requestUriExplodes[0];
-                        $request->_queryString    = '';
+                        $request->_queryString    = $request->_path;
                     }
                 } else {
                     throw new RuntimeException('Headers not content http start connection data');
