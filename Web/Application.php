@@ -28,8 +28,9 @@ class Application extends AbstractApplication {
     /**
      * @param RequestEvent $event
      */
-    public function handleRequest( $event){
+    public function handleRequest(RequestEvent $event){
         var_dump('handleRequest');
+        var_dump($event->request->post());
     }
 
     /**

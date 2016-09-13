@@ -63,10 +63,6 @@ class Response extends Component  implements WritableStreamInterface
             $this->chunkedEncoding = false;
         }
 
-        $headers = array_merge(
-            array('X-Powered-By' => 'React/alpha'),
-            $headers
-        );
         if ($this->chunkedEncoding) {
             $headers['Transfer-Encoding'] = 'chunked';
         }

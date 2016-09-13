@@ -3,10 +3,18 @@ namespace Friday\Web;
 
 use Evenement\EventEmitter;
 use Friday\Base\Component;
+use Friday\Base\Exception\RuntimeException;
 use Friday\Stream\ReadableStreamInterface;
 use Friday\Stream\WritableStreamInterface;
 use Friday\Stream\Util;
 
+/**
+ * Class Request
+ * @package Friday\Web
+ *
+ * @property HeaderCollection $headers
+ *
+ */
 class Request extends Component implements ReadableStreamInterface
 {
     /**
@@ -21,36 +29,48 @@ class Request extends Component implements ReadableStreamInterface
 
     private $_readable = true;
 
-    public $method;
+    public $_method;
 
-    public $path;
+    public $_path;
 
     public $_queryString;
 
-    public $httpVersion;
+    public $_httpVersion;
 
     private $_remoteAddress;
 
+    private $_get;
+
+    private $_post;
+
     private $_rawBody;
+
+    private $_contentType;
+
+    private $_contentLength;
+    /**
+     * @var
+     */
+    private $_requestUri;
 
     public function getMethod()
     {
-        return $this->method;
+        return $this->_method;
     }
 
     public function getPath()
     {
-        return $this->path;
+        return $this->_path;
     }
 
-    public function getQuery()
+    public function getQueryString()
     {
-        return $this->query;
+        return $this->_queryString;
     }
 
     public function getHttpVersion()
     {
-        return $this->httpVersion;
+        return $this->_httpVersion;
     }
 
 
@@ -102,10 +122,109 @@ class Request extends Component implements ReadableStreamInterface
         return $this->_rawBody === null ? '' : $this->_rawBody;
     }
 
-    public static function createFromRequestContent($content){
-        list($headers, $rawBody) = explode("\r\n\r\n", $content, 2);
+    /**
+     * @param $rawBody
+     * @return $this
+     */
+    public function setRawBody($rawBody){
+        $this->_rawBody = $rawBody;
+        return $this;
+    }
 
-        $headers = explode("\r\n", $headers);
+    /**
+     * Returns POST parameter with a given name. If name isn't specified, returns an array of all POST parameters.
+     *
+     * @param string $name the parameter name
+     * @param mixed $defaultValue the default parameter value if the parameter does not exist.
+     * @return array|mixed
+     */
+    public function post($name = null, $defaultValue = null){
+        if($this->_post === null) {
+            $contentTypeValues = explode(';', $this->_contentType);
+            $contentType       = reset($contentTypeValues);
+
+            if($contentType === 'application/x-www-form-urlencoded') {
+                parse_str($this->_rawBody, $arr);
+                $this->_post = $arr;
+            } elseif ($contentType === 'multipart/form-data'){
+                $post = [];
+
+                if(preg_match('/boundary=(.*)$/', $this->_contentType, $matches)) {
+                    $boundary = $matches[1];
+
+                    // split content by boundary and get rid of last -- element
+                    $blocks = preg_split("/-+$boundary/", $this->_rawBody);
+
+                    array_pop($blocks);
+
+                    // loop data blocks
+                    foreach ($blocks as $id => $block)
+                    {
+                        if (empty($block))
+                            continue;
+
+                        // you'll have to var_dump $block to understand this and maybe replace \n or \r with a visibile char
+
+                        //TODO: add files and array support
+
+                        // parse uploaded files
+                        if (strpos($block, 'application/octet-stream') !== FALSE)
+                        {
+                            // match "name", then everything after "stream" (optional) except for prepending newlines
+                            //preg_match("/name=\"([^\"]*)\".*stream[\n|\r]+([^\n\r].*)?$/s", $block, $matches);
+                        }
+                        // parse all other fields
+                        else
+                        {
+                            // match "name" and optional value in between newline sequences
+                            if(preg_match('/name=\"([^\"]*)\"[\n|\r]+([^\n\r].*)?\r$/s', $block, $matches)) {
+                                $post[$matches[1]] = $matches[2];
+                            }
+                        }
+
+                    }
+                }
+
+                $this->_post = $post;
+            } else {
+                $this->_post = [];
+            }
+        }
+
+        if($name === null) {
+            return $this->_post;
+        } else {
+            return isset($this->_post[$name]) ? $this->_post[$name] : $defaultValue;
+        }
+    }
+
+    /**
+     * Returns the named GET parameter value.
+     * If the GET parameter does not exist, the second parameter passed to this method will be returned.
+     * @param string $name the GET parameter name.
+     * @param mixed $defaultValue the default parameter value if the GET parameter does not exist.
+     * @return array|mixed the GET parameter value
+     * @see getBodyParam()
+     */
+    public function get($name = null, $defaultValue = null){
+        if($this->_get === null) {
+            $this->_get = [];
+        }
+
+        if($name === null) {
+            return $this->_get;
+        } else {
+            return isset($this->_get[$name]) ? $this->_get[$name] : $defaultValue;
+        }
+    }
+
+    /**
+     * @param $content
+     * @return static
+     */
+    public static function createFromRequestContent($content){
+
+        $headers = explode("\r\n", $content);
 
         $method = null;
         $path   = null;
@@ -120,14 +239,21 @@ class Request extends Component implements ReadableStreamInterface
                     $requestUri     = $matches[2];
                     $requestUriExplodes = explode('?', $requestUri, 2);
 
+                    $request->_method     = strtoupper($requestMethod);
+                    $request->_requestUri = $requestUri;
+
                     if(count($requestUriExplodes) === 2) {
                         list($path, $queryString) = $requestUriExplodes;
-                        parse_str($queryString, $get);
+                        parse_str($queryString, $query);
 
+                        $request->_path = $path;
+                        $request->_get  = $query;
                     } else {
-                        $path           = $requestUriExplodes[0];
-                        $queryString    = '';
+                        $request->_path           = $requestUriExplodes[0];
+                        $request->_queryString    = '';
                     }
+                } else {
+                    throw new RuntimeException('Headers not content http start connection data');
                 }
             } else {
                 $headerExplodes = explode(':', $string, 2);
@@ -137,9 +263,10 @@ class Request extends Component implements ReadableStreamInterface
             }
         }
 
+        $request->_headers          = $headerCollection;
 
-        $request->_headers = $headerCollection;
-        $request->_rawBody          = $rawBody;
+        $request->_contentLength    = $headerCollection->get('content-length');
+        $request->_contentType      = $headerCollection->get('content-type');
 
         return $request;
     }

@@ -28,16 +28,10 @@ class Server extends Component
     public function init(){
         $this->_socket = new SocketServer();
         $this->_socket->on(SocketServer::EVENT_CONNECTION, function (ConnectionEvent $event) {
-
-            // TODO: http 1.1 keep-alive
-            // TODO: chunked transfer encoding (also for outgoing data)
-            // TODO: multipart parsing
             $connection = $event->connection;
 
             $parser = new RequestHeaderParser();
             $parser->on(RequestHeaderParser::EVENT_PARSED, function (RequestParsedEvent $event) use ($connection, $parser) {
-                // attach remote ip to the request as metadata
-
                 $request = $event->request;
                 $this->handleRequest($connection, $request);
 
