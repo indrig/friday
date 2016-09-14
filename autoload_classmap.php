@@ -54,6 +54,7 @@ return [
     'Friday\Web\ResponseCodes' => __DIR__ . '/Web/ResponseCodes.php',
     'Friday\Web\RequestHeaderParser' => __DIR__ . '/Web/RequestHeaderParser.php',
     'Friday\Web\HeaderCollection' => __DIR__ . '/Web/HeaderCollection.php',
+    'Friday\Web\MultiPart' => __DIR__ . '/Web/MultiPart.php',
 
     'Friday\Web\Event\RequestParsedEvent'   => __DIR__ . '/Web/Event/RequestParsedEvent.php',
     'Friday\Web\Event\RequestEvent'         => __DIR__ . '/Web/Event/RequestEvent.php',
@@ -66,5 +67,13 @@ return [
     'Friday\EventLoop\Timer'              => __DIR__ . '/EventLoop/Timer.php',
     'Friday\EventLoop\Timers'             => __DIR__ . '/EventLoop/Timers.php',
     'Friday\EventLoop\TimerInterface'     => __DIR__ . '/EventLoop/TimerInterface.php',
+
+    'Friday\FileSystem\WoolTrait'               => __DIR__ . '/FileSystem/WoolTrait.php',
+    'Friday\FileSystem\TypeDetectorInterface'   => __DIR__ . '/FileSystem/TypeDetectorInterface.php',
+    'Friday\FileSystem\ThrottledQueuedInvoker'  => __DIR__ . '/FileSystem/ThrottledQueuedInvoker.php',
+    'Friday\FileSystem\QueuedInvoker'           => __DIR__ . '/FileSystem/QueuedInvoker.php',
+    'Friday\FileSystem\QueuedCall'           => __DIR__ . '/FileSystem/QueuedCall.php',
+    'Friday\FileSystem\PermissionFlagResolver'           => __DIR__ . '/FileSystem/PermissionFlagResolver.php',
+    'Friday\FileSystem\PooledInvoker'           => __DIR__ . '/FileSystem/PooledInvoker.php',
 
 ];

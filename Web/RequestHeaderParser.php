@@ -24,6 +24,7 @@ class RequestHeaderParser extends Request
 
     private $inputProcessFormat;
     private $buffer = '';
+    private $tmpBuffer = '';
     private $maxSize = 4096;
     private $contentType;
     private $contentLength;
@@ -33,20 +34,23 @@ class RequestHeaderParser extends Request
     private $contentReaded = false;
     private $contentBytesReaded = 0;
     private $contentMineType    = '';
-    private $contentParams      = '';
-    private $lastPartHeaders;
-    private $uploadTmpFile;
+    private $contentParams      = [];
+    /**
+     * @var MultiPart
+     */
+    private $lastPart;
+    private $boundary;
 
     public function feed(ContentEvent $event)
     {
         $content = $event->content;
 
-        if (strlen($this->buffer) + strlen($content) > $this->maxSize) {
+       /* if (strlen($this->buffer) + strlen($content) > $this->maxSize) {
             $this->trigger(static::EVENT_ERROR, new ErrorEvent([
                 'error' => new OverflowException("Maximum header size of {$this->maxSize} exceeded.")
             ]));
             return;
-        }
+        }*/
 
         $this->buffer .= $content;
 
@@ -74,6 +78,9 @@ class RequestHeaderParser extends Request
                             $this->inputProcessFormat = static::INPUT_PROCESS_FORMAT_URLENCODED;
                         } elseif ($this->contentMineType === 'multipart/form-data'){
                             $this->inputProcessFormat = static::INPUT_PROCESS_FORMAT_MULTIPART_FORM;
+                            if(preg_match('/^[\-A-Za-z0-9]+$/', $this->contentParams['boundary'])){
+                                $this->boundary = $this->contentParams['boundary'];
+                            }
                         } else {
                             $this->inputProcessFormat = static::INPUT_PROCESS_FORMAT_RAW;
                         }
@@ -116,52 +123,108 @@ class RequestHeaderParser extends Request
             } elseif ($this->inputProcessFormat === static::INPUT_PROCESS_FORMAT_MULTIPART_FORM) {
                 $this->contentBytesReaded += mb_strlen($content, '8bit');
 
-                if(isset($this->contentParams['boundary'])) {
-                    //Разбираем то что уже загружено
-                    $parts = preg_split("/-+{$this->contentParams['boundary']}/", $this->buffer);
+                if(isset($this->boundary)) {
 
+                    $offset = 0;
+                    $parts      = preg_split("/-+{$this->boundary}/", $this->buffer, -1, PREG_SPLIT_OFFSET_CAPTURE | PREG_SPLIT_NO_EMPTY);
                     $countParts = count($parts);
 
                     foreach ($parts as $partIndex => $part) {
-                        $part           = ltrim($part, "\r\n");
-                        $partPackage    = explode("\r\n\r\n", $part, 2);
+                        list($body, $offset) = $part;
 
-                        //Заголовки прочитаны
-                        if(count($partPackage) === 2) {
-                            //Получаем заголовки
-                            $partHeadersString  = $partPackage[0];
-                            $partHeaderLines         = explode("\r\n", $partHeadersString);
-
-                            $this->lastPartHeaders = [];
-                            foreach ($partHeaderLines as $headerLine) {
-                                list($name, $value) = explode(':', $headerLine);
-                                $this->lastPartHeaders[strtolower($name)] = ltrim($value, ' ');
-                            }
-
-                            if (isset($this->lastPartHeaders['content-disposition'])) {
-                                $disposition = $this->parseHeaderValue($this->lastPartHeaders['content-disposition']);
-                                if(isset($disposition['name'])){
-                                    $paramName = $disposition['name'];
-                                    if(isset($disposition['filename'])) {
-                                        //Это фаил
-                                        if($partIndex < $countParts - 1){
-                                            //Получены все данные
-                                        } else {
-                                            //Получена часть данных
-                                        }
+                        if($partIndex === 0) {
+                            if($this->lastPart !== null) {
+                                $part = $this->lastPart;
+                                if($countParts > 1) {
+                                    //Конец
+                                    if($part->isFile){
+                                        $this->buffer = mb_substr($this->buffer, $offset, null, '8bit');
                                     } else {
-                                        if($partIndex < $countParts - 1){
-                                            //Получены все данные
-                                            $paramValue = mb_substr($partPackage[1], 0, mb_strlen($partPackage[1], '8bit') - 2, '8bit');
-                                            $this->insetValueInArray($this->request->_post, $paramName, $paramValue);
-                                        } else {
-                                            //Получена часть данных
-                                        }
+                                        $part->valueFromBuffer($part);
                                     }
+                                } else {
+                                    //Промежуток
+                                    if($part->isFile){
+                                        $this->buffer = mb_substr($this->buffer, $offset, null, '8bit');
+                                    } else {
+                                        //
+                                    }
+                                }
+                            } else {
+
+                            }
+                        } elseif ($partIndex < $countParts - 1) {
+                            //Целый
+                            if((null !== $part = MultiPart::create($body, true)) && !$part->hasErrors){
+                                if($part->isFile){
+
+                                } else {
+                                    $this->insetValueInArray($this->request->_post, $part->name, $part->value);
+                                }
+
+                                $lastPart = null;
+                            }
+                        } else {
+                            if((null !== $part = MultiPart::create($body, false)) && !$part->hasErrors){
+                                $this->lastPart = $part;
+
+                                if($part->isFile){
+                                    $this->buffer = mb_substr($this->buffer, $offset, null, '8bit');
+                                } else {
+                                    //$this->insetValueInArray($this->request->_post, $part->name, $part->value);
                                 }
                             }
                         }
                     }
+
+                    /* $parts = preg_split("/-+{$this->contentParams['boundary']}/", $this->buffer);
+
+                     $countParts = count($parts);
+
+                     foreach ($parts as $partIndex => $part) {
+                         $part           = ltrim($part, "\r\n");
+                         $partPackage    = explode("\r\n\r\n", $part, 2);
+
+                         //Заголовки прочитаны
+                         if(count($partPackage) === 2) {
+                             //Получаем заголовки
+                             $partHeadersString  = $partPackage[0];
+                             $partHeaderLines         = explode("\r\n", $partHeadersString);
+
+                             $this->lastPartHeaders = [];
+                             foreach ($partHeaderLines as $headerLine) {
+                                 list($name, $value) = explode(':', $headerLine);
+                                 $this->lastPartHeaders[strtolower($name)] = ltrim($value, ' ');
+                             }
+
+                             if (isset($this->lastPartHeaders['content-disposition'])) {
+                                 $disposition = $this->parseHeaderValue($this->lastPartHeaders['content-disposition']);
+                                 if(isset($disposition['name'])){
+                                     $paramName = $disposition['name'];
+                                     if(isset($disposition['filename'])) {
+                                         //Это фаил
+                                         if($partIndex < $countParts - 1){
+                                             //Получены все данные
+
+                                             $this->lastPartHeaders = null;
+                                         } else {
+                                             //Получена часть данных
+                                         }
+                                     } else {
+                                         if($partIndex < $countParts - 1){
+                                             //Получены все данные
+                                             $paramValue = mb_substr($partPackage[1], 0, mb_strlen($partPackage[1], '8bit') - 2, '8bit');
+                                             $this->insetValueInArray($this->request->_post, $paramName, $paramValue);
+
+                                             $this->lastPartHeaders = null;
+                                         } else {
+                                             //Получена часть данных
+                                         }
+                                     }
+                                 }
+                             }
+                         }
+                     }*/
                 }
 
                 if ($this->contentLength <= $this->contentBytesReaded) {
