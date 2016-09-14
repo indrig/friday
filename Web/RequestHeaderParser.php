@@ -12,7 +12,7 @@ use Friday\Base\Exception\OverflowException;
  * @event headers
  * @event error
  */
-class RequestHeaderParser extends Component
+class RequestHeaderParser extends Request
 {
     const EVENT_ERROR = 'error';
     const EVENT_PARSED = 'parsed';
@@ -34,7 +34,8 @@ class RequestHeaderParser extends Component
     private $contentBytesReaded = 0;
     private $contentMineType    = '';
     private $contentParams      = '';
-
+    private $lastPartHeaders;
+    private $uploadTmpFile;
 
     public function feed(ContentEvent $event)
     {
@@ -47,10 +48,10 @@ class RequestHeaderParser extends Component
             return;
         }
 
-
+        $this->buffer .= $content;
 
         if($this->headEndPost === null){
-            $this->buffer .= $content;
+
 
             if (false !== $pos = strpos($this->buffer, "\r\n\r\n")) {
                 $this->headEndPost = $pos;
@@ -61,8 +62,9 @@ class RequestHeaderParser extends Component
                     $this->contentLength  = intval($request->headers->get('content-length', 0));
                     $this->contentType    = $request->headers->get('content-type');
                     $this->headersReaded  = true;
-                    $this->buffer         = mb_substr($this->buffer, $pos+4, null, '8bit');
 
+                    $this->buffer         = mb_substr($this->buffer, $pos+4, null, '8bit');
+                    $content              = '';
                     if($this->contentType != null) {
                         $contentTypeArray = $this->parseHeaderValue($this->contentType);
                         $this->contentMineType = strtolower(reset($contentTypeArray));
@@ -96,8 +98,7 @@ class RequestHeaderParser extends Component
 
         if($this->headersReaded) {
             if($this->inputProcessFormat === static::INPUT_PROCESS_FORMAT_URLENCODED) {
-                $this->buffer             .= $content;
-                $this->contentBytesReaded = mb_strlen($content, '8bit');
+                $this->contentBytesReaded += mb_strlen($content, '8bit');
 
                 if($this->contentLength <= $this->contentBytesReaded) {
                     $urlencoded = mb_substr($this->buffer, 0, $this->contentLength, '8bit');
@@ -105,7 +106,6 @@ class RequestHeaderParser extends Component
 
                     $this->request->setPost($array);
 
-                    var_dump($array);
                     $this->trigger(static::EVENT_PARSED, new RequestParsedEvent([
                         'request' => $this->request
                     ]));
@@ -114,29 +114,118 @@ class RequestHeaderParser extends Component
                 }
             //Читаем частями
             } elseif ($this->inputProcessFormat === static::INPUT_PROCESS_FORMAT_MULTIPART_FORM) {
-                $this->buffer             .= $content;
-                $this->contentBytesReaded = mb_strlen($content, '8bit');
+                $this->contentBytesReaded += mb_strlen($content, '8bit');
 
+                if(isset($this->contentParams['boundary'])) {
+                    //Разбираем то что уже загружено
+                    $parts = preg_split("/-+{$this->contentParams['boundary']}/", $this->buffer);
 
-            //Читаем все
-            } elseif ($this->inputProcessFormat === static::INPUT_PROCESS_FORMAT_RAW) {
-                $this->buffer             .= $content;
-                $this->contentBytesReaded = mb_strlen($content, '8bit');
+                    $countParts = count($parts);
 
-                $rawBody = mb_substr($this->buffer, 0, $this->contentLength, '8bit');
+                    foreach ($parts as $partIndex => $part) {
+                        $part           = ltrim($part, "\r\n");
+                        $partPackage    = explode("\r\n\r\n", $part, 2);
 
-                $this->request->setRawBody($rawBody);
+                        //Заголовки прочитаны
+                        if(count($partPackage) === 2) {
+                            //Получаем заголовки
+                            $partHeadersString  = $partPackage[0];
+                            $partHeaderLines         = explode("\r\n", $partHeadersString);
 
-                $this->trigger(static::EVENT_PARSED, new RequestParsedEvent([
-                    'request' => $this->request
-                ]));
+                            $this->lastPartHeaders = [];
+                            foreach ($partHeaderLines as $headerLine) {
+                                list($name, $value) = explode(':', $headerLine);
+                                $this->lastPartHeaders[strtolower($name)] = ltrim($value, ' ');
+                            }
 
+                            if (isset($this->lastPartHeaders['content-disposition'])) {
+                                $disposition = $this->parseHeaderValue($this->lastPartHeaders['content-disposition']);
+                                if(isset($disposition['name'])){
+                                    $paramName = $disposition['name'];
+                                    if(isset($disposition['filename'])) {
+                                        //Это фаил
+                                        if($partIndex < $countParts - 1){
+                                            //Получены все данные
+                                        } else {
+                                            //Получена часть данных
+                                        }
+                                    } else {
+                                        if($partIndex < $countParts - 1){
+                                            //Получены все данные
+                                            $paramValue = mb_substr($partPackage[1], 0, mb_strlen($partPackage[1], '8bit') - 2, '8bit');
+                                            $this->insetValueInArray($this->request->_post, $paramName, $paramValue);
+                                        } else {
+                                            //Получена часть данных
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if ($this->contentLength <= $this->contentBytesReaded) {
+                    var_dump($this->request->_post);
+                    $this->trigger(static::EVENT_PARSED, new RequestParsedEvent([
+                        'request' => $this->request
+                    ]));
+                }
+                //Читаем все
+                //} elseif ($this->inputProcessFormat === static::INPUT_PROCESS_FORMAT_RAW) {
+            } else {
+                $this->contentBytesReaded += mb_strlen($content, '8bit');
+
+                if($this->contentLength <= $this->contentBytesReaded) {
+                    $rawBody = mb_substr($this->buffer, 0, $this->contentLength, '8bit');
+
+                    $this->request->setRawBody($rawBody);
+
+                    $this->trigger(static::EVENT_PARSED, new RequestParsedEvent([
+                        'request' => $this->request
+                    ]));
+                }
                 return;
             }
         }
-
     }
 
+    protected function insetValueInArray(&$array, $paramName, &$paramValue){
+        if (preg_match_all('/\[([^\]]*)\]/m', $paramName, $matches)) {
+            $paramName      = substr($paramName, 0, strpos($paramName, '['));
+            $keys           = array_merge(array($paramName), $matches[1]);
+        } else {
+            $keys           = array($paramName);
+        }
+
+        $target         = &$array;
+
+        foreach ($keys as $index) {
+            if ($index === '') {
+                if (isset($target)) {
+                    if (is_array($target)) {
+                        $intKeys        = array_filter(array_keys($target), 'is_int');
+                        $index  = count($intKeys) ? max($intKeys)+1 : 0;
+                    } else {
+                        $target = array($target);
+                        $index  = 1;
+                    }
+                } else {
+                    $target         = array();
+                    $index          = 0;
+                }
+            } elseif (isset($target[$index]) && !is_array($target[$index])) {
+                $target[$index] = array($target[$index]);
+            }
+
+            $target         = &$target[$index];
+        }
+
+        if (is_array($target)) {
+            $target[]   = $paramValue;
+        } else {
+            $target     = $paramValue;
+        }
+    }
     /**
      * @param $headerValue
      *
@@ -160,6 +249,9 @@ class RequestHeaderParser extends Component
         return $result;
     }
 
+    /**
+     *
+     */
     protected function parseAndTriggerRequest()
     {
         $request = Request::createFromRequestContent($this->buffer);
