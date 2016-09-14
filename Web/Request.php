@@ -39,9 +39,9 @@ class Request extends Component implements ReadableStreamInterface
 
     private $_remoteAddress;
 
-    private $_get;
+    private $_get = [];
 
-    private $_post;
+    private $_post = [];
 
     private $_rawBody;
 
@@ -132,6 +132,14 @@ class Request extends Component implements ReadableStreamInterface
     }
 
     /**
+     * @param $post
+     * @return $this
+     */
+    public function setPost(array $post){
+        $this->_post = $post;
+        return $this;
+    }
+    /**
      * Returns POST parameter with a given name. If name isn't specified, returns an array of all POST parameters.
      *
      * @param string $name the parameter name
@@ -178,12 +186,17 @@ class Request extends Component implements ReadableStreamInterface
                         {
                             // match "name" and optional value in between newline sequences
                             if(preg_match('/name=\"([^\"]*)\"[\n|\r]+([^\n\r].*)?\r$/s', $block, $matches)) {
-                                $post[$matches[1]] = $matches[2];
+                               // $post[$matches[1]] = $matches[2];
+
+
+                               // parse_str($matches[0].'=' .$matches[2], $a);
+                               // var_dump([$matches[0].'=' .$matches[2]]);
                             }
                         }
 
                     }
                 }
+                //var_dump($post);
 
                 $this->_post = $post;
             } else {
