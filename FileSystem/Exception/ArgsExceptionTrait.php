@@ -1,6 +1,5 @@
 <?php
-
-namespace Friday\FileSystem;
+namespace Friday\FileSystem\Exception;
 
 trait ArgsExceptionTrait
 {

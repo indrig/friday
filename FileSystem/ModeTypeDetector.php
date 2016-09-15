@@ -1,10 +1,9 @@
 <?php
+namespace Friday\FileSystem;
 
-namespace React\Filesystem;
 
-use React\Filesystem\FilesystemInterface;
-use React\Filesystem\TypeDetectorInterface;
-use React\Promise\RejectedPromise;
+use Friday\Promise\RejectedPromise;
+use Friday\Promise\Util as PromiseUtil;
 
 class ModeTypeDetector implements TypeDetectorInterface
 {
@@ -20,23 +19,23 @@ class ModeTypeDetector implements TypeDetectorInterface
     /**
      * @var FilesystemInterface
      */
-    protected $filesystem;
+    protected $fileSystem;
 
     /**
-     * @param FilesystemInterface $filesystem
+     * @param FilesystemInterface $fileSystem
      */
-    public function __construct(FilesystemInterface $filesystem)
+    public function __construct(FileSystemInterface $fileSystem)
     {
-        $this->filesystem = $filesystem;
+        $this->fileSystem = $fileSystem;
     }
 
     /**
      * @param array $node
-     * @return \React\Promise\PromiseInterface
+     * @return \Friday\Promise\PromiseInterface
      */
     public function detect(array $node)
     {
-        return $this->filesystem->getAdapter()->stat($node['path'])->then(function ($stat) {
+        return $this->fileSystem->getAdapter()->stat($node['path'])->then(function ($stat) {
             return $this->walkMapping($stat);
         });
     }
@@ -55,8 +54,8 @@ class ModeTypeDetector implements TypeDetectorInterface
     protected function matchMapping($mode, $mappingMode, $method)
     {
         if (($mode & $mappingMode) == $mappingMode) {
-            return \React\Promise\resolve([
-                $this->filesystem,
+            return PromiseUtil::resolve([
+                $this->fileSystem,
                 $method,
             ]);
         }

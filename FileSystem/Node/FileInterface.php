@@ -1,19 +1,18 @@
 <?php
+namespace Friday\FileSystem\Node;
 
-namespace React\Filesystem\Node;
-
-use React\Filesystem\AdapterInterface;
-use React\Promise\PromiseInterface;
+use Friday\Filesystem\AdapterInterface;
+use Friday\Promise\PromiseInterface;
 
 interface FileInterface extends NodeInterface
 {
     /**
-     * @return \React\Promise\PromiseInterface
+     * @return \Friday\Promise\PromiseInterface
      */
     public function exists();
 
     /**
-     * @return \React\Promise\PromiseInterface
+     * @return \Friday\Promise\PromiseInterface
      */
     public function remove();
 
@@ -25,32 +24,32 @@ interface FileInterface extends NodeInterface
     public function open($flags, $mode = AdapterInterface::CREATION_MODE);
 
     /**
-     * @return \React\Promise\PromiseInterface
+     * @return \Friday\Promise\PromiseInterface
      */
     public function time();
 
     /**
      * @param string $toFilename
-     * @return \React\Promise\PromiseInterface
+     * @return \Friday\Promise\PromiseInterface
      */
     public function rename($toFilename);
 
     /**
-     * @return \React\Promise\PromiseInterface
+     * @return \Friday\Promise\PromiseInterface
      */
     public function size();
 
     /**
      * @param string $mode
      * @param null $time
-     * @return \React\Promise\PromiseInterface
+     * @return \Friday\Promise\PromiseInterface
      */
     public function create($mode = AdapterInterface::CREATION_MODE, $time = null);
 
     /**
      * @param string $mode
      * @param null $time
-     * @return \React\Promise\PromiseInterface
+     * @return \Friday\Promise\PromiseInterface
      */
     public function touch($mode = AdapterInterface::CREATION_MODE, $time = null);
 

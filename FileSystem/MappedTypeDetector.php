@@ -1,8 +1,9 @@
 <?php
 
-namespace React\Filesystem;
+namespace Friday\FileSystem;
 
-use React\Promise\RejectedPromise;
+use Friday\Promise\RejectedPromise;
+use Friday\Promise\Util as PromiseUtil;
 
 class MappedTypeDetector implements TypeDetectorInterface
 {
@@ -21,11 +22,11 @@ class MappedTypeDetector implements TypeDetectorInterface
     protected $mapping = [];
 
     /**
-     * @var FilesystemInterface
+     * @var FileSystemInterface
      */
     protected $filesystem;
 
-    public static function createDefault(FilesystemInterface $filesystem)
+    public static function createDefault(FileSystemInterface $filesystem)
     {
         return new static($filesystem, [
             'mapping' => static::$defaultMapping,
@@ -33,10 +34,10 @@ class MappedTypeDetector implements TypeDetectorInterface
     }
 
     /**
-     * @param FilesystemInterface $filesystem
+     * @param FileSystemInterface $filesystem
      * @param array $options
      */
-    public function __construct(FilesystemInterface $filesystem, $options = [])
+    public function __construct(FileSystemInterface $filesystem, $options = [])
     {
         $this->filesystem = $filesystem;
 
@@ -47,7 +48,7 @@ class MappedTypeDetector implements TypeDetectorInterface
 
     /**
      * @param array $node
-     * @return \React\Promise\PromiseInterface
+     * @return \Friday\Promise\PromiseInterface
      */
     public function detect(array $node)
     {
@@ -55,7 +56,7 @@ class MappedTypeDetector implements TypeDetectorInterface
             return new RejectedPromise();
         }
 
-        return \React\Promise\resolve([
+        return PromiseUtil::resolve([
             $this->filesystem,
             $this->mapping[$node['type']],
         ]);

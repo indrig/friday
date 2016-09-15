@@ -1,20 +1,23 @@
 <?php
+namespace Friday\FileSystem\Eio;
 
-namespace React\Filesystem\Eio;
-
-use React\EventLoop\LoopInterface;
-use React\Filesystem\AdapterInterface;
-use React\Filesystem\CallInvokerInterface;
-use React\Filesystem\FilesystemInterface;
-use React\Filesystem\ModeTypeDetector;
-use React\Filesystem\Node\NodeInterface;
-use React\Filesystem\ObjectStream;
-use React\Filesystem\OpenFileLimiter;
-use React\Filesystem\PermissionFlagResolver;
-use React\Filesystem\Stream\StreamFactory;
-use React\Filesystem\TypeDetectorInterface;
-use React\Promise\Deferred;
-use React\Promise\FulfilledPromise;
+use Friday\EventLoop\LoopInterface;
+use Friday\FileSystem\AdapterInterface;
+use Friday\FileSystem\CallInvokerInterface;
+use Friday\FileSystem\FileSystemInterface;
+use Friday\FileSystem\ModeTypeDetector;
+use Friday\FileSystem\Node\NodeInterface;
+use Friday\FileSystem\ObjectStream;
+use Friday\FileSystem\OpenFileLimiter;
+use Friday\FileSystem\PermissionFlagResolver;
+use Friday\FileSystem\Stream\StreamFactory;
+use Friday\FileSystem\TypeDetectorInterface;
+use Friday\Promise\Deferred;
+use Friday\Promise\FulfilledPromise;
+use Friday\FileSystem\Util;
+use Friday\Promise\Util as PromiseUtil;
+use Friday\FileSystem\Exception\RuntimeException;
+use Friday\FileSystem\Exception\UnexpectedValueException;
 
 class Adapter implements AdapterInterface
 {
@@ -95,9 +98,9 @@ class Adapter implements AdapterInterface
      */
     protected function applyConfiguration(array $options)
     {
-        $this->invoker = \React\Filesystem\getInvoker($this, $options, 'invoker', 'React\Filesystem\InstantInvoker');
-        $this->readDirInvoker = \React\Filesystem\getInvoker($this, $options, 'read_dir_invoker', 'React\Filesystem\InstantInvoker');
-        $this->openFileLimiter = new OpenFileLimiter(\React\Filesystem\getOpenFileLimit($options));
+        $this->invoker = \Friday\FileSystem\Util::getInvoker($this, $options, 'invoker', 'Friday\Filesystem\InstantInvoker');
+        $this->readDirInvoker = \Friday\FileSystem\Util::getInvoker($this, $options, 'read_dir_invoker', 'Friday\Filesystem\InstantInvoker');
+        $this->openFileLimiter = new OpenFileLimiter(\Friday\FileSystem\Util::getOpenFileLimit($options));
         $this->options = array_merge_recursive($this->options, $options);
     }
 
@@ -120,7 +123,7 @@ class Adapter implements AdapterInterface
     /**
      * {@inheritDoc}
      */
-    public function setFilesystem(FilesystemInterface $filesystem)
+    public function setFilesystem(FileSystemInterface $filesystem)
     {
         $this->filesystem = $filesystem;
 
@@ -147,7 +150,7 @@ class Adapter implements AdapterInterface
             $stat['atime'] = new \DateTime('@' .$stat['atime']);
             $stat['mtime'] = new \DateTime('@' .$stat['mtime']);
             $stat['ctime'] = new \DateTime('@' .$stat['ctime']);
-            return \React\Promise\resolve($stat);
+            return PromiseUtil::resolve($stat);
         });
     }
 
@@ -217,14 +220,14 @@ class Adapter implements AdapterInterface
                 'path' => $path,
                 'type' => $entry['type'],
             ];
-            $promises[] = \React\Filesystem\detectType($this->typeDetectors, $node)->then(function (NodeInterface $node) use ($stream) {
+            $promises[] = Util::detectType($this->typeDetectors, $node)->then(function (NodeInterface $node) use ($stream) {
                 $stream->write($node);
 
                 return new FulfilledPromise();
             });
         }
 
-        \React\Promise\all($promises)->then(function () use ($stream) {
+        PromiseUtil::all($promises)->then(function () use ($stream) {
             $stream->close();
         });
     }
@@ -265,7 +268,7 @@ class Adapter implements AdapterInterface
             return StreamFactory::create($path, $fileDescriptor, $flags, $this);
         }, function ($error) {
             $this->openFileLimiter->close();
-            return \React\Promise\reject($error);
+            return PromiseUtil::reject($error);
         });
     }
 
@@ -357,7 +360,7 @@ class Adapter implements AdapterInterface
      */
     public function detectType($path)
     {
-        return \React\Filesystem\detectType($this->typeDetectors, [
+        return Util::detectType($this->typeDetectors, [
             'path' => $path,
         ]);
     }
@@ -366,7 +369,7 @@ class Adapter implements AdapterInterface
      * @param string $function
      * @param array $args
      * @param int $errorResultCode
-     * @return \React\Promise\Promise
+     * @return \Friday\Promise\Promise
      */
     public function callFilesystem($function, $args, $errorResultCode = -1)
     {

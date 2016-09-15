@@ -1,14 +1,16 @@
 <?php
+namespace Friday\FileSystem\Stream;
 
-namespace React\Filesystem\Stream;
-
-use React\Filesystem\AdapterInterface;
-use React\Filesystem\InstantInvoker;
+use Friday\Base\EventTrait;
+use Friday\FileSystem\AdapterInterface;
+use Friday\FileSystem\InstantInvoker;
 
 trait GenericStreamTrait
 {
+    use EventTrait;
+
     protected $path;
-    protected $filesystem;
+    protected $fileSystem;
     protected $fileDescriptor;
     protected $closed = false;
     protected $callInvoker;
@@ -16,23 +18,23 @@ trait GenericStreamTrait
     /**
      * @param string $path
      * @param resource $fileDescriptor
-     * @param AdapterInterface $filesystem
+     * @param AdapterInterface $fileSystem
      */
-    public function __construct($path, $fileDescriptor, AdapterInterface $filesystem)
+    public function __construct($path, $fileDescriptor, AdapterInterface $fileSystem)
     {
         $this->path = $path;
-        $this->filesystem = $filesystem;
+        $this->fileSystem = $fileSystem;
         $this->fileDescriptor = $fileDescriptor;
 
-        $this->callInvoker = new InstantInvoker($filesystem);
+        $this->callInvoker = new InstantInvoker($fileSystem);
     }
 
     /**
      * @return AdapterInterface
      */
-    public function getFilesystem()
+    public function getFileSystem()
     {
-        return $this->filesystem;
+        return $this->fileSystem;
     }
 
     /**
@@ -46,7 +48,7 @@ trait GenericStreamTrait
     /**
      * {@inheritDoc}
      */
-    public function getFiledescriptor()
+    public function getFileDescriptor()
     {
         return $this->fileDescriptor;
     }
@@ -93,11 +95,10 @@ trait GenericStreamTrait
         }
 
         $this->closed = true;
-        $this->emit('end', [$this]);
+        $this->trigger('end', [$this]);
 
-        $this->filesystem->close($this->fileDescriptor)->then(function () {
-            $this->emit('close', [$this]);
-            $this->removeAllListeners();
+        $this->fileSystem->close($this->fileDescriptor)->then(function () {
+            $this->trigger('close', [$this]);
         });
     }
 }

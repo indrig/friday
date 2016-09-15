@@ -1,6 +1,5 @@
 <?php
-
-namespace React\Filesystem\Node;
+namespace Friday\FileSystem\Node;
 
 trait GenericOperationTrait
 {
@@ -32,7 +31,7 @@ trait GenericOperationTrait
         $this->name = array_pop($pathBits);
 
         if (count($pathBits) > 0) {
-            $this->parent = $this->filesystem->dir(implode(NodeInterface::DS, $pathBits));
+            $this->parent = $this->fileSystem->dir(implode(NodeInterface::DS, $pathBits));
             $this->path = $this->parent->getPath() . $this->getName();
         }
     }
@@ -72,9 +71,9 @@ trait GenericOperationTrait
     /**
      * {@inheritDoc}
      */
-    public function getFilesystem()
+    public function getFileSystem()
     {
-        return $this->filesystem;
+        return $this->fileSystem;
     }
 
     /**

@@ -1,9 +1,8 @@
 <?php
+namespace Friday\FileSystem\ChildProcess;
 
-namespace React\Filesystem\ChildProcess;
-
-use React\EventLoop\LoopInterface;
-use React\Filesystem\WoolTrait;
+use Friday\EventLoop\LoopInterface;
+use Friday\FileSystem\WoolTrait;
 use WyriHaximus\React\ChildProcess\Messenger\ChildInterface;
 use WyriHaximus\React\ChildProcess\Messenger\Messages\Payload;
 use WyriHaximus\React\ChildProcess\Messenger\Messenger;

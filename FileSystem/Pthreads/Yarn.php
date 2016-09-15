@@ -1,8 +1,8 @@
 <?php
 
-namespace React\Filesystem\Pthreads;
+namespace Friday\Filesystem\Pthreads;
 
-use React\Promise\Deferred;
+use Friday\Promise\Deferred;
 
 class Yarn extends \Thread
 {

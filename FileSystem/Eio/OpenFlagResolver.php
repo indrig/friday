@@ -1,9 +1,8 @@
 <?php
+namespace Friday\FileSystem\Eio;
 
-namespace React\Filesystem\Eio;
-
-use React\Filesystem\FlagResolver;
-use React\Filesystem\FlagResolverInterface;
+use Friday\FileSystem\FlagResolver;
+use Friday\FileSystem\FlagResolverInterface;
 
 class OpenFlagResolver extends FlagResolver implements FlagResolverInterface
 {

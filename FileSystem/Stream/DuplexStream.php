@@ -1,14 +1,12 @@
 <?php
+namespace Friday\FileSystem\Stream;
 
-namespace React\Filesystem\Stream;
+use Friday\FileSystem\AdapterInterface;
+use Friday\Stream\DuplexStreamInterface;
+use Friday\FileSystem\ThrottledQueuedInvoker;
+use Friday\Promise\FulfilledPromise;
 
-use Evenement\EventEmitter;
-use React\Filesystem\AdapterInterface;
-use React\Stream\DuplexStreamInterface;
-use React\Filesystem\ThrottledQueuedInvoker;
-use React\Promise\FulfilledPromise;
-
-class DuplexStream extends EventEmitter implements DuplexStreamInterface, GenericStreamInterface
+class DuplexStream implements DuplexStreamInterface, GenericStreamInterface
 {
     use ReadableStreamTrait;
     use WritableStreamTrait;

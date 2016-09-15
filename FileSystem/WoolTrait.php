@@ -3,7 +3,7 @@
 namespace Friday\Filesystem;
 
 use Friday\Promise\PromiseInterface;
-
+use Friday\Promise\Util as PromiseUtil;
 trait WoolTrait
 {
     protected $fd;
@@ -20,10 +20,10 @@ trait WoolTrait
                 (new PermissionFlagResolver())->resolve($payload['mode'])
             )
         ) {
-            return \React\Promise\resolve([]);
+            return PromiseUtil::resolve([]);
         }
 
-        return \Friday\Promise\reject([]);
+        return PromiseUtil::reject([]);
     }
 
     /**
@@ -33,10 +33,10 @@ trait WoolTrait
     public function rmdir(array $payload)
     {
         if (rmdir($payload['path'])) {
-            return \React\Promise\resolve([]);
+            return PromiseUtil::resolve([]);
         }
 
-        return \React\Promise\reject([]);
+        return PromiseUtil::reject([]);
     }
 
     /**
@@ -46,10 +46,10 @@ trait WoolTrait
     public function unlink(array $payload)
     {
         if (unlink($payload['path'])) {
-            return \React\Promise\resolve([]);
+            return PromiseUtil::resolve([]);
         }
 
-        return \React\Promise\reject([]);
+        return PromiseUtil::reject([]);
     }
 
     /**
@@ -59,10 +59,10 @@ trait WoolTrait
     public function chmod(array $payload)
     {
         if (chmod($payload['path'], $payload['mode'])) {
-            return \React\Promise\resolve([]);
+            return PromiseUtil::resolve([]);
         }
 
-        return \React\Promise\reject([]);
+        return PromiseUtil::reject([]);
     }
 
     /**
@@ -71,7 +71,7 @@ trait WoolTrait
      */
     public function chown(array $payload)
     {
-        return \React\Promise\resolve([]);
+        return PromiseUtil::resolve([]);
     }
 
     /**
@@ -81,11 +81,11 @@ trait WoolTrait
     public function stat(array $payload)
     {
         if (!file_exists($payload['path'])) {
-            return \React\Promise\reject([]);
+            return PromiseUtil::reject([]);
         }
 
         $stat = lstat($payload['path']);
-        return \React\Promise\resolve([
+        return PromiseUtil::resolve([
             'dev'     => $stat['dev'],
             'ino'     => $stat['ino'],
             'mode'    => $stat['mode'],
@@ -120,7 +120,7 @@ trait WoolTrait
                 'name' => $node,
             ];
         }
-        return \React\Promise\resolve($list);
+        return PromiseUtil::resolve($list);
     }
 
     /**
@@ -130,7 +130,7 @@ trait WoolTrait
     public function open(array $payload)
     {
         $this->fd = @fopen($payload['path'], $payload['flags']);
-        return \React\Promise\resolve([
+        return PromiseUtil::resolve([
             'result' => (string)$this->fd,
         ]);
     }
@@ -141,7 +141,7 @@ trait WoolTrait
      */
     public function touch(array $payload)
     {
-        return \React\Promise\resolve([
+        return PromiseUtil::resolve([
             touch($payload['path']),
         ]);
     }
@@ -153,7 +153,7 @@ trait WoolTrait
     public function read(array $payload)
     {
         fseek($this->fd, $payload['offset']);
-        return \React\Promise\resolve([
+        return PromiseUtil::resolve([
             'chunk' => fread($this->fd, $payload['length']),
         ]);
     }
@@ -165,7 +165,7 @@ trait WoolTrait
     public function write(array $payload)
     {
         fseek($this->fd, $payload['offset']);
-        return \React\Promise\resolve([
+        return PromiseUtil::resolve([
             'written' => fwrite($this->fd, $payload['chunk'], $payload['length']),
         ]);
     }
@@ -178,7 +178,7 @@ trait WoolTrait
     {
         $closed = fclose($this->fd);
         $this->fd = null;
-        return \React\Promise\resolve([
+        return PromiseUtil::resolve([
             $closed,
         ]);
     }
@@ -190,10 +190,10 @@ trait WoolTrait
     public function rename(array $payload)
     {
         if (rename($payload['from'], $payload['to'])) {
-            return \React\Promise\resolve([]);
+            return PromiseUtil::resolve([]);
         }
 
-        return \React\Promise\reject([]);
+        return PromiseUtil::reject([]);
     }
 
     /**
@@ -202,7 +202,7 @@ trait WoolTrait
      */
     public function readlink(array $payload)
     {
-        return \React\Promise\resolve([
+        return PromiseUtil::resolve([
             'path' => readlink($payload['path']),
         ]);
     }
@@ -213,7 +213,7 @@ trait WoolTrait
      */
     public function symlink(array $payload)
     {
-        return \React\Promise\resolve([
+        return PromiseUtil::resolve([
             'result' => symlink($payload['from'], $payload['to']),
         ]);
     }

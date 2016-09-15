@@ -1,9 +1,13 @@
 <?php
+namespace Friday\Filesystem\Stream;
 
-namespace React\Filesystem\Stream;
+use Friday\FileSystem\FileSystem;
 
 trait WritableStreamTrait
 {
+    /**
+     * @var WritableStream $this
+     */
     protected $writeCursor = 0;
 
     /**
@@ -15,7 +19,7 @@ trait WritableStreamTrait
         $offset = $this->writeCursor;
         $this->writeCursor += $length;
 
-        return $this->getFilesystem()->write($this->getFileDescriptor(), $data, $length, $offset);
+        return $this->getFileSystem()->write($this->getFileDescriptor(), $data, $length, $offset);
     }
 
     /**

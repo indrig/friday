@@ -1,14 +1,14 @@
 <?php
 
-namespace React\Filesystem;
+namespace Friday\FileSystem;
 
-use React\Promise\Deferred;
+use Friday\Promise\Deferred;
 
 class ObjectStreamSink
 {
     /**
      * @param ObjectStream $stream
-     * @return \React\Promise\Promise
+     * @return \Friday\Promise\Promise
      */
     public static function promise(ObjectStream $stream)
     {

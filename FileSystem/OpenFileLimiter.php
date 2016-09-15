@@ -1,9 +1,8 @@
 <?php
+namespace Friday\FileSystem;
 
-namespace React\Filesystem;
-
-use React\Promise\Deferred;
-use React\Promise\FulfilledPromise;
+use Friday\Promise\Deferred;
+use Friday\Promise\FulfilledPromise;
 
 class OpenFileLimiter
 {
@@ -37,7 +36,7 @@ class OpenFileLimiter
     }
 
     /**
-     * @return \React\Promise\PromiseInterface
+     * @return \Friday\Promise\PromiseInterface
      */
     public function open()
     {

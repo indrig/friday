@@ -1,11 +1,12 @@
 <?php
 
-namespace React\FileSystem;
+namespace Friday\FileSystem;
 
 use Friday\EventLoop\LoopInterface;
 use Friday\FileSystem\Node;
+use Friday\Promise\Util as PromiseUtil;
 
-class Filesystem implements FileSystemInterface
+class FileSystem implements FileSystemInterface
 {
     /**
      * @var AdapterInterface
@@ -15,35 +16,35 @@ class Filesystem implements FileSystemInterface
     /**
      * @param LoopInterface $loop
      * @param array $options
-     * @return FilesystemInterface
+     * @return FileSystemInterface
      */
     public static function create(LoopInterface $loop, array $options = [])
     {
         if (extension_loaded('eio')) {
-            return static::setFilesystemOnAdapter(static::createFromAdapter(new Eio\Adapter($loop, $options)));
+            return static::setFileSystemOnAdapter(static::createFromAdapter(new Eio\Adapter($loop, $options)));
         }
 
         if (extension_loaded('pthreads')) {
             //return static::setFilesystemOnAdapter(static::createFromAdapter(new Pthreads\Adapter($loop, $options)));
         }
 
-        return static::setFilesystemOnAdapter(static::createFromAdapter(new ChildProcess\Adapter($loop, $options)));
+        return static::setFileSystemOnAdapter(static::createFromAdapter(new ChildProcess\Adapter($loop, $options)));
     }
 
     /**
      * @param AdapterInterface $adapter
-     * @return static
+     * @return FileSystemInterface
      */
     public static function createFromAdapter(AdapterInterface $adapter)
     {
-        return static::setFilesystemOnAdapter(new static($adapter));
+        return static::setFileSystemOnAdapter(new static($adapter));
     }
 
     /**
-     * @param FilesystemInterface $filesystem
-     * @return FilesystemInterface
+     * @param FileSystemInterface $filesystem
+     * @return FileSystemInterface
      */
-    protected static function setFilesystemOnAdapter(FilesystemInterface $filesystem)
+    protected static function setFileSystemOnAdapter(FileSystemInterface $filesystem)
     {
         $filesystem->getAdapter()->setFilesystem($filesystem);
         return $filesystem;
@@ -96,20 +97,20 @@ class Filesystem implements FileSystemInterface
 
     /**
      * @param string $path
-     * @return \React\Promise\PromiseInterface
+     * @return \Friday\Promise\PromiseInterface
      */
     public function constructLink($path)
     {
         return $this->adapter->readlink($path)->then(function ($linkPath) {
             return $this->adapter->detectType($linkPath);
         })->then(function (Node\NodeInterface $destination) use ($path) {
-            return \React\Promise\resolve($this->link($path, $destination));
+            return PromiseUtil::resolve($this->link($path, $destination));
         });
     }
 
     /**
      * @param string $filename
-     * @return \React\Promise\PromiseInterface
+     * @return \Friday\Promise\PromiseInterface
      */
     public function getContents($filename)
     {

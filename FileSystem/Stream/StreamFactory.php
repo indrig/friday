@@ -1,8 +1,8 @@
 <?php
 
-namespace React\Filesystem\Stream;
+namespace Friday\Filesystem\Stream;
 
-use React\Filesystem\AdapterInterface;
+use Friday\Filesystem\AdapterInterface;
 
 class StreamFactory
 {

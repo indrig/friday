@@ -1,9 +1,9 @@
 <?php
 
-namespace React\Filesystem\Stream;
+namespace Friday\Filesystem\Stream;
 
-use React\Stream\Util;
-use React\Stream\WritableStreamInterface;
+use Friday\Stream\Util;
+use Friday\Stream\WritableStreamInterface;
 
 trait ReadableStreamTrait
 {
@@ -17,7 +17,7 @@ trait ReadableStreamTrait
         $this->pause = false;
 
         if ($this->size === null) {
-            $this->getFilesystem()->stat($this->getPath())->then(function ($info) {
+            $this->getFileSystem()->stat($this->getPath())->then(function ($info) {
                 $this->size = $info['size'];
                 $this->readCursor = 0;
 
@@ -70,11 +70,11 @@ trait ReadableStreamTrait
 
     protected function performRead($chunkSize)
     {
-        $this->getFilesystem()->read($this->getFileDescriptor(), $chunkSize, $this->readCursor)->then(function ($data) use ($chunkSize) {
+        $this->getFileSystem()->read($this->getFileDescriptor(), $chunkSize, $this->readCursor)->then(function ($data) use ($chunkSize) {
             // If chunk size can be set make sure to copy it before running this operation so
             // that used can't change it mid operation and cause funkyness.
             $this->readCursor += $chunkSize;
-            $this->emit('data', [
+            $this->trigger('data', [
                 $data,
                 $this,
             ]);
@@ -82,7 +82,7 @@ trait ReadableStreamTrait
             if ($this->readCursor < $this->size) {
                 $this->readChunk();
             } else {
-                $this->emit('end', [
+                $this->trigger('end', [
                     $this,
                 ]);
             }

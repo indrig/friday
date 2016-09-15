@@ -1,16 +1,18 @@
 <?php
 
-namespace React\FileSystem\Pthreads;
+namespace Friday\FileSystem\Pthreads;
 
-use React\EventLoop\LoopInterface;
-use React\Filesystem\AdapterInterface;
-use React\Filesystem\CallInvokerInterface;
-use React\Filesystem\FilesystemInterface;
-use React\Filesystem\MappedTypeDetector;
-use React\Filesystem\TypeDetectorInterface;
-use React\Filesystem\ModeTypeDetector;
-use React\Filesystem\OpenFileLimiter;
-use React\Promise\Deferred;
+use Friday\EventLoop\LoopInterface;
+use Friday\FileSystem\AdapterInterface;
+use Friday\FileSystem\CallInvokerInterface;
+use Friday\FileSystem\FileSystemInterface;
+use Friday\FileSystem\MappedTypeDetector;
+use Friday\FileSystem\TypeDetectorInterface;
+use Friday\FileSystem\ModeTypeDetector;
+use Friday\FileSystem\OpenFileLimiter;
+use Friday\Promise\Deferred;
+use Friday\FileSystem\Util;
+use Friday\Promise\Util as PromiseUtil;
 
 class Adapter implements AdapterInterface
 {
@@ -50,8 +52,8 @@ class Adapter implements AdapterInterface
     public function __construct(LoopInterface $loop, array $options = [])
     {
         $this->loop = $loop;
-        $this->invoker = \React\Filesystem\getInvoker($this, $options, 'invoker', 'React\Filesystem\InstantInvoker');
-        $this->openFileLimiter = new OpenFileLimiter(\React\Filesystem\getOpenFileLimit($options));
+        $this->invoker = \Friday\FileSystem\Util::getInvoker($this, $options, 'invoker', 'React\Filesystem\InstantInvoker');
+        $this->openFileLimiter = new OpenFileLimiter(Util::getOpenFileLimit($options));
     }
 
     /**
@@ -65,7 +67,7 @@ class Adapter implements AdapterInterface
     /**
      * {@inheritDoc}
      */
-    public function setFilesystem(FilesystemInterface $filesystem)
+    public function setFilesystem(FileSystemInterface $filesystem)
     {
         $this->filesystem = $filesystem;
 
@@ -143,7 +145,7 @@ class Adapter implements AdapterInterface
             $stat['atime'] = new \DateTime('@' .$stat['atime']);
             $stat['mtime'] = new \DateTime('@' .$stat['mtime']);
             $stat['ctime'] = new \DateTime('@' .$stat['ctime']);
-            return \React\Promise\resolve($stat);
+            return PromiseUtil::resolve($stat);
         });
     }
 
@@ -224,7 +226,7 @@ class Adapter implements AdapterInterface
      */
     public function detectType($path)
     {
-        return \React\Filesystem\detectType($this->typeDetectors, [
+        return Util::detectType($this->typeDetectors, [
             'path' => $path,
         ]);
     }

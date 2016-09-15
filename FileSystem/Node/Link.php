@@ -1,8 +1,7 @@
 <?php
+namespace Friday\FileSystem\Node;
 
-namespace React\Filesystem\Node;
-
-use React\Filesystem\FilesystemInterface;
+use Friday\FileSystem\FileSystemInterface;
 
 class Link implements LinkInterface
 {
@@ -17,9 +16,9 @@ class Link implements LinkInterface
      * Link constructor.
      * @param string $path
      * @param NodeInterface $node
-     * @param FilesystemInterface $filesystem
+     * @param FileSystemInterface $filesystem
      */
-    public function __construct($path, NodeInterface $node, FilesystemInterface $filesystem)
+    public function __construct($path, NodeInterface $node, FileSystemInterface $filesystem)
     {
         $this->node = $node;
         $this->filesystem = $filesystem;

@@ -1,9 +1,8 @@
 <?php
+namespace Friday\FileSystem\Node;
 
-namespace React\Filesystem\Node;
-
-use React\Filesystem\ObjectStream;
-use React\Promise\PromiseInterface;
+use Friday\FileSystem\ObjectStream;
+use Friday\Promise\PromiseInterface;
 
 interface NodeInterface extends GenericOperationInterface
 {

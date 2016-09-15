@@ -1,6 +1,6 @@
 <?php
 
-namespace React\Filesystem\Pthreads;
+namespace Friday\FileSystem\Pthreads;
 
 class Call
 {

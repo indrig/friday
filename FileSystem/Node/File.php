@@ -1,18 +1,17 @@
 <?php
+namespace Friday\FileSystem\Node;
 
-namespace React\Filesystem\Node;
-
-use React\Filesystem\AdapterInterface;
-use React\Filesystem\FilesystemInterface;
-use React\Filesystem\ObjectStream;
-use React\Filesystem\ObjectStreamSink;
-use React\Filesystem\Stream\GenericStreamInterface;
-use React\Promise\Deferred;
-use React\Stream\ReadableStreamInterface;
-use React\Stream\WritableStreamInterface;
-use React\Promise\FulfilledPromise;
-use React\Promise\RejectedPromise;
-use React\Stream\BufferedSink;
+use Friday\FileSystem\AdapterInterface;
+use Friday\FileSystem\FileSystemInterface;
+use Friday\FileSystem\ObjectStream;
+use Friday\FileSystem\ObjectStreamSink;
+use Friday\FileSystem\Stream\GenericStreamInterface;
+use Friday\Promise\Deferred;
+use Friday\Stream\ReadableStreamInterface;
+use Friday\Stream\WritableStreamInterface;
+use Friday\Promise\FulfilledPromise;
+use Friday\Promise\RejectedPromise;
+use Friday\Stream\BufferedSink;
 
 class File implements FileInterface
 {
@@ -25,7 +24,7 @@ class File implements FileInterface
     protected $fileDescriptor;
 
     /**
-     * @var FilesystemInterface
+     * @var FileSystemInterface
      */
     protected $filesystem;
 
@@ -36,9 +35,9 @@ class File implements FileInterface
 
     /**
      * @param string $filename
-     * @param FilesystemInterface $filesystem
+     * @param FileSystemInterface $filesystem
      */
-    public function __construct($filename, FilesystemInterface $filesystem)
+    public function __construct($filename, FileSystemInterface $filesystem)
     {
         $this->filesystem = $filesystem;
         $this->adapter = $filesystem->getAdapter();
@@ -174,7 +173,7 @@ class File implements FileInterface
 
     /**
      * @param NodeInterface $node
-     * @return \React\Promise\PromiseInterface
+     * @return \Friday\Promise\PromiseInterface
      */
     public function copy(NodeInterface $node)
     {

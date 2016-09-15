@@ -1,10 +1,10 @@
 <?php
+namespace Friday\FileSystem\Eio;
 
-namespace React\Filesystem\Eio;
-
-use React\Filesystem\FilesystemInterface;
-use React\Filesystem\TypeDetectorInterface;
-use React\Promise\RejectedPromise;
+use Friday\FileSystem\FileSystemInterface;
+use Friday\FileSystem\TypeDetectorInterface;
+use Friday\Promise\RejectedPromise;
+use Friday\Promise\Util as PromiseUtil;
 
 class ConstTypeDetector implements TypeDetectorInterface
 {
@@ -18,21 +18,21 @@ class ConstTypeDetector implements TypeDetectorInterface
     ];
 
     /**
-     * @var FilesystemInterface
+     * @var FileSystemInterface
      */
-    protected $filesystem;
+    protected $fileSystem;
 
     /**
-     * @param FilesystemInterface $filesystem
+     * @param FileSystemInterface $fileSystem
      */
-    public function __construct(FilesystemInterface $filesystem)
+    public function __construct(FileSystemInterface $fileSystem)
     {
-        $this->filesystem = $filesystem;
+        $this->fileSystem = $fileSystem;
     }
 
     /**
      * @param array $node
-     * @return \React\Promise\PromiseInterface
+     * @return \Friday\Promise\PromiseInterface
      */
     public function detect(array $node)
     {
@@ -40,8 +40,8 @@ class ConstTypeDetector implements TypeDetectorInterface
             return new RejectedPromise();
         }
 
-        return \React\Promise\resolve([
-            $this->filesystem,
+        return PromiseUtil::resolve([
+            $this->fileSystem,
             $this->mapping[$node['type']],
         ]);
     }

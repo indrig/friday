@@ -1,6 +1,5 @@
 <?php
-
-namespace React\Filesystem\Node;
+namespace Friday\FileSystem\Node;
 
 interface LinkInterface extends NodeInterface
 {

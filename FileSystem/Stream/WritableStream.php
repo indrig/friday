@@ -1,12 +1,11 @@
 <?php
 
-namespace React\Filesystem\Stream;
+namespace Friday\FileSystem\Stream;
 
-use Evenement\EventEmitter;
-use React\Filesystem\AdapterInterface;
-use React\Stream\WritableStreamInterface;
+use Friday\FileSystem\AdapterInterface;
+use Friday\Stream\WritableStreamInterface;
 
-class WritableStream extends EventEmitter implements GenericStreamInterface, WritableStreamInterface
+class WritableStream implements GenericStreamInterface, WritableStreamInterface
 {
     use WritableStreamTrait;
     use GenericStreamTrait;
@@ -14,12 +13,12 @@ class WritableStream extends EventEmitter implements GenericStreamInterface, Wri
     /**
      * @param string $path
      * @param resource $fileDescriptor
-     * @param AdapterInterface $filesystem
+     * @param AdapterInterface $fileSystem
      */
-    public function __construct($path, $fileDescriptor, AdapterInterface $filesystem)
+    public function __construct($path, $fileDescriptor, AdapterInterface $fileSystem)
     {
         $this->path = $path;
-        $this->filesystem = $filesystem;
+        $this->fileSystem = $fileSystem;
         $this->fileDescriptor = $fileDescriptor;
     }
 }

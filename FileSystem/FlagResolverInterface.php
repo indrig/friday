@@ -1,6 +1,6 @@
 <?php
 
-namespace React\Filesystem;
+namespace Friday\FileSystem;
 
 interface FlagResolverInterface
 {

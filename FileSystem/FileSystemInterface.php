@@ -46,7 +46,7 @@ interface FileSystemInterface
 
     /**
      * @param string $filename
-     * @return \React\Promise\PromiseInterface
+     * @return \Friday\Promise\PromiseInterface
      */
     public function getContents($filename);
 

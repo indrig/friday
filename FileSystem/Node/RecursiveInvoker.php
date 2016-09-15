@@ -1,6 +1,5 @@
 <?php
-
-namespace React\Filesystem\Node;
+namespace Friday\FileSystem\Node;
 
 class RecursiveInvoker
 {
@@ -20,7 +19,7 @@ class RecursiveInvoker
     /**
      * @param string $method
      * @param array $args
-     * @return \React\Promise\Promise
+     * @return \Friday\Promise\Promise
      */
     public function execute($method, $args)
     {
@@ -33,7 +32,7 @@ class RecursiveInvoker
      * @param $list
      * @param $method
      * @param $args
-     * @return \React\Promise\PromiseInterface
+     * @return \Friday\Promise\PromiseInterface
      */
     protected function iterateNode($list, $method, $args)
     {
@@ -47,7 +46,7 @@ class RecursiveInvoker
             }
         }
 
-        return \React\Promise\all($promises)->then(function () use ($method, $args) {
+        return \Friday\Promise\all($promises)->then(function () use ($method, $args) {
             return call_user_func_array([$this->node, $method], $args);
         });
     }

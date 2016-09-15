@@ -1,20 +1,19 @@
 <?php
+namespace Friday\FileSystem\ChildProcess;
 
-namespace React\Filesystem\ChildProcess;
-
-use React\EventLoop\LoopInterface;
-use React\Filesystem\AdapterInterface;
-use React\Filesystem\CallInvokerInterface;
-use React\Filesystem\Node\NodeInterface;
-use React\Filesystem\Stream\StreamFactory;
-use React\Filesystem\FilesystemInterface;
-use React\Filesystem\MappedTypeDetector;
-use React\Filesystem\ModeTypeDetector;
-use React\Filesystem\ObjectStream;
-use React\Filesystem\OpenFileLimiter;
-use React\Filesystem\TypeDetectorInterface;
-use React\Promise\FulfilledPromise;
-use React\Promise\PromiseInterface;
+use Friday\EventLoop\LoopInterface;
+use Friday\FileSystem\AdapterInterface;
+use Friday\FileSystem\CallInvokerInterface;
+use Friday\FileSystem\Node\NodeInterface;
+use Friday\FileSystem\Stream\StreamFactory;
+use Friday\FileSystem\FilesystemInterface;
+use Friday\FileSystem\MappedTypeDetector;
+use Friday\FileSystem\ModeTypeDetector;
+use Friday\FileSystem\ObjectStream;
+use Friday\FileSystem\OpenFileLimiter;
+use Friday\FileSystem\TypeDetectorInterface;
+use Friday\Promise\FulfilledPromise;
+use Friday\Promise\PromiseInterface;
 use WyriHaximus\React\ChildProcess\Messenger\Messages\Factory;
 use WyriHaximus\React\ChildProcess\Messenger\Messages\Payload;
 use WyriHaximus\React\ChildProcess\Messenger\Messenger;
@@ -25,7 +24,7 @@ class Adapter implements AdapterInterface
 {
     const DEFAULT_POOL     = 'WyriHaximus\React\ChildProcess\Pool\Factory\Flexible';
     const POOL_INTERFACE   = 'WyriHaximus\React\ChildProcess\Pool\PoolFactoryInterface';
-    const CHILD_CLASS_NAME = 'React\Filesystem\ChildProcess\Process';
+    const CHILD_CLASS_NAME = 'Friday\FileSystem\ChildProcess\Process';
 
     /**
      * @var LoopInterface

@@ -1,5 +1,4 @@
 <?php
-
 namespace Friday\FileSystem\Node;
 
 use Friday\EventLoop\TimerInterface;
@@ -13,7 +12,6 @@ use Friday\Promise\FulfilledPromise;
 class Directory implements DirectoryInterface
 {
     use GenericOperationTrait;
-    use EventEmitterTrait;
 
     /**
      * @var FileSystemInterface

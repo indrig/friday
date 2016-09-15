@@ -1,29 +1,28 @@
 <?php
-
-namespace React\Filesystem\Node;
+namespace Friday\FileSystem\Node;
 
 interface GenericOperationInterface
 {
     /**
-     * @return \React\Filesystem\AdapterInterface
+     * @return \Friday\FileSystem\AdapterInterface
      */
-    public function getFilesystem();
+    public function getFileSystem();
 
     /**
-     * @return \React\Promise\PromiseInterface
+     * @return \Friday\Promise\PromiseInterface
      */
     public function stat();
 
     /**
      * @param int $mode
-     * @return \React\Promise\PromiseInterface
+     * @return \Friday\Promise\PromiseInterface
      */
     public function chmod($mode);
 
     /**
      * @param int $uid
      * @param int $gid
-     * @return \React\Promise\PromiseInterface
+     * @return \Friday\Promise\PromiseInterface
      */
     public function chown($uid = -1, $gid = -1);
 }

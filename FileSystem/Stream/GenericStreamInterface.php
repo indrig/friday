@@ -1,11 +1,10 @@
 <?php
-
-namespace React\Filesystem\Stream;
+namespace Friday\Filesystem\Stream;
 
 interface GenericStreamInterface
 {
     /**
      * @return resource
      */
-    public function getFiledescriptor();
+    public function getFileDescriptor();
 }

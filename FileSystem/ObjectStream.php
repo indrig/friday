@@ -1,14 +1,16 @@
 <?php
 
-namespace React\Filesystem;
+namespace Friday\FileSystem;
 
-use Evenement\EventEmitter;
-use React\Stream\ReadableStreamInterface;
-use React\Stream\Util;
-use React\Stream\WritableStreamInterface;
+use Friday\Base\EventTrait;
+use Friday\Stream\ReadableStreamInterface;
+use Friday\Stream\Util;
+use Friday\Stream\WritableStreamInterface;
 
-class ObjectStream extends EventEmitter implements ReadableStreamInterface, WritableStreamInterface
+class ObjectStream implements ReadableStreamInterface, WritableStreamInterface
 {
+    use EventTrait;
+
     protected $closed = false;
 
     public function isReadable()
@@ -32,7 +34,7 @@ class ObjectStream extends EventEmitter implements ReadableStreamInterface, Writ
     }
     public function write($data)
     {
-        $this->emit('data', array($data, $this));
+        $this->trigger('data', array($data, $this));
     }
 
     public function end($data = null)
@@ -56,8 +58,8 @@ class ObjectStream extends EventEmitter implements ReadableStreamInterface, Writ
         }
 
         $this->closed = true;
-        $this->emit('end', array($this));
-        $this->emit('close', array($this));
-        $this->removeAllListeners();
+        $this->trigger('end', array($this));
+        $this->trigger('close', array($this));
+        //$this->removeAllListeners();
     }
 }
