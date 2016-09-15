@@ -9,6 +9,7 @@ use Friday\Base\AbstractApplication;
  * @package Friday\Web
  *
  * @property Server $server
+ * @property UrlManager $urlManager
  *
  */
 class Application extends AbstractApplication {
@@ -30,6 +31,9 @@ class Application extends AbstractApplication {
      */
     public function handleRequest(RequestEvent $event){
        $connectionContent = ConnectionContext::create($event->request, $event->response);
+
+        var_dump($this->urlManager->parseRequest($event->request));
+
     }
 
     /**
@@ -38,7 +42,8 @@ class Application extends AbstractApplication {
     public function coreComponents()
     {
         return array_merge(parent::coreComponents(), [
-            'server' => ['class' => 'Friday\Web\Server']
+            'server' => ['class' => 'Friday\Web\Server'],
+            'urlManager' => ['class' => 'Friday\Web\UrlManager']
         ]);
     }
 }

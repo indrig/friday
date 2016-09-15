@@ -42,7 +42,7 @@ class UrlManager extends Component
      * and can thus produce more user-friendly URLs, such as "/news/Yii-is-released", instead of
      * "/index.php?r=news%2Fview&id=100".
      */
-    public $enablePrettyUrl = false;
+    public $enablePrettyUrl = true;
     /**
      * @var boolean whether to enable strict parsing. If strict parsing is enabled, the incoming
      * requested URL must match at least one of the [[rules]] in order to be treated as a valid request.
@@ -96,11 +96,7 @@ class UrlManager extends Component
      * This property is used only if [[enablePrettyUrl]] is true.
      */
     public $suffix;
-    /**
-     * @var boolean whether to show entry script name in the constructed URL. Defaults to true.
-     * This property is used only if [[enablePrettyUrl]] is true.
-     */
-    public $showScriptName = true;
+
     /**
      * @var string the GET parameter name for route. This property is used only if [[enablePrettyUrl]] is false.
      */
@@ -229,6 +225,7 @@ class UrlManager extends Component
     {
         if ($this->enablePrettyUrl) {
             $pathInfo = $request->getPathInfo();
+            var_dump($pathInfo);
             /* @var $rule UrlRule */
             foreach ($this->rules as $rule) {
                 if (($result = $rule->parseRequest($this, $request)) !== false) {
@@ -265,7 +262,7 @@ class UrlManager extends Component
             return [$pathInfo, []];
         } else {
             Friday::trace('Pretty URL not enabled. Using default URL parsing logic.', __METHOD__);
-            $route = $request->getQueryParam($this->routeParam, '');
+            $route = $request->get($this->routeParam, '');
             if (is_array($route)) {
                 $route = '';
             }
@@ -312,7 +309,7 @@ class UrlManager extends Component
         $route = trim($params[0], '/');
         unset($params[0]);
 
-        $baseUrl = $this->showScriptName || !$this->enablePrettyUrl ? $this->getScriptUrl() : $this->getBaseUrl();
+        $baseUrl = $this->getScriptUrl();
 
         if ($this->enablePrettyUrl) {
             $cacheKey = $route . '?';
@@ -439,13 +436,14 @@ class UrlManager extends Component
      * Returns the base URL that is used by [[createUrl()]] to prepend to created URLs.
      * It defaults to [[Request::baseUrl]].
      * This is mainly used when [[enablePrettyUrl]] is true and [[showScriptName]] is false.
+     *
+     * @param Request $request
      * @return string the base URL that is used by [[createUrl()]] to prepend to created URLs.
      * @throws InvalidConfigException if running in console application and [[baseUrl]] is not configured.
      */
-    public function getBaseUrl()
+    public function getBaseUrl(Request $request)
     {
         if ($this->_baseUrl === null) {
-            $request = Yii::$app->getRequest();
             if ($request instanceof Request) {
                 $this->_baseUrl = $request->getBaseUrl();
             } else {

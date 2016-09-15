@@ -3,6 +3,7 @@ namespace Friday\Web;
 
 use Evenement\EventEmitter;
 use Friday\Base\Component;
+use Friday\Base\Exception\InvalidConfigException;
 use Friday\Base\Exception\RuntimeException;
 use Friday\Stream\ReadableStreamInterface;
 use Friday\Stream\WritableStreamInterface;
@@ -13,6 +14,8 @@ use Friday\Stream\Util;
  * @package Friday\Web
  *
  * @property HeaderCollection $headers
+ * @property bool $isSecureConnection
+ * @property null|string $host
  *
  */
 class Request extends Component implements ReadableStreamInterface
@@ -39,21 +42,44 @@ class Request extends Component implements ReadableStreamInterface
 
     protected $_remoteAddress;
 
+    /**
+     * @var array
+     */
     protected $_get = [];
 
+    /**
+     * @var array
+     */
     protected $_post = [];
 
+    /**
+     * @var array
+     */
     protected $_files = [];
 
+    /**
+     * @var string|null
+     */
     protected $_rawBody;
-
+    /**
+     * @var string|null
+     */
     protected $_contentType;
-
+    /**
+     * @var int
+     */
     protected $_contentLength;
     /**
-     * @var
+     * @var string
      */
-    protected $_requestUri;
+    protected $_url;
+
+    /**
+     * @var string
+     */
+    protected $_pathInfo;
+
+
 
     public function getMethod()
     {
@@ -149,9 +175,6 @@ class Request extends Component implements ReadableStreamInterface
      * @return array|mixed
      */
     public function post($name = null, $defaultValue = null){
-        if($this->_post === null) {
-            $this->prepareRawBodyParams();
-        }
 
         if($name === null) {
             return $this->_post;
@@ -160,114 +183,6 @@ class Request extends Component implements ReadableStreamInterface
         }
     }
 
-    /**
-     * Обрабатывает запрос rawBody и разберает его на массивы _post и _files
-     *
-     * @return bool
-     */
-    protected function prepareRawBodyParams(){
-        $contentTypeValues = explode(';', $this->_contentType);
-        $contentType       = reset($contentTypeValues);
-
-        if($contentType === 'application/x-www-form-urlencoded') {
-            parse_str($this->_rawBody, $arr);
-            $this->_post = $arr;
-
-            return true;
-        } elseif ($contentType === 'multipart/form-data'){
-            $post = [];
-
-            if(preg_match('/boundary=(.*)$/', $this->_contentType, $matches)) {
-                $boundary = $matches[1];
-
-                // split content by boundary and get rid of last -- element
-                $blocks = preg_split("/-+$boundary/", $this->_rawBody);
-
-                array_pop($blocks);
-
-                // loop data blocks
-                foreach ($blocks as $id => $part)
-                {
-                    if (empty($part))
-                        continue;
-
-
-                    // you'll have to var_dump $block to understand this and maybe replace \n or \r with a visibile char
-
-                    //TODO: add files and array support
-                    $part = ltrim($part, "\r\n");
-                    list($partHeadersString, $body) = explode("\r\n\r\n", $part, 2);
-
-                    $parHeaders = explode("\r\n", $partHeadersString);
-                    $headers = array();
-                    foreach ($parHeaders as $headerLine) {
-                        list($name, $value) = explode(':', $headerLine);
-                        $headers[strtolower($name)] = ltrim($value, ' ');
-                    }
-                    if (isset($headers['content-disposition'])) {
-                        if(preg_match(
-                            '/^(.+); *name="([^"]+)"(; *filename="([^"]+)")?/',
-                            $headers['content-disposition'],
-                            $matches
-                        )) {
-                            list(, $paramType, $paramName) = $matches;
-                            $paramValue = mb_substr($body, 0, strlen($body) - 2, '8bit');
-
-                            if(isset($matches[4])) {
-                                //TODO: add process files
-                            } else {
-                                if (preg_match_all('/\[([^\]]*)\]/m', $paramName, $matches)) {
-                                    $paramName      = substr($paramName, 0, strpos($paramName, '['));
-                                    $keys           = array_merge(array($paramName), $matches[1]);
-                                } else {
-                                    $keys           = array($paramName);
-                                }
-
-                                $target         = &$post;
-
-                                foreach ($keys as $index) {
-                                    if ($index === '') {
-                                        if (isset($target)) {
-                                            if (is_array($target)) {
-                                                $intKeys        = array_filter(array_keys($target), 'is_int');
-                                                $index  = count($intKeys) ? max($intKeys)+1 : 0;
-                                            } else {
-                                                $target = array($target);
-                                                $index  = 1;
-                                            }
-                                        } else {
-                                            $target         = array();
-                                            $index          = 0;
-                                        }
-                                    } elseif (isset($target[$index]) && !is_array($target[$index])) {
-                                        $target[$index] = array($target[$index]);
-                                    }
-
-                                    $target         = &$target[$index];
-                                }
-
-                                if (is_array($target)) {
-                                    $target[]   = $paramValue;
-                                } else {
-                                    $target     = $paramValue;
-                                }
-
-                            }
-                        }
-                    }
-                }
-
-            }
-
-            $this->_post = $post;
-
-            return true;
-        } else {
-            $this->_post = [];
-        }
-
-        return false;
-    }
 
     /**
      * Returns the named GET parameter value.
@@ -311,7 +226,7 @@ class Request extends Component implements ReadableStreamInterface
                     $requestUriExplodes = explode('?', $requestUri, 2);
 
                     $request->_method     = strtoupper($requestMethod);
-                    $request->_requestUri = $requestUri;
+                    $request->_url      = $requestUri;
 
                     if(count($requestUriExplodes) === 2) {
                         list($path, $queryString) = $requestUriExplodes;
@@ -319,10 +234,11 @@ class Request extends Component implements ReadableStreamInterface
 
                         $request->_path = $path;
                         $request->_get  = $query;
-                        $request->_queryString = $path . '?' .$query;
+                        $request->_queryString      = $queryString;
                     } else {
                         $request->_path           = $requestUriExplodes[0];
-                        $request->_queryString    = $request->_path;
+                        $request->_queryString    = '';
+
                     }
                 } else {
                     throw new RuntimeException('Headers not content http start connection data');
@@ -341,5 +257,160 @@ class Request extends Component implements ReadableStreamInterface
         $request->_contentType      = $headerCollection->get('content-type');
 
         return $request;
+    }
+
+    /**
+     * Return if the request is sent via secure channel (https).
+     * @return boolean if the request is sent via secure channel (https)
+     */
+    public function getIsSecureConnection()
+    {
+        return (null !== $forwardedProto = $this->_headers->get('x-forwarded-proto')) && strcasecmp($forwardedProto, 'https') === 0;
+    }
+    /**
+     * Return if the request is sent via secure channel (https).
+     * @return null|string
+     */
+    public function getHost()
+    {
+        if(null !== $host = $this->_headers->get('host')) {
+            return $host;
+        } else {
+            return (null !== $forwardedHost = $this->_headers->get('x-forwarded-host')) ? $forwardedHost : null;
+
+        }
+    }
+    private $_hostInfo;
+
+    /**
+     * Returns the schema and host part of the current request URL.
+     * The returned URL does not have an ending slash.
+     * By default this is determined based on the user request information.
+     * You may explicitly specify it by setting the [[setHostInfo()|hostInfo]] property.
+     * @return string schema and hostname part (with port number if needed) of the request URL (e.g. `http://www.yiiframework.com`),
+     * null if can't be obtained from `$_SERVER` and wasn't set.
+     * @see setHostInfo()
+     */
+    public function getHostInfo()
+    {
+        if ($this->_hostInfo === null) {
+            $secure = $this->getIsSecureConnection();
+            $http = $secure ? 'https' : 'http';
+            $this->_hostInfo = $http . '://' . $this->getHost();
+        }
+
+        return $this->_hostInfo;
+    }
+
+    /**
+     * Sets the schema and host part of the application URL.
+     * This setter is provided in case the schema and hostname cannot be determined
+     * on certain Web servers.
+     * @param string $value the schema and host part of the application URL. The trailing slashes will be removed.
+     */
+    public function setHostInfo($value)
+    {
+        $this->_hostInfo = $value === null ? null : rtrim($value, '/');
+    }
+
+    /**
+     * Returns the currently requested relative URL.
+     * This refers to the portion of the URL that is after the [[hostInfo]] part.
+     * It includes the [[queryString]] part if any.
+     * @return string the currently requested relative URL. Note that the URI returned is URL-encoded.
+     * @throws InvalidConfigException if the URL cannot be determined due to unusual server configuration
+     */
+    public function getUrl()
+    {
+        return $this->_url;
+    }
+
+    /**
+     * Returns the currently requested absolute URL.
+     * This is a shortcut to the concatenation of [[hostInfo]] and [[url]].
+     * @return string the currently requested absolute URL.
+     */
+    public function getAbsoluteUrl()
+    {
+        return $this->getHostInfo() . $this->getUrl();
+    }
+
+    /**
+     * Returns the path info of the currently requested URL.
+     * A path info refers to the part that is after the entry script and before the question mark (query string).
+     * The starting and ending slashes are both removed.
+     * @return string part of the request URL that is after the entry script and before the question mark.
+     * Note, the returned path info is already URL-decoded.
+     * @throws InvalidConfigException if the path info cannot be determined due to unexpected server configuration
+     */
+    public function getPathInfo()
+    {
+        if ($this->_pathInfo === null) {
+            $this->_pathInfo = $this->resolvePathInfo();
+        }
+
+        return $this->_pathInfo;
+    }
+
+    /**
+     * Sets the path info of the current request.
+     * This method is mainly provided for testing purpose.
+     * @param string $value the path info of the current request
+     */
+    public function setPathInfo($value)
+    {
+        $this->_pathInfo = $value === null ? null : ltrim($value, '/');
+    }
+
+    /**
+     * Resolves the path info part of the currently requested URL.
+     * A path info refers to the part that is after the entry script and before the question mark (query string).
+     * The starting slashes are both removed (ending slashes will be kept).
+     * @return string part of the request URL that is after the entry script and before the question mark.
+     * Note, the returned path info is decoded.
+     * @throws InvalidConfigException if the path info cannot be determined due to unexpected server configuration
+     */
+    protected function resolvePathInfo()
+    {
+        $pathInfo = $this->getUrl();
+        if (($pos = strpos($pathInfo, '?')) !== false) {
+            $pathInfo = substr($pathInfo, 0, $pos);
+        }
+
+        $pathInfo = urldecode($pathInfo);
+
+        // try to encode in UTF8 if not so
+        // http://w3.org/International/questions/qa-forms-utf-8.html
+        if (!preg_match('%^(?:
+            [\x09\x0A\x0D\x20-\x7E]              # ASCII
+            | [\xC2-\xDF][\x80-\xBF]             # non-overlong 2-byte
+            | \xE0[\xA0-\xBF][\x80-\xBF]         # excluding overlongs
+            | [\xE1-\xEC\xEE\xEF][\x80-\xBF]{2}  # straight 3-byte
+            | \xED[\x80-\x9F][\x80-\xBF]         # excluding surrogates
+            | \xF0[\x90-\xBF][\x80-\xBF]{2}      # planes 1-3
+            | [\xF1-\xF3][\x80-\xBF]{3}          # planes 4-15
+            | \xF4[\x80-\x8F][\x80-\xBF]{2}      # plane 16
+            )*$%xs', $pathInfo)
+        ) {
+            $pathInfo = utf8_encode($pathInfo);
+        }
+
+        /*$scriptUrl = $this->getScriptUrl();
+        $baseUrl = $this->getBaseUrl();
+        if (strpos($pathInfo, $scriptUrl) === 0) {
+            $pathInfo = substr($pathInfo, strlen($scriptUrl));
+        } elseif ($baseUrl === '' || strpos($pathInfo, $baseUrl) === 0) {
+            $pathInfo = substr($pathInfo, strlen($baseUrl));
+        } elseif (isset($_SERVER['PHP_SELF']) && strpos($_SERVER['PHP_SELF'], $scriptUrl) === 0) {
+            $pathInfo = substr($_SERVER['PHP_SELF'], strlen($scriptUrl));
+        } else {
+            throw new InvalidConfigException('Unable to determine the path info of the current request.');
+        }
+*/
+        if (substr($pathInfo, 0, 1) === '/') {
+            $pathInfo = substr($pathInfo, 1);
+        }
+
+        return (string) $pathInfo;
     }
 }

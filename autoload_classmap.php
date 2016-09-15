@@ -62,6 +62,7 @@ return [
     'Friday\Web\UrlManager' => __DIR__ . '/Web/UrlManager.php',
     'Friday\Web\UrlRule' => __DIR__ . '/Web/UrlRule.php',
     'Friday\Web\UrlRuleInterface' => __DIR__ . '/Web/UrlRuleInterface.php',
+    'Friday\Web\ConnectionContext' => __DIR__ . '/Web/ConnectionContext.php',
 
     'Friday\Web\Event\RequestParsedEvent' => __DIR__ . '/Web/Event/RequestParsedEvent.php',
     'Friday\Web\Event\RequestEvent' => __DIR__ . '/Web/Event/RequestEvent.php',
