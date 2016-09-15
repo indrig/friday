@@ -5,15 +5,24 @@ use Friday\Base\Component;
 use Friday\SocketServer\Connection;
 use Friday\Stream\WritableStreamInterface;
 
-class Response extends Component  implements WritableStreamInterface
+/**
+ * Class Response
+ * @package Friday\Web
+ *
+ * @property Connection $connection
+ */
+class Response extends Component implements WritableStreamInterface
 {
     private $closed = false;
+
     private $writable = true;
     /**
      * @var Connection
      */
     private $_connection;
+
     private $headWritten = false;
+
     private $chunkedEncoding = true;
 
     public function __construct(Connection $connection, array $config = [])
@@ -39,11 +48,18 @@ class Response extends Component  implements WritableStreamInterface
             $this->trigger('drain');
         });
     }
+
+    /**
+     * @return bool
+     */
     public function isWritable()
     {
         return $this->writable;
     }
 
+    /**
+     * @throws \Exception
+     */
     public function writeContinue()
     {
         if ($this->headWritten) {
@@ -53,6 +69,11 @@ class Response extends Component  implements WritableStreamInterface
         $this->_connection->write("HTTP/1.1 100 Continue\r\n\r\n");
     }
 
+    /**
+     * @param int $status
+     * @param array $headers
+     * @throws \Exception
+     */
     public function writeHead($status = 200, array $headers = array())
     {
         if ($this->headWritten) {
@@ -73,6 +94,11 @@ class Response extends Component  implements WritableStreamInterface
         $this->headWritten = true;
     }
 
+    /**
+     * @param $status
+     * @param array $headers
+     * @return string
+     */
     private function formatHead($status, array $headers)
     {
         $status = (int) $status;
@@ -93,6 +119,11 @@ class Response extends Component  implements WritableStreamInterface
         return $data;
     }
 
+    /**
+     * @param $data
+     * @return bool
+     * @throws \Exception
+     */
     public function write($data)
     {
         if (!$this->headWritten) {
@@ -110,6 +141,9 @@ class Response extends Component  implements WritableStreamInterface
         return $flushed;
     }
 
+    /**
+     * @param null $data
+     */
     public function end($data = null)
     {
         if (null !== $data) {
@@ -124,6 +158,9 @@ class Response extends Component  implements WritableStreamInterface
         $this->_connection->end();
     }
 
+    /**
+     *
+     */
     public function close()
     {
         if ($this->closed) {
@@ -137,5 +174,10 @@ class Response extends Component  implements WritableStreamInterface
         $this->_connection->close();
     }
 
-
+    /**
+     * @return Connection
+     */
+    public function getConnection(){
+        return $this->_connection;
+    }
 }

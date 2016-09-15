@@ -59,7 +59,9 @@ return [
     'Friday\Web\ResponseCodes' => __DIR__ . '/Web/ResponseCodes.php',
     'Friday\Web\RequestHeaderParser' => __DIR__ . '/Web/RequestHeaderParser.php',
     'Friday\Web\HeaderCollection' => __DIR__ . '/Web/HeaderCollection.php',
-    'Friday\Web\MultiPart' => __DIR__ . '/Web/MultiPart.php',
+    'Friday\Web\UrlManager' => __DIR__ . '/Web/UrlManager.php',
+    'Friday\Web\UrlRule' => __DIR__ . '/Web/UrlRule.php',
+    'Friday\Web\UrlRuleInterface' => __DIR__ . '/Web/UrlRuleInterface.php',
 
     'Friday\Web\Event\RequestParsedEvent' => __DIR__ . '/Web/Event/RequestParsedEvent.php',
     'Friday\Web\Event\RequestEvent' => __DIR__ . '/Web/Event/RequestEvent.php',

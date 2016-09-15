@@ -18,8 +18,6 @@ final class Friday extends AbstractFriday{
 
         spl_autoload_register([__CLASS__, 'autoload'], true, true);
 
-
-
         static::$container = new Friday\Di\Container();
 
         static::$isInit = true;

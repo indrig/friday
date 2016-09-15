@@ -170,4 +170,54 @@ abstract class AbstractFriday{
             throw new InvalidConfigException('Unsupported configuration type: ' . gettype($type));
         }
     }
+
+    /**
+     * Logs a trace message.
+     * Trace messages are logged mainly for development purpose to see
+     * the execution work flow of some code.
+     * @param string $message the message to be logged.
+     * @param string $category the category of the message.
+     */
+    public static function trace($message, $category = 'application')
+    {
+        if (FRIDAY_DEBUG) {
+            //static::getLogger()->log($message, Logger::LEVEL_TRACE, $category);
+        }
+    }
+
+    /**
+     * Logs an error message.
+     * An error message is typically logged when an unrecoverable error occurs
+     * during the execution of an application.
+     * @param string $message the message to be logged.
+     * @param string $category the category of the message.
+     */
+    public static function error($message, $category = 'application')
+    {
+        //static::getLogger()->log($message, Logger::LEVEL_ERROR, $category);
+    }
+
+    /**
+     * Logs a warning message.
+     * A warning message is typically logged when an error occurs while the execution
+     * can still continue.
+     * @param string $message the message to be logged.
+     * @param string $category the category of the message.
+     */
+    public static function warning($message, $category = 'application')
+    {
+      //  static::getLogger()->log($message, Logger::LEVEL_WARNING, $category);
+    }
+
+    /**
+     * Logs an informative message.
+     * An informative message is typically logged by an application to keep record of
+     * something important (e.g. an administrator logs in).
+     * @param string $message the message to be logged.
+     * @param string $category the category of the message.
+     */
+    public static function info($message, $category = 'application')
+    {
+       // static::getLogger()->log($message, Logger::LEVEL_INFO, $category);
+    }
 }
