@@ -17,9 +17,13 @@ return [
     'Friday\Base\Exception\RuntimeException' => __DIR__ . '/Base/Exception/RuntimeException.php',
     'Friday\Base\Exception\UnknownClassException' => __DIR__ . '/Base/Exception/UnknownClassException.php',
     'Friday\Base\Exception\UnknownPropertyException' => __DIR__ . '/Base/Exception/UnknownPropertyException.php',
+    'Friday\Base\Exception\Exception' => __DIR__ . '/Base/Exception/Exception.php',
+    'Friday\Base\Exception\ErrorException' => __DIR__ . '/Base/Exception/ErrorException.php',
 
     'Friday\Helper\AliasHelper' => __DIR__ . '/Helper/AliasHelper.php',
     'Friday\Helper\ArrayHelper' => __DIR__ . '/Helper/ArrayHelper.php',
+    'Friday\Helper\FileHelper' => __DIR__ . '/Helper/FileHelper.php',
+    'Friday\Helper\StringHelper' => __DIR__ . '/Helper/StringHelper.php',
 
     'Friday\Di\Container' => __DIR__ . '/Di/Container.php',
     'Friday\Di\Instance' => __DIR__ . '/Di/Instance.php',

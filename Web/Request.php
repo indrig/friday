@@ -43,6 +43,8 @@ class Request extends Component implements ReadableStreamInterface
 
     protected $_post = [];
 
+    protected $_files = [];
+
     protected $_rawBody;
 
     protected $_contentType;
