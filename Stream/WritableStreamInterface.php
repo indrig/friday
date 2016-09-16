@@ -1,8 +1,6 @@
 <?php
 namespace Friday\Stream;
 
-use Evenement\EventEmitterInterface;
-
 /**
  * @event drain
  * @event error

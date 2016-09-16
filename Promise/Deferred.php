@@ -25,17 +25,17 @@ class Deferred implements PromisorInterface
         return $this->promise;
     }
 
-    public function resolve($value = null)
+    public function resolve()
     {
         $this->promise();
 
-        call_user_func($this->resolveCallback, $value);
+        call_user_func_array($this->resolveCallback, func_get_args());
     }
 
-    public function reject($reason = null)
+    public function reject()
     {
         $this->promise();
 
-        call_user_func($this->rejectCallback, $reason);
+        call_user_func_array($this->rejectCallback, func_get_args());
     }
 }

@@ -20,10 +20,61 @@ use Throwable;
  * @property HeaderCollection $headers
  * @property bool $isSecureConnection
  * @property null|string $host
- *
+ * @property ConnectionContext $connectionContext
  */
 class Request extends Component implements ReadableStreamInterface
 {
+    /**
+     * The name of the HTTP header for sending CSRF token.
+     */
+    const CSRF_HEADER = 'X-CSRF-Token';
+    /**
+     * The length of the CSRF token mask.
+     */
+    const CSRF_MASK_LENGTH = 8;
+
+    /**
+     * @var boolean whether to enable CSRF (Cross-Site Request Forgery) validation. Defaults to true.
+     * When CSRF validation is enabled, forms submitted to an Yii Web application must be originated
+     * from the same application. If not, a 400 HTTP exception will be raised.
+     *
+     * Note, this feature requires that the user client accepts cookie. Also, to use this feature,
+     * forms submitted via POST method must contain a hidden input whose name is specified by [[csrfParam]].
+     * You may use [[\yii\helpers\Html::beginForm()]] to generate his hidden input.
+     *
+     * In JavaScript, you may get the values of [[csrfParam]] and [[csrfToken]] via `yii.getCsrfParam()` and
+     * `yii.getCsrfToken()`, respectively. The [[\yii\web\YiiAsset]] asset must be registered.
+     * You also need to include CSRF meta tags in your pages by using [[\yii\helpers\Html::csrfMetaTags()]].
+     *
+     * @see Controller::enableCsrfValidation
+     * @see http://en.wikipedia.org/wiki/Cross-site_request_forgery
+     */
+    public $enableCsrfValidation = true;
+    /**
+     * @var string the name of the token used to prevent CSRF. Defaults to '_csrf'.
+     * This property is used only when [[enableCsrfValidation]] is true.
+     */
+    public $csrfParam = '_csrf';
+    /**
+     * @var array the configuration for creating the CSRF [[Cookie|cookie]]. This property is used only when
+     * both [[enableCsrfValidation]] and [[enableCsrfCookie]] are true.
+     */
+    public $csrfCookie = ['httpOnly' => true];
+    /**
+     * @var boolean whether to use cookie to persist CSRF token. If false, CSRF token will be stored
+     * in session under the name of [[csrfParam]]. Note that while storing CSRF tokens in session increases
+     * security, it requires starting a session for every page, which will degrade your site performance.
+     */
+    public $enableCsrfCookie = true;
+    /**
+     * @var boolean whether cookies should be validated to ensure they are not tampered. Defaults to true.
+     */
+    public $enableCookieValidation = true;
+    /**
+     * @var string a secret key used for cookie validation. This property must be set if [[enableCookieValidation]] is true.
+     */
+    public $cookieValidationKey;
+
     /**
      * @var HeaderCollection
      */
@@ -84,6 +135,10 @@ class Request extends Component implements ReadableStreamInterface
     protected $_pathInfo;
 
 
+    /**
+     * @return ConnectionContext|null
+     */
+    protected $_connectionContext;
 
     public function getMethod()
     {
@@ -446,5 +501,21 @@ class Request extends Component implements ReadableStreamInterface
         });
 
         return $deferred->promise();
+    }
+
+    /**
+     * @param $connectionContext
+     * @return $this
+     */
+    public function setConnectionContext($connectionContext){
+        $this->_connectionContext = $connectionContext;
+        return $this;
+    }
+
+    /**
+     * @return ConnectionContext
+     */
+    public function getConnectionContext(){
+        return $this->_connectionContext;
     }
 }

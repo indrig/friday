@@ -11,6 +11,7 @@ use Friday\EventLoop\LoopInterface;
  * @package Friday\Base
  *
  * @property LoopInterface $runLoop
+ * @property Security $security
  */
 class AbstractApplication extends Module {
     /**
@@ -210,6 +211,7 @@ class AbstractApplication extends Module {
     {
         return [
             'runLoop' => ['class' => 'Friday\EventLoop\StreamSelectLoop'],
+            'security' => ['class' => 'Friday\Base\Security'],
         ];
     }
 

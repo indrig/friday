@@ -34,7 +34,6 @@ class Application extends AbstractApplication {
     public function handleRequest(RequestEvent $event){
        $connectionContent = ConnectionContext::create($event->request, $event->response);
 
-
         $event->request->resolve()->then(
             //Success
             function (array $params) use($connectionContent) {
@@ -42,7 +41,13 @@ class Application extends AbstractApplication {
                 list ($route, $params) = $params;
                 Friday::trace("Route requested: '$route'", __METHOD__);
 
-                $connectionContent->setRequestedRoute($route);
+               // $connectionContent->setRequestedRoute($route);
+                $connectionContent->runAction($route, $params)->then(function (){
+
+                },
+                function () {
+
+                });
             },
             //Error
             function (Throwable $throwable) use($connectionContent) {
@@ -52,20 +57,6 @@ class Application extends AbstractApplication {
         );
     }
 
-    /**
-     * Runs a controller action specified by a route.
-     * This method parses the specified route and creates the corresponding child module(s), controller and action
-     * instances. It then calls [[Controller::runAction()]] to run the action with the given parameters.
-     * If the route is empty, the method will use [[defaultRoute]].
-     * @param string $route the route that specifies the action.
-     * @param array $params the parameters to be passed to the action
-     * @return mixed the result of the action.
-     * @throws InvalidRouteException if the requested route cannot be resolved into an action successfully
-     */
-    public function runAction($route, $params = [])
-    {
-
-    }
 
     /**
      * @inheritdoc

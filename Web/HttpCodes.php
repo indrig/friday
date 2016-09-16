@@ -4,7 +4,7 @@ namespace Friday\Web;
 /**
  * This is copy-pasted from Symfony2's Response class
  */
-class ResponseCodes
+class HttpCodes
 {
     public static $httpStatuses = array(
         100 => 'Continue',
