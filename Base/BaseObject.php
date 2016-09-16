@@ -5,7 +5,7 @@ use Friday\Base\Exception\BadMethodCallException;
 use Friday\Base\Exception\PropertyAccessException;
 use Friday\Base\Exception\UnknownPropertyException;
 
-class BaseObject
+class BaseObject implements ConfigurableInterface
 {
     /**
      * Returns the fully qualified name of this class.

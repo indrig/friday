@@ -19,6 +19,7 @@ return [
     'Friday\Base\Exception\UnknownPropertyException' => __DIR__ . '/Base/Exception/UnknownPropertyException.php',
     'Friday\Base\Exception\Exception' => __DIR__ . '/Base/Exception/Exception.php',
     'Friday\Base\Exception\ErrorException' => __DIR__ . '/Base/Exception/ErrorException.php',
+    'Friday\Base\Exception\InvalidRouteException' => __DIR__ . '/Base/Exception/InvalidRouteException.php',
 
     'Friday\Helper\AliasHelper' => __DIR__ . '/Helper/AliasHelper.php',
     'Friday\Helper\ArrayHelper' => __DIR__ . '/Helper/ArrayHelper.php',
@@ -63,6 +64,8 @@ return [
     'Friday\Web\UrlRule' => __DIR__ . '/Web/UrlRule.php',
     'Friday\Web\UrlRuleInterface' => __DIR__ . '/Web/UrlRuleInterface.php',
     'Friday\Web\ConnectionContext' => __DIR__ . '/Web/ConnectionContext.php',
+    'Friday\Web\HttpException\HttpException' => __DIR__ . '/Web/HttpException/HttpException.php',
+    'Friday\Web\HttpException\NotFoundHttpException' => __DIR__ . '/Web/HttpException/NotFoundHttpException.php',
 
     'Friday\Web\Event\RequestParsedEvent' => __DIR__ . '/Web/Event/RequestParsedEvent.php',
     'Friday\Web\Event\RequestEvent' => __DIR__ . '/Web/Event/RequestEvent.php',

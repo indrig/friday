@@ -62,7 +62,7 @@ abstract class AbstractFriday{
     public static $classMap = [];
 
     /**
-     * @var \Friday\Base\AbstractApplication
+     * @var \Friday\Web\Application
      */
     public static $app;
 
@@ -95,7 +95,7 @@ abstract class AbstractFriday{
             if ($classFile[0] === '@') {
                 $classFile = AliasHelper::getAlias($classFile);
             }
-        } elseif (strpos($className, '\\') !== false) {            var_dump($className);
+        } elseif (strpos($className, '\\') !== false) {
 
             $classFile = AliasHelper::getAlias('@' . str_replace('\\', '/', $className) . '.php', false);
 
@@ -154,7 +154,7 @@ abstract class AbstractFriday{
      * @throws InvalidConfigException if the configuration is invalid.
      * @see \Friday\Di\Container
      */
-    public static function createObject($type, array $params = []) : Component
+    public static function createObject($type, array $params = [])
     {
         if (is_string($type)) {
             return static::$container->get($type, $params);
@@ -181,6 +181,7 @@ abstract class AbstractFriday{
     public static function trace($message, $category = 'application')
     {
         if (FRIDAY_DEBUG) {
+            echo "TRACE: {$message}\n";
             //static::getLogger()->log($message, Logger::LEVEL_TRACE, $category);
         }
     }
@@ -194,6 +195,8 @@ abstract class AbstractFriday{
      */
     public static function error($message, $category = 'application')
     {
+        echo "ERROR: {$message}\n";
+
         //static::getLogger()->log($message, Logger::LEVEL_ERROR, $category);
     }
 
@@ -206,6 +209,7 @@ abstract class AbstractFriday{
      */
     public static function warning($message, $category = 'application')
     {
+        echo "WARNING: {$message}\n";
       //  static::getLogger()->log($message, Logger::LEVEL_WARNING, $category);
     }
 
@@ -218,6 +222,11 @@ abstract class AbstractFriday{
      */
     public static function info($message, $category = 'application')
     {
+        echo "INFO: {$message}\n";
        // static::getLogger()->log($message, Logger::LEVEL_INFO, $category);
     }
+
+    public static function t($message){
+
+}
 }

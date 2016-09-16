@@ -93,7 +93,7 @@ use Friday\Base\Exception\UnknownPropertyException;
  * @author Qiang Xue <qiang.xue@gmail.com>
  * @since 2.0
  */
-class Component extends BaseObject
+class Component extends BaseObject implements ConfigurableInterface
 {
 
     use EventTrait;

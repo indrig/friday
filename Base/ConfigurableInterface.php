@@ -14,7 +14,7 @@ namespace Friday\Base;
  *
  * That is, the last parameter of the constructor must accept a configuration array.
  */
-interface Configurable
+interface ConfigurableInterface
 {
     public function configure(array $properties);
 }

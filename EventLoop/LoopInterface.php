@@ -47,6 +47,7 @@ interface LoopInterface
      * @return TimerInterface
      */
     public function addTimer(float $interval, callable $callback);
+
     /**
      * Enqueue a callback to be invoked repeatedly after the given interval.
      *

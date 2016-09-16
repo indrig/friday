@@ -4,7 +4,6 @@ namespace Friday\Web;
 use Friday;
 use Friday\Base\Component;
 use Friday\Base\Exception\InvalidConfigException;
-use Friday\caching\Cache;
 
 /**
  * UrlManager handles HTTP request parsing and creation of URLs based on a set of rules.
@@ -17,7 +16,7 @@ use Friday\caching\Cache;
  *
  * ```php
  * 'urlManager' => [
- *     'enablePrettyUrl' => true,
+ *
  *     'rules' => [
  *         // your rules go here
  *     ],
@@ -30,9 +29,7 @@ use Friday\caching\Cache;
  * [[createAbsoluteUrl()]] to prepend to created URLs.
  * @property string $scriptUrl The entry script URL that is used by [[createUrl()]] to prepend to created
  * URLs.
- *
- * @author Qiang Xue <qiang.xue@gmail.com>
- * @since 2.0
+
  */
 class UrlManager extends Component
 {
@@ -114,7 +111,7 @@ class UrlManager extends Component
      * @var array the default configuration of URL rules. Individual rule configurations
      * specified via [[rules]] will take precedence when the same property of the rule is configured.
      */
-    public $ruleConfig = ['class' => 'yii\web\UrlRule'];
+    public $ruleConfig = ['class' => 'Friday\Web\UrlRule'];
 
     /**
      * @var string the cache key for cached rules
@@ -128,6 +125,7 @@ class UrlManager extends Component
     private $_ruleCache;
 
 
+
     /**
      * Initializes UrlManager.
      */
@@ -138,20 +136,21 @@ class UrlManager extends Component
         if (!$this->enablePrettyUrl || empty($this->rules)) {
             return;
         }
+
         if (is_string($this->cache)) {
             $this->cache = Friday::$app->get($this->cache, false);
         }
-       /* if ($this->cache instanceof Cache) {
-            $cacheKey = $this->cacheKey;
-            $hash = md5(json_encode($this->rules));
-            if (($data = $this->cache->get($cacheKey)) !== false && isset($data[1]) && $data[1] === $hash) {
-                $this->rules = $data[0];
-            } else {
-                $this->rules = $this->buildRules($this->rules);
-                $this->cache->set($cacheKey, [$this->rules, $hash]);
-            }
-        } else {*/
-            $this->rules = $this->buildRules($this->rules);
+        /* if ($this->cache instanceof Cache) {
+             $cacheKey = $this->cacheKey;
+             $hash = md5(json_encode($this->rules));
+             if (($data = $this->cache->get($cacheKey)) !== false && isset($data[1]) && $data[1] === $hash) {
+                 $this->rules = $data[0];
+             } else {
+                 $this->rules = $this->buildRules($this->rules);
+                 $this->cache->set($cacheKey, [$this->rules, $hash]);
+             }
+         } else {*/
+        $this->rules = $this->buildRules($this->rules);
         //}
     }
 
@@ -223,52 +222,44 @@ class UrlManager extends Component
      */
     public function parseRequest($request)
     {
-        if ($this->enablePrettyUrl) {
-            $pathInfo = $request->getPathInfo();
-            var_dump($pathInfo);
-            /* @var $rule UrlRule */
-            foreach ($this->rules as $rule) {
-                if (($result = $rule->parseRequest($this, $request)) !== false) {
-                    return $result;
-                }
+        $pathInfo = $request->getPathInfo();
+
+        /* @var $rule UrlRule */
+        foreach ($this->rules as $rule) {
+            if (($result = $rule->parseRequest($this, $request)) !== false) {
+                return $result;
             }
+        }
 
-            if ($this->enableStrictParsing) {
-                return false;
-            }
+        if ($this->enableStrictParsing) {
+            return false;
+        }
 
-            Friday::trace('No matching URL rules. Using default URL parsing logic.', __METHOD__);
 
-            // Ensure, that $pathInfo does not end with more than one slash.
-            if (strlen($pathInfo) > 1 && substr_compare($pathInfo, '//', -2, 2) === 0) {
-                return false;
-            }
+        Friday::trace('No matching URL rules. Using default URL parsing logic.', __METHOD__);
 
-            $suffix = (string) $this->suffix;
-            if ($suffix !== '' && $pathInfo !== '') {
-                $n = strlen($this->suffix);
-                if (substr_compare($pathInfo, $this->suffix, -$n, $n) === 0) {
-                    $pathInfo = substr($pathInfo, 0, -$n);
-                    if ($pathInfo === '') {
-                        // suffix alone is not allowed
-                        return false;
-                    }
-                } else {
-                    // suffix doesn't match
+        // Ensure, that $pathInfo does not end with more than one slash.
+        if (strlen($pathInfo) > 1 && substr_compare($pathInfo, '//', -2, 2) === 0) {
+            return false;
+        }
+
+        $suffix = (string)$this->suffix;
+        if ($suffix !== '' && $pathInfo !== '') {
+            $n = strlen($this->suffix);
+            if (substr_compare($pathInfo, $this->suffix, -$n, $n) === 0) {
+                $pathInfo = substr($pathInfo, 0, -$n);
+                if ($pathInfo === '') {
+                    // suffix alone is not allowed
                     return false;
                 }
+            } else {
+                // suffix doesn't match
+                return false;
             }
-
-            return [$pathInfo, []];
-        } else {
-            Friday::trace('Pretty URL not enabled. Using default URL parsing logic.', __METHOD__);
-            $route = $request->get($this->routeParam, '');
-            if (is_array($route)) {
-                $route = '';
-            }
-
-            return [(string) $route, []];
         }
+
+        return [$pathInfo, []];
+
     }
 
     /**
@@ -302,7 +293,7 @@ class UrlManager extends Component
      */
     public function createUrl($params)
     {
-        $params = (array) $params;
+        $params = (array)$params;
         $anchor = isset($params['#']) ? '#' . $params['#'] : '';
         unset($params['#'], $params[$this->routeParam]);
 
@@ -420,7 +411,7 @@ class UrlManager extends Component
      */
     public function createAbsoluteUrl($params, $scheme = null)
     {
-        $params = (array) $params;
+        $params = (array)$params;
         $url = $this->createUrl($params);
         if (strpos($url, '://') === false) {
             $url = $this->getHostInfo() . $url;

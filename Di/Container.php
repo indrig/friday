@@ -119,7 +119,7 @@ class Container extends Component
      * You may provide constructor parameters (`$params`) and object configurations (`$config`)
      * that will be used during the creation of the instance.
      *
-     * If the class implements [[\yii\base\Configurable]], the `$config` parameter will be passed as the last
+     * If the class implements [[\Friday\Base\ConfigurableInterface]], the `$config` parameter will be passed as the last
      * parameter to the class constructor; Otherwise, the configuration will be applied *after* the object is
      * instantiated.
      *
@@ -138,7 +138,7 @@ class Container extends Component
      * @throws InvalidConfigException if the class cannot be recognized or correspond to an invalid definition
      * @throws NotInstantiableException If resolved to an abstract class or an interface (since 2.0.9)
      */
-    public function get(string $class, array $params = [], array $config = []) : Component
+    public function get(string $class, array $params = [], array $config = [])
     {
         if (isset($this->_singletons[$class])) {
             // singleton
@@ -349,16 +349,16 @@ class Container extends Component
      * @return Component the newly created instance of the specified class
      * @throws NotInstantiableException If resolved to an abstract class or an interface (since 2.0.9)
      */
-    protected function build(string $class, array $params, array $config) : Component
+    protected function build(string $class, array $params, array $config)
     {
         /* @var $reflection ReflectionClass */
         list ($reflection, $dependencies) = $this->getDependencies($class);
-
         foreach ($params as $index => $param) {
             $dependencies[$index] = $param;
         }
 
         $dependencies = $this->resolveDependencies($dependencies, $reflection);
+
         if (!$reflection->isInstantiable()) {
             throw new NotInstantiableException($reflection->name);
         }
@@ -366,11 +366,13 @@ class Container extends Component
             return $reflection->newInstanceArgs($dependencies);
         }
 
-        if (!empty($dependencies) && $reflection->implementsInterface('Friday\Base\Configurable')) {
+        if (!empty($dependencies) && $reflection->implementsInterface('Friday\Base\ConfigurableInterface')) {
+
             // set $config as the last parameter (existing one will be overwritten)
             $dependencies[count($dependencies) - 1] = $config;
             return $reflection->newInstanceArgs($dependencies);
         } else {
+
             $object = $reflection->newInstanceArgs($dependencies);
             foreach ($config as $name => $value) {
                 $object->$name = $value;
@@ -441,7 +443,9 @@ class Container extends Component
      */
     protected function resolveDependencies(array $dependencies, $reflection = null)
     {
+
         foreach ($dependencies as $index => $dependency) {
+
             if ($dependency instanceof Instance) {
                 if ($dependency->id !== null) {
                     $dependencies[$index] = $this->get($dependency->id);

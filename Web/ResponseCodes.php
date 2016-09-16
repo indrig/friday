@@ -6,7 +6,7 @@ namespace Friday\Web;
  */
 class ResponseCodes
 {
-    public static $statusTexts = array(
+    public static $httpStatuses = array(
         100 => 'Continue',
         101 => 'Switching Protocols',
         102 => 'Processing',            // RFC2518

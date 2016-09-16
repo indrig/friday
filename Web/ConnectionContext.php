@@ -3,6 +3,7 @@ namespace Friday\Web;
 
 use Friday\Base\BaseObject;
 use Friday\Base\EventTrait;
+use Friday\Base\Exception\RuntimeException;
 
 /**
  * Class ConnectionContext
@@ -10,6 +11,7 @@ use Friday\Base\EventTrait;
  *
  * @property Request $request
  * @property Response $response
+ * @property string|null $requestedRoute
  */
 class ConnectionContext extends BaseObject {
 
@@ -18,12 +20,17 @@ class ConnectionContext extends BaseObject {
     /**
      * @var Request
      */
-    public $_request;
+    private $_request;
 
     /**
      * @var Response
      */
-    public $_response;
+    private $_response;
+
+    /**
+     * @var string|null
+     */
+    private $_requestedRoute;
 
     /**
      * @return Request
@@ -51,4 +58,15 @@ class ConnectionContext extends BaseObject {
         return $context;
     }
 
+    public function getRequestedRoute(){
+        return $this->_requestedRoute;
+    }
+
+    public function setRequestedRoute($requestedRoute){
+        if($this->_requestedRoute !== null) {
+            throw new RuntimeException('User context parameter "requestedRoute" already set.');
+        }
+        $this->_requestedRoute = $requestedRoute;
+        return $this;
+    }
 }

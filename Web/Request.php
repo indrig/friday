@@ -1,15 +1,19 @@
 <?php
 namespace Friday\Web;
 
-use Evenement\EventEmitter;
+use Friday;
 use Friday\Base\Component;
 use Friday\Base\Exception\InvalidConfigException;
 use Friday\Base\Exception\RuntimeException;
+use Friday\Promise\Deferred;
 use Friday\Stream\ReadableStreamInterface;
 use Friday\Stream\WritableStreamInterface;
 use Friday\Stream\Util;
+use Friday\Web\HttpException\NotFoundHttpException;
+use Throwable;
 
 /**
+ *
  * Class Request
  * @package Friday\Web
  *
@@ -412,5 +416,35 @@ class Request extends Component implements ReadableStreamInterface
         }
 
         return (string) $pathInfo;
+    }
+
+    /**
+     * Resolves the current request into a route and the associated parameters.
+     *
+     * @return Friday\Promise\Promise
+     */
+    public function resolve()
+    {
+        $deferred = new Deferred();
+
+        Friday\Helper\RunLoopHelper::post(function () use ($deferred){
+            try {
+                $result = Friday::$app->urlManager->parseRequest($this);
+                if ($result !== false) {
+                    list ($route, $params) = $result;
+
+                    $this->_get = $params + $this->_get;
+
+                    $deferred->resolve([$route, $this->_get]);
+                } else {
+                    $deferred->reject(new NotFoundHttpException(Friday::t('Page not found.')));
+                }
+            }catch (Throwable $e) {
+                $deferred->reject($e);
+            }
+
+        });
+
+        return $deferred->promise();
     }
 }

@@ -110,8 +110,9 @@ class ServiceLocator extends Component
      * @see has()
      * @see set()
      */
-    public function get(string $id, bool $throwException = true) : Component
+    public function get(string $id, bool $throwException = true)
     {
+
         if (isset($this->_components[$id])) {
             return $this->_components[$id];
         }
@@ -123,7 +124,9 @@ class ServiceLocator extends Component
             } else {
                 return $this->_components[$id] = Friday::createObject($definition);
             }
+
         } elseif ($throwException) {
+
             throw new InvalidConfigException("Unknown component ID: $id");
         } else {
             return null;
