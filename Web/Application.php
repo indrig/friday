@@ -84,10 +84,10 @@ class Application extends AbstractApplication {
                             }
                         }
 
-                        $response->send() -> then(function (){
-
-                        }, function (){
-
+                        $response->send() -> then(function () use ($connectionContent){
+                            $this->_contexts->detach($connectionContent);
+                        }, function () use ($connectionContent){
+                            $this->_contexts->detach($connectionContent);
                         });
                     }, function ($throwable = null) use ($connectionContent) {
                         $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_ERROR,new ConnectionContextEvent([
