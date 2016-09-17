@@ -330,7 +330,7 @@ class Module extends ServiceLocator
      * @return Module|null the module instance, null if the module does not exist.
      * @see hasModule()
      */
-    public function getModule(string $id, bool $load = true) : Module
+    public function getModule(string $id, bool $load = true)
     {
         if (($pos = strpos($id, '/')) !== false) {
             // sub-module

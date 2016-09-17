@@ -1,7 +1,6 @@
 <?php
-namespace Fridaty\base;
+namespace Friday\Base\Exception;
 
-use Friday\Base\Exception\Exception;
 
 /**
  * InvalidRouteException represents an exception caused by an invalid route.

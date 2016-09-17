@@ -69,7 +69,7 @@ class Request extends Component implements ReadableStreamInterface
     /**
      * @var boolean whether cookies should be validated to ensure they are not tampered. Defaults to true.
      */
-    public $enableCookieValidation = true;
+    public $enableCookieValidation = false;
     /**
      * @var string a secret key used for cookie validation. This property must be set if [[enableCookieValidation]] is true.
      */

@@ -39,20 +39,31 @@ class Application extends AbstractApplication {
             function (array $params) use($connectionContent) {
                 //Select controller and action
                 list ($route, $params) = $params;
-                Friday::trace("Route requested: '$route'", __METHOD__);
+                Friday::trace("Route requested: '{$route}'", __METHOD__);
+                try {
+                    $connectionContent->runAction($route, $params)->then(function () use($connectionContent){
+                        Friday::error('action rin.');
+                        },
+                        function ($throwable = null) use ($connectionContent) {
+                            if($throwable === null) {
+                                Friday::error('Unknown error.');
+                            } else {
+                                Friday::error($throwable);
+                            }
 
-               // $connectionContent->setRequestedRoute($route);
-                $connectionContent->runAction($route, $params)->then(function (){
+                            $connectionContent->response->send();
 
-                },
-                function () {
-
-                });
+                        });
+                }catch (Throwable $throwable) {
+                    Friday::error($throwable);
+                    $connectionContent->response->send();
+                }
             },
             //Error
             function (Throwable $throwable) use($connectionContent) {
                 //Close connection end render error response
                 Friday::error($throwable);
+
             }
         );
     }

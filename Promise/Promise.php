@@ -39,6 +39,11 @@ class Promise implements ExtendedPromiseInterface, CancellablePromiseInterface
         });
     }
 
+    /**
+     * @param callable|null $onFulfilled
+     * @param callable|null $onRejected
+     * @return mixed
+     */
     public function done(callable $onFulfilled = null, callable $onRejected = null)
     {
         if (null !== $this->result) {
@@ -51,10 +56,14 @@ class Promise implements ExtendedPromiseInterface, CancellablePromiseInterface
         };
     }
 
+    /**
+     * @param callable $onRejected
+     * @return PromiseInterface|mixed|static
+     */
     public function otherwise(callable $onRejected)
     {
         return $this->then(null, function ($reason) use ($onRejected) {
-            if (!_checkTypehint($onRejected, $reason)) {
+            if (!Util::_checkTypehint($onRejected, $reason)) {
                 return new RejectedPromise($reason);
             }
 
@@ -65,11 +74,11 @@ class Promise implements ExtendedPromiseInterface, CancellablePromiseInterface
     public function always(callable $onFulfilledOrRejected)
     {
         return $this->then(function ($value) use ($onFulfilledOrRejected) {
-            return resolve($onFulfilledOrRejected())->then(function () use ($value) {
+            return Util::resolve($onFulfilledOrRejected())->then(function () use ($value) {
                 return $value;
             });
         }, function ($reason) use ($onFulfilledOrRejected) {
-            return resolve($onFulfilledOrRejected())->then(function () use ($reason) {
+            return Util::resolve($onFulfilledOrRejected())->then(function () use ($reason) {
                 return new RejectedPromise($reason);
             });
         });
@@ -104,7 +113,7 @@ class Promise implements ExtendedPromiseInterface, CancellablePromiseInterface
             return;
         }
 
-        $this->settle(resolve($value));
+        $this->settle(Util::resolve($value));
     }
 
     private function reject($reason = null)
@@ -113,7 +122,7 @@ class Promise implements ExtendedPromiseInterface, CancellablePromiseInterface
             return;
         }
 
-        $this->settle(reject($reason));
+        $this->settle(Util::reject($reason));
     }
 
     private function settle(ExtendedPromiseInterface $result)

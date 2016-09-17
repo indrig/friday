@@ -10,7 +10,7 @@
         "source": "http://github.com/indrig/friday"
     },
     "require": {
-        "php": ">=7.0.1",
+        "php": ">=7.0.1"
     },
     "authors": [
         {

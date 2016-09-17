@@ -1,11 +1,11 @@
 <?php
 namespace Friday\Web;
 
-use Fridaty\base\InvalidRouteException;
 use Friday;
 use Friday\Base\BaseObject;
 use Friday\Base\EventTrait;
 use Friday\Base\Exception\RuntimeException;
+use Friday\Base\Exception\InvalidRouteException;
 use Friday\Promise\Deferred;
 
 /**
@@ -89,26 +89,24 @@ class ConnectionContext extends BaseObject {
     public function runAction($route, $params = [])
     {
         $deferred = new Deferred();
+
         $parts = Friday::$app->createController($route);
+        var_dump($parts);
+
         if (is_array($parts)) {
             /* @var $controller Controller */
             list($controller, $actionID) = $parts;
-
             $this->_requestedRoute = $route;
 
             $controller->setConnectionContext($this);
 
-           /* $oldController = Yii::$app->controller;
-            Yii::$app->controller = $controller;
-            $result = $controller->runAction($actionID, $params);
-            Yii::$app->controller = $oldController;
-*/
+
            Friday\Helper\RunLoopHelper::post(function () use ($deferred, $controller, $actionID, $params) {
                $deferred->resolve($controller->runAction($actionID, $params));
            });
         } else {
-            Friday\Helper\RunLoopHelper::post(function () use ($deferred) {
-                $deferred->resolve(new InvalidRouteException("Unable to resolve the request '{$route}'."));
+            Friday\Helper\RunLoopHelper::post(function () use ($deferred, $route) {
+                $deferred->reject(new InvalidRouteException("Unable to resolve the request '{$route}'."));
             });
         }
 

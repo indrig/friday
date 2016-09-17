@@ -8,5 +8,5 @@ interface PromiseInterface
      * @param callable|null $onRejected
      * @return mixed
      */
-    public function then(callable $onFulfilled = null, callable $onRejected = null) : PromiseInterface;
+    public function then(callable $onFulfilled = null, callable $onRejected = null);
 }

@@ -626,13 +626,13 @@ class FileHelper
      * Processes the pattern, stripping special characters like / and ! from the beginning and settings flags instead.
      * @param string $pattern
      * @param boolean $caseSensitive
-     * @throws \yii\base\InvalidParamException
+     * @throws \Friday\Base\Exception\InvalidArgumentException
      * @return array with keys: (string) pattern, (int) flags, (int|boolean) firstWildcard
      */
     private static function parseExcludePattern($pattern, $caseSensitive)
     {
         if (!is_string($pattern)) {
-            throw new InvalidParamException('Exclude/include pattern must be a string.');
+            throw new InvalidArgumentException('Exclude/include pattern must be a string.');
         }
 
         $result = [

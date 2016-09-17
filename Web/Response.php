@@ -107,7 +107,7 @@ class Response extends Component
      * @var string the version of the HTTP protocol to use. If not set, it will be determined via `$_SERVER['SERVER_PROTOCOL']`,
      * or '1.1' if that is not available.
      */
-    public $version;
+    public $version = '1.1';
 
     /**
      * @var bool
@@ -119,7 +119,7 @@ class Response extends Component
      */
     private $_isContentSent = false;
 
-    protected $_isSent;
+    protected $_isSent = false;
 
     private $closed = false;
 
@@ -291,18 +291,27 @@ class Response extends Component
         $this->_isSent = true;
 
         $this->trigger(self::EVENT_BEFORE_SEND);
-
         $this->prepare()->then(function (){
             $this->trigger(self::EVENT_AFTER_PREPARE);
 
+
             $this->sendHeaders()->then(function (){
-                $this->sendContent();
-                $this->trigger(self::EVENT_AFTER_SEND);
+
+
+                $this->sendContent()->then(function (){
+                    $this->close();
+                    $this->trigger(self::EVENT_AFTER_SEND);
+                    var_dump('ok');
+                }, function ($throwable = null){
+                    Friday::error($throwable);
+                });
+
             }, function ($throwable = null){
+                Friday::error($throwable);
 
             });
         }, function ($throwable = null){
-
+            Friday::error($throwable);
         });
     }
 
@@ -341,11 +350,12 @@ class Response extends Component
             } elseif (is_object($this->content)) {
                 if (method_exists($this->content, '__toString')) {
                     $this->content = $this->content->__toString();
-                    $deferred->resolve();
                 } else {
                     $deferred->reject(new InvalidArgumentException('Response content must be a string or an object implementing __toString().'));
+                    return;
                 }
             }
+            $deferred->resolve();
         });
 
         return $deferred->promise();
@@ -400,13 +410,13 @@ class Response extends Component
         $deferred = new Deferred();
 
         Friday\Helper\RunLoopHelper::post(function () use ($deferred){
-            if(!$this->_isHeadersSent) {
+            if($this->_isHeadersSent) {
                 $deferred->reject();
                 return;
             }
 
             $statusCode = $this->getStatusCode();
-            $data = "HTTP/{$this->version} {$statusCode} {$this->statusText}";
+            $data = "HTTP/{$this->version} {$statusCode} {$this->statusText}\r\n";
             if ($this->_headers !== null) {
                 $headers = $this->getHeaders();
                 foreach ($headers as $name => $values) {
@@ -417,16 +427,19 @@ class Response extends Component
                 }
             }
 
-            $this->write($data);
+            $this->connection->write($data);
 
             $this->sendCookies()->then(function () use ($deferred){
+                var_dump('sss');
                     $deferred->resolve();
                     $this->connection->write("\r\n");
+                    $this->_isHeadersSent = true;
                 },
                 function ($throwable) use ($deferred){
                     $deferred->reject($throwable);
 
                     $this->connection->write("\r\n");
+                    $this->_isHeadersSent = true;
                 });
         });
 
@@ -441,18 +454,21 @@ class Response extends Component
     {
         $deferred = new Deferred();
         Friday\Helper\RunLoopHelper::post(function () use ($deferred){
-            if ($this->_cookies === null) {
-                $deferred->reject();
+            if ($this->_cookies === null || $this->getCookies()->count === 0) {
+                $deferred->resolve();
                 return;
             }
 
             $request = $this->connectionContext->request;
+
             if ($request->enableCookieValidation) {
                 if ($request->cookieValidationKey == '') {
                     $deferred->reject(new InvalidConfigException(get_class($this) . '::cookieValidationKey must be configured with a secret key.'));
+                    return;
                 }
                 $validationKey = $request->cookieValidationKey;
             }
+            var_dump('test');
             $data = '';
             foreach ($this->getCookies() as $cookie) {
                 $value = $cookie->value;
@@ -502,15 +518,15 @@ class Response extends Component
                 $deferred->resolve();
             } elseif(is_resource($this->stream)) {
                 while (!feof($this->stream)) {
-                    echo fread($this->stream, $chunkSize);
-                    flush();
+                    $this->write(fread($this->stream, $chunkSize));
                 }
                 fclose($this->stream);
+
                 $deferred->resolve();
             } elseif(is_object($this->stream)) {
                 if($this->stream instanceof Stream) {
                     $this->stream->on(Stream::EVENT_CONTENT, function (Friday\Stream\Event\ContentEvent $event) {
-                        $this->connection->write($event->content);
+                        $this->write($event->content);
                     });
 
                     $this->stream->on(Stream::EVENT_END, function (Friday\Stream\Event\Event $event) use($deferred) {
@@ -526,34 +542,6 @@ class Response extends Component
             }
         });
         return $deferred->promise();
-        /*
-        if ($this->stream === null) {
-            echo $this->content;
-
-            return;
-        }
-
-        set_time_limit(0); // Reset time limit for big files
-        $chunkSize = 8 * 1024 * 1024; // 8MB per chunk
-
-        if (is_array($this->stream)) {
-            list ($handle, $begin, $end) = $this->stream;
-            fseek($handle, $begin);
-            while (!feof($handle) && ($pos = ftell($handle)) <= $end) {
-                if ($pos + $chunkSize > $end) {
-                    $chunkSize = $end - $pos + 1;
-                }
-                echo fread($handle, $chunkSize);
-                flush(); // Free up memory. Otherwise large files will trigger PHP's memory limit.
-            }
-            fclose($handle);
-        } else {
-            while (!feof($this->stream)) {
-                echo fread($this->stream, $chunkSize);
-                flush();
-            }
-            fclose($this->stream);
-        }*/
     }
 
     /**
