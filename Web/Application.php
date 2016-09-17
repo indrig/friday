@@ -2,8 +2,10 @@
 namespace Friday\Web;
 
 use Friday;
+use Friday\Web\Event\ConnectionContextEvent;
 use Friday\Web\Event\RequestEvent;
 use Friday\Base\AbstractApplication;
+use SplObjectStorage;
 use Throwable;
 
 /**
@@ -15,6 +17,19 @@ use Throwable;
  *
  */
 class Application extends AbstractApplication {
+
+    /**
+     * @var SplObjectStorage
+     */
+    protected $_contexts;
+
+    public function init()
+    {
+        parent::init();
+
+        $this->_contexts = new SplObjectStorage();
+    }
+
     /**
      *
      */
@@ -32,38 +47,68 @@ class Application extends AbstractApplication {
      * @param RequestEvent $event
      */
     public function handleRequest(RequestEvent $event){
-       $connectionContent = ConnectionContext::create($event->request, $event->response);
+
+        $connectionContent = ConnectionContext::create($event->request, $event->response);
+
+        $this->_contexts->attach($connectionContent);
+
+        $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_BEFORE_ROUTING, new ConnectionContextEvent([
+            'connectionContent' => $connectionContent
+        ]));
 
         $event->request->resolve()->then(
             //Success
             function (array $params) use($connectionContent) {
+                $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_AFTER_ROUTING, new ConnectionContextEvent([
+                    'connectionContent' => $connectionContent
+                ]));
+
                 //Select controller and action
                 list ($route, $params) = $params;
                 Friday::trace("Route requested: '{$route}'", __METHOD__);
                 try {
-                    $connectionContent->runAction($route, $params)->then(function () use($connectionContent){
-                        Friday::error('action rin.');
-                        },
-                        function ($throwable = null) use ($connectionContent) {
-                            if($throwable === null) {
-                                Friday::error('Unknown error.');
-                            } else {
-                                Friday::error($throwable);
-                            }
+                    $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_BEFORE_RUN_ACTION,new ConnectionContextEvent([
+                        'connectionContent' => $connectionContent
+                    ]));
+                    $connectionContent->runAction($route, $params)->then(function ($result) use($connectionContent){
+                        $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_AFTER_RUN_ACTION, new ConnectionContextEvent([
+                            'connectionContent' => $connectionContent
+                        ]));
 
-                            $connectionContent->response->send();
+                        if ($result instanceof Response) {
+                            $response = $result;
+                        } else {
+                            $response = $connectionContent->response;
+                            if ($result !== null) {
+                                $response->data = $result;
+                            }
+                        }
+
+                        $response->send() -> then(function (){
+
+                        }, function (){
 
                         });
+                    }, function ($throwable = null) use ($connectionContent) {
+                        $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_ERROR,new ConnectionContextEvent([
+                            'connectionContent' => $connectionContent,
+                            'error' => $throwable
+                        ]));
+
+                    });
                 }catch (Throwable $throwable) {
-                    Friday::error($throwable);
-                    $connectionContent->response->send();
+                    $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_ERROR,new ConnectionContextEvent([
+                        'connectionContent' => $connectionContent,
+                        'error' => $throwable
+                    ]));
                 }
             },
             //Error
             function (Throwable $throwable) use($connectionContent) {
-                //Close connection end render error response
-                Friday::error($throwable);
-
+                $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_ERROR,new ConnectionContextEvent([
+                    'connectionContent' => $connectionContent,
+                    'error' => $throwable
+                ]));
             }
         );
     }

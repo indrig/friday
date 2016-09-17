@@ -131,6 +131,7 @@ return [
 'Friday\Web\Controller' => __DIR__ . '/Web/Controller.php',
 'Friday\Web\Cookie' => __DIR__ . '/Web/Cookie.php',
 'Friday\Web\CookieCollection' => __DIR__ . '/Web/CookieCollection.php',
+'Friday\Web\Event\ConnectionContextEvent' => __DIR__ . '/Web/Event/ConnectionContextEvent.php',
 'Friday\Web\Event\ErrorEvent' => __DIR__ . '/Web/Event/ErrorEvent.php',
 'Friday\Web\Event\RequestEvent' => __DIR__ . '/Web/Event/RequestEvent.php',
 'Friday\Web\Event\RequestParsedEvent' => __DIR__ . '/Web/Event/RequestParsedEvent.php',

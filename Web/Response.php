@@ -203,7 +203,7 @@ class Response extends Component
     /**
      * @return bool
      */
-    public function isWritable()
+    protected function isWritable()
     {
         return $this->writable;
     }
@@ -211,7 +211,7 @@ class Response extends Component
     /**
      * @throws \Exception
      */
-    public function writeContinue()
+    protected function writeContinue()
     {
         if ($this->_isHeadersSent) {
             throw new \Exception('Response head has already been written.');
@@ -226,7 +226,7 @@ class Response extends Component
      * @return bool
      * @throws \Exception
      */
-    public function write($data)
+    protected function write($data)
     {
         if (!$this->_isHeadersSent) {
             throw new \Exception('Response head has not yet been written.');
@@ -246,7 +246,7 @@ class Response extends Component
     /**
      * @param null $data
      */
-    public function end($data = null)
+    protected function end($data = null)
     {
         if (null !== $data) {
             $this->write($data);
@@ -263,7 +263,7 @@ class Response extends Component
     /**
      *
      */
-    public function close()
+    protected function close()
     {
         if ($this->closed) {
             return;
@@ -283,36 +283,53 @@ class Response extends Component
         return $this->_connection;
     }
 
+    /**
+     * @return Friday\Promise\PromiseInterface
+     */
     public function send()
     {
-        if ($this->_isSent) {
-            return;
-        }
-        $this->_isSent = true;
+        $deferred = new Deferred();
 
-        $this->trigger(self::EVENT_BEFORE_SEND);
-        $this->prepare()->then(function (){
-            $this->trigger(self::EVENT_AFTER_PREPARE);
+        Friday\Helper\RunLoopHelper::post(function () use ($deferred){
+            if ($this->_isSent) {
+                $deferred->reject();
+            } else {
+                $this->_isSent = true;
 
+                try {
+                    $this->trigger(self::EVENT_BEFORE_SEND);
+                    $this->prepare()->then(function () use ($deferred){
+                        $this->trigger(self::EVENT_AFTER_PREPARE);
+                        $this->sendHeaders()->then(function () use ($deferred){
+                            $this->sendContent()->then(function () use ($deferred){
+                                $this->close();
+                                $this->trigger(self::EVENT_AFTER_SEND);
+                                $deferred->resolve();
+                            }, function ($throwable = null)use ($deferred){
+                                $this->close();
 
-            $this->sendHeaders()->then(function (){
+                                $deferred->reject($throwable);
+                            });
+                        }, function ($throwable = null) use ($deferred){
+                            $this->close();
 
+                            $deferred->reject($throwable);
 
-                $this->sendContent()->then(function (){
+                        });
+                    }, function ($throwable = null)use ($deferred){
+                        $this->close();
+
+                        $deferred->reject($throwable);
+                    });
+                }catch (Throwable $throwable) {
                     $this->close();
-                    $this->trigger(self::EVENT_AFTER_SEND);
-                    var_dump('ok');
-                }, function ($throwable = null){
-                    Friday::error($throwable);
-                });
 
-            }, function ($throwable = null){
-                Friday::error($throwable);
-
-            });
-        }, function ($throwable = null){
-            Friday::error($throwable);
+                    $deferred->reject($throwable);
+                }
+            }
         });
+
+        return $deferred->promise();
     }
 
     /**
@@ -430,7 +447,6 @@ class Response extends Component
             $this->connection->write($data);
 
             $this->sendCookies()->then(function () use ($deferred){
-                var_dump('sss');
                     $deferred->resolve();
                     $this->connection->write("\r\n");
                     $this->_isHeadersSent = true;
@@ -468,7 +484,6 @@ class Response extends Component
                 }
                 $validationKey = $request->cookieValidationKey;
             }
-            var_dump('test');
             $data = '';
             foreach ($this->getCookies() as $cookie) {
                 $value = $cookie->value;

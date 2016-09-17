@@ -17,7 +17,15 @@ use Friday\Promise\Deferred;
  * @property string|null $requestedRoute
  */
 class ConnectionContext extends BaseObject {
+    const EVENT_CONNECTION_CONTENT_BEFORE_RUN_ACTION = 'before-run-action';
+    const EVENT_CONNECTION_CONTENT_AFTER_RUN_ACTION = 'after-run-action';
 
+    const EVENT_CONNECTION_CONTENT_BEFORE_ROUTING = 'before-routing';
+    const EVENT_CONNECTION_CONTENT_AFTER_ROUTING = 'after-routing';
+
+    const EVENT_CONNECTION_CONTENT_ERROR = 'error';
+
+    const EVENT_CONNECTION_CONTENT_CLOSE = 'close';
     use EventTrait;
 
     /**
@@ -91,7 +99,6 @@ class ConnectionContext extends BaseObject {
         $deferred = new Deferred();
 
         $parts = Friday::$app->createController($route);
-        var_dump($parts);
 
         if (is_array($parts)) {
             /* @var $controller Controller */
@@ -113,4 +120,16 @@ class ConnectionContext extends BaseObject {
         return $deferred->promise();
     }
 
+    /**
+     * @param null $throwable
+     */
+    public function error($throwable = null){
+        $response = $this->response;
+
+        $response->send();
+    }
+
+    public function close(){
+
+    }
 }
