@@ -326,4 +326,11 @@ class AbstractApplication extends Module {
             }
         }
     }
+
+    /**
+     * @return Security
+     */
+    public function getSecurity(){
+        return $this->get('security');
+    }
 }

@@ -2,10 +2,10 @@
 namespace Friday\Web;
 
 use Friday;
-use Friday\Base\BaseObject;
 use Friday\Base\EventTrait;
 use Friday\Base\Exception\RuntimeException;
 use Friday\Base\Exception\InvalidRouteException;
+use Friday\Di\ServiceLocator;
 use Friday\Promise\Deferred;
 use Throwable;
 
@@ -21,7 +21,7 @@ use Throwable;
  * @property Friday\EventLoop\LoopInterface $loop
  * @property Controller $controller
  */
-class ConnectionContext extends BaseObject
+class ConnectionContext extends ServiceLocator
 {
     const EVENT_CONNECTION_CONTENT_BEFORE_RUN_ACTION = 'before-run-action';
     const EVENT_CONNECTION_CONTENT_AFTER_RUN_ACTION = 'after-run-action';
@@ -34,15 +34,7 @@ class ConnectionContext extends BaseObject
     const EVENT_CONNECTION_CONTENT_CLOSE = 'close';
     use EventTrait;
 
-    /**
-     * @var Request
-     */
-    private $_request;
 
-    /**
-     * @var Response
-     */
-    private $_response;
 
     /**
      * @var string|null
@@ -59,21 +51,13 @@ class ConnectionContext extends BaseObject
      */
     private $_controller;
 
-    /**
-     * @var Session
-     */
-    private $_session;
 
-    /**
-     * @var User
-     */
-    private $_user;
     /**
      * @return Request
      */
     public function getRequest()
     {
-        return $this->_request;
+        return $this->get('request');
     }
 
     /**
@@ -81,7 +65,7 @@ class ConnectionContext extends BaseObject
      */
     public function getResponse()
     {
-        return $this->_response;
+        return $this->get('response');
     }
 
     /**
@@ -92,8 +76,8 @@ class ConnectionContext extends BaseObject
     public static function create(Request $request, Response $response)
     {
         $context = new static();
-        $context->_request = $request;
-        $context->_response = $response;
+        $context->set('request', $request);
+        $context->set('response', $response);
 
         $request->setConnectionContext($context);
         $response->setConnectionContext($context);
@@ -241,33 +225,18 @@ class ConnectionContext extends BaseObject
      * @return User
      */
     public function getUser(){
-        return $this->_user;
+        return $this->get('user');
     }
 
-    /**
-     * @param User $user
-     * @return $this
-     */
-    public function setUser($user){
-        $this->_user = $user;
-        return $this;
-    }
 
     /**
      * @return mixed
      */
     public function getSession(){
-        return $this->_session;
+        return $this->get('session');
     }
 
-    /**
-     * @param Session $session
-     * @return $this
-     */
-    public function setSession($session){
-        $this->_session = $session;
-        return $this;
-    }
+
     public function finish(){
         $this->response->end();
 

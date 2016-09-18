@@ -23,9 +23,11 @@ use Throwable;
  * @property null|string $host
  * @property ConnectionContext $connectionContext
  * @property bool $isAjax
+ * @property bool $isPjax
  */
 class Request extends Component implements ReadableStreamInterface
 {
+    use ConnectionContextTrait;
     /**
      * The name of the HTTP header for sending CSRF token.
      */
@@ -81,6 +83,11 @@ class Request extends Component implements ReadableStreamInterface
      * @var HeaderCollection
      */
     protected $_headers;
+
+    /**
+     * @var string
+     */
+    private $_csrfToken;
 
     /**
      * @var CookieCollection Collection of request cookies.
@@ -530,24 +537,12 @@ class Request extends Component implements ReadableStreamInterface
         return $deferred->promise();
     }
 
-    /**
-     * @param $connectionContext
-     * @return $this
-     */
-    public function setConnectionContext($connectionContext){
-        $this->_connectionContext = $connectionContext;
-        return $this;
-    }
-
-    /**
-     * @return ConnectionContext
-     */
-    public function getConnectionContext(){
-        return $this->_connectionContext;
-    }
-
     public function getIsAjax(){
         return $this->headers->get('x-requested-with') === 'XMLHttpRequest';
+    }
+
+    public function getIsPjax(){
+        return !empty($this->headers->get('x-pjax'));
     }
 
     public function getBaseUrl (){
@@ -601,34 +596,51 @@ class Request extends Component implements ReadableStreamInterface
             if ($this->cookieValidationKey == '') {
                 throw new InvalidConfigException(get_class($this) . '::cookieValidationKey must be configured with a secret key.');
             }
-            /*foreach ($_COOKIE as $name => $value) {
-                if (!is_string($value)) {
-                    continue;
-                }
-                $data = Friday::$app->security->validateData($value, $this->cookieValidationKey);
-                if ($data === false) {
-                    continue;
-                }
-                $data = @unserialize($data);
-                if (is_array($data) && isset($data[0], $data[1]) && $data[0] === $name) {
-                    $cookies[$name] = new Cookie([
-                        'name' => $name,
-                        'value' => $data[1],
-                        'expire' => null,
-                    ]);
-                }
-            }*/
-            //TODO: add cookie processing
+            $inputCookies = $this->getHeaders()->get('cookie', [], false);
+            foreach ($inputCookies as $inputCookie) {
+                $cookiePairs = explode(';', $inputCookie);
+                foreach ($cookiePairs as $cookiePair) {
+                    $cookiePair = trim($cookiePair);
+                    $cookiePair = explode('=', $cookiePair, 2);
+                    if(count($cookiePair) === 2) {
+                        list($name, $value) = $cookiePair;
 
+                        if (!is_string($value)) {
+                            continue;
+                        }
+                        $data = Friday::$app->security->validateData($value, $this->cookieValidationKey);
+                        if ($data === false) {
+                            continue;
+                        }
+                        $data = @unserialize($data);
+                        if (is_array($data) && isset($data[0], $data[1]) && $data[0] === $name) {
+                            $cookies[$name] = new Cookie([
+                                'name' => $name,
+                                'value' => $data[1],
+                                'expire' => null,
+                            ]);
+                        }
+                    }
+                }
+            }
         } else {
-            /*foreach ($_COOKIE as $name => $value) {
-                $cookies[$name] = new Cookie([
-                    'name' => $name,
-                    'value' => $value,
-                    'expire' => null,
-                ]);
-            }*/
-            //TODO: add cookie processing
+            $inputCookies = $this->getHeaders()->get('cookie', [], false);
+            foreach ($inputCookies as $inputCookie) {
+                $cookiePairs = explode(';', $inputCookie);
+                foreach ($cookiePairs as $cookiePair) {
+                    $cookiePair = trim($cookiePair);
+                    $cookiePair = explode('=', $cookiePair, 2);
+                    if (count($cookiePair) === 2) {
+                        list($name, $value) = $cookiePair;
+
+                        $cookies[$name] = new Cookie([
+                            'name' => $name,
+                            'value' => $value,
+                            'expire' => null,
+                        ]);
+                    }
+                }
+            }
         }
 
         return $cookies;
@@ -773,5 +785,91 @@ class Request extends Component implements ReadableStreamInterface
         } else {
             return $this->connectionContext->session->get($this->csrfParam);
         }
+    }
+
+    /**
+     * @return string the CSRF token sent via [[CSRF_HEADER]] by browser. Null is returned if no such header is sent.
+     */
+    public function getCsrfTokenFromHeader()
+    {
+        return $this->getHeaders()->get(static::CSRF_HEADER);
+    }
+
+    /**
+     * Returns the XOR result of two strings.
+     * If the two strings are of different lengths, the shorter one will be padded to the length of the longer one.
+     * @param string $token1
+     * @param string $token2
+     * @return string the XOR result
+     */
+    private function xorTokens($token1, $token2)
+    {
+        $n1 = StringHelper::byteLength($token1);
+        $n2 = StringHelper::byteLength($token2);
+        if ($n1 > $n2) {
+            $token2 = str_pad($token2, $n1, $token2);
+        } elseif ($n1 < $n2) {
+            $token1 = str_pad($token1, $n2, $n1 === 0 ? ' ' : $token1);
+        }
+
+        return $token1 ^ $token2;
+    }
+
+    /**
+     * Returns the token used to perform CSRF validation.
+     *
+     * This token is generated in a way to prevent [BREACH attacks](http://breachattack.com/). It may be passed
+     * along via a hidden field of an HTML form or an HTTP header value to support CSRF validation.
+     * @param boolean $regenerate whether to regenerate CSRF token. When this parameter is true, each time
+     * this method is called, a new CSRF token will be generated and persisted (in session or cookie).
+     * @return string the token used to perform CSRF validation.
+     */
+    public function getCsrfToken($regenerate = false)
+    {
+        if ($this->_csrfToken === null || $regenerate) {
+            if ($regenerate || ($token = $this->loadCsrfToken()) === null) {
+                $token = $this->generateCsrfToken();
+            }
+            // the mask doesn't need to be very random
+            $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-.';
+            $mask = substr(str_shuffle(str_repeat($chars, 5)), 0, static::CSRF_MASK_LENGTH);
+            // The + sign may be decoded as blank space later, which will fail the validation
+            $this->_csrfToken = str_replace('+', '.', base64_encode($mask . $this->xorTokens($token, $mask)));
+        }
+
+        return $this->_csrfToken;
+    }
+
+
+    /**
+     * Generates  an unmasked random token used to perform CSRF validation.
+     * @return string the random token for CSRF validation.
+     */
+    protected function generateCsrfToken()
+    {
+        $token = Friday::$app->getSecurity()->generateRandomString();
+        if ($this->enableCsrfCookie) {
+            $cookie = $this->createCsrfCookie($token);
+
+            $this->getResponse()->getCookies()->add($cookie);
+        } else {
+            $this->getSession()->set($this->csrfParam, $token);
+        }
+        return $token;
+    }
+
+    /**
+     * Creates a cookie with a randomly generated CSRF token.
+     * Initial values specified in [[csrfCookie]] will be applied to the generated cookie.
+     * @param string $token the CSRF token
+     * @return Cookie the generated cookie
+     * @see enableCsrfValidation
+     */
+    protected function createCsrfCookie($token)
+    {
+        $options = $this->csrfCookie;
+        $options['name'] = $this->csrfParam;
+        $options['value'] = $token;
+        return new Cookie($options);
     }
 }

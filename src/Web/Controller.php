@@ -3,6 +3,8 @@ namespace Friday\Web;
 
 use Friday;
 use Friday\Base\Controller as BaseController;
+use Friday\Base\InlineAction;
+use Friday\Helper\Url;
 use Friday\Web\HttpException\BadRequestHttpException;
 
 /**
@@ -12,15 +14,8 @@ use Friday\Web\HttpException\BadRequestHttpException;
  * @property ConnectionContext $connectionContext
  */
 class Controller extends BaseController{
-    protected $_connectionContext;
 
-    public function getConnectionContext(){
-        return $this->_connectionContext;
-    }
-
-    public function setConnectionContext($connectionContext){
-        $this->_connectionContext = $connectionContext;
-    }
+    use ConnectionContextTrait;
 
     /**
      * @var boolean whether to enable CSRF validation for the actions in this controller.
@@ -56,7 +51,7 @@ class Controller extends BaseController{
      * This method will check the parameter names that the action requires and return
      * the provided parameters according to the requirement. If there is any missing parameter,
      * an exception will be thrown.
-     * @param \yii\base\Action $action the action to be bound with parameters
+     * @param \Friday\Base\Action $action the action to be bound with parameters
      * @param array $params the parameters to be bound to the action
      * @return array the valid parameters that the action can run with.
      * @throws BadRequestHttpException if there are missing or invalid parameters.
@@ -80,7 +75,7 @@ class Controller extends BaseController{
                 } elseif (!is_array($params[$name])) {
                     $args[] = $actionParams[$name] = $params[$name];
                 } else {
-                    throw new BadRequestHttpException(Yii::t('yii', 'Invalid data received for parameter "{param}".', [
+                    throw new BadRequestHttpException(Friday::t('Invalid data received for parameter "{param}".', [
                         'param' => $name,
                     ]));
                 }
@@ -93,7 +88,7 @@ class Controller extends BaseController{
         }
 
         if (!empty($missing)) {
-            throw new BadRequestHttpException(Yii::t('yii', 'Missing required parameters: {params}', [
+            throw new BadRequestHttpException(Friday::t('Missing required parameters: {params}', [
                 'params' => implode(', ', $missing),
             ]));
         }
@@ -146,7 +141,7 @@ class Controller extends BaseController{
      */
     public function redirect($url, $statusCode = 302)
     {
-        return Yii::$app->getResponse()->redirect(Url::to($url), $statusCode);
+        return $this->connectionContext->response->redirect(Url::to($url), $statusCode);
     }
 
     /**
@@ -163,7 +158,7 @@ class Controller extends BaseController{
      */
     public function goHome()
     {
-        return Yii::$app->getResponse()->redirect(Yii::$app->getHomeUrl());
+        return $this->getResponse()->redirect(Friday::$app->getHomeUrl());
     }
 
     /**
@@ -186,7 +181,7 @@ class Controller extends BaseController{
      */
     public function goBack($defaultUrl = null)
     {
-        return Yii::$app->getResponse()->redirect(Yii::$app->getUser()->getReturnUrl($defaultUrl));
+        return $this->getResponse()->redirect($this->getUser()->getReturnUrl($defaultUrl));
     }
 
     /**

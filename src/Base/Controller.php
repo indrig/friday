@@ -452,9 +452,11 @@ class Controller extends Component implements ViewContextInterface
         if (is_string($this->layout)) {
             $layout = $this->layout;
         } elseif ($this->layout === null) {
+
             while ($module !== null && $module->layout === null) {
                 $module = $module->module;
             }
+
             if ($module !== null && is_string($module->layout)) {
                 $layout = $module->layout;
             }

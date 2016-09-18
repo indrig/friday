@@ -3,6 +3,8 @@ namespace Friday\Web;
 
 use Friday;
 use Friday\Base\Exception\InvalidRouteException;
+use Friday\Promise\ExtendedPromiseInterface;
+use Friday\Promise\PromiseInterface;
 use Friday\Web\Event\ConnectionContextErrorEvent;
 use Friday\Web\Event\ConnectionContextEvent;
 use Friday\Web\Event\RequestEvent;
@@ -36,6 +38,12 @@ class Application extends AbstractApplication {
      * @var ConnectionContext
      */
     protected $_currentContext;
+
+    /**
+     * @var string|boolean the layout that should be applied for views in this application. Defaults to 'main'.
+     * If this is false, layout will be disabled.
+     */
+    public $layout = 'main';
 
     public function init()
     {
@@ -93,17 +101,30 @@ class Application extends AbstractApplication {
                             'connectionContent' => $connectionContent
                         ]));
 
-                        if ($result instanceof Response) {
+                        if($result instanceof ExtendedPromiseInterface) {
+                            $result->always(function ($result) use ($connectionContent){
+                                if ($result instanceof Response) {
+                                    $response = $result;
+                                    $response->send();
+                                } else {
+                                    $response = $connectionContent->response;
+                                    if ($result !== null) {
+                                        $response->data = $result;
+                                    }
+                                    $response->send();
+                                }
+                            });
+                        }elseif ($result instanceof Response) {
                             $response = $result;
+                            $response->send();
                         } else {
                             $response = $connectionContent->response;
                             if ($result !== null) {
                                 $response->data = $result;
                             }
+                            $response->send();
                         }
-
-                        $response->send();
-
+                        
                     }, function ($throwable = null) use ($connectionContent) {
                         if($throwable !== null) {
                             if($throwable instanceof InvalidRouteException) {
@@ -179,7 +200,7 @@ class Application extends AbstractApplication {
      */
     public function getRequest(){
         if($this->_currentContext !== null) {
-            return $this->currentContext->request;
+            return $this->currentContext->getRequest();
         }
         return null;
     }
@@ -189,7 +210,7 @@ class Application extends AbstractApplication {
      */
     public function getResponse(){
         if($this->_currentContext !== null) {
-            return $this->currentContext->response;
+            return $this->currentContext->getResponse();
         }
         return null;
     }
@@ -222,5 +243,27 @@ class Application extends AbstractApplication {
             return $this->currentContext->session;
         }
         return null;
+    }
+
+    private $_homeUrl;
+
+    /**
+     * @return string the homepage URL
+     */
+    public function getHomeUrl()
+    {
+        if ($this->_homeUrl === null) {
+            return $this->getRequest()->getBaseUrl() . '/';
+        } else {
+            return $this->_homeUrl;
+        }
+    }
+
+    /**
+     * @param string $value the homepage URL
+     */
+    public function setHomeUrl($value)
+    {
+        $this->_homeUrl = $value;
     }
 }

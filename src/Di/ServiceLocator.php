@@ -17,14 +17,14 @@ use Friday\Base\Exception\InvalidConfigException;
  * For example,
  *
  * ```php
- * $locator = new \yii\di\ServiceLocator;
+ * $locator = new \Friday\Di\ServiceLocator;
  * $locator->setComponents([
  *     'db' => [
- *         'class' => 'yii\db\Connection',
+ *         'class' => 'Friday\Db\Connection',
  *         'dsn' => 'sqlite:path/to/file.db',
  *     ],
  *     'cache' => [
- *         'class' => 'yii\caching\DbCache',
+ *         'class' => 'Friday\Caching\DbCache',
  *         'db' => 'db',
  *     ],
  * ]);
@@ -140,11 +140,11 @@ class ServiceLocator extends Component
      *
      * ```php
      * // a class name
-     * $locator->set('cache', 'yii\caching\FileCache');
+     * $locator->set('cache', 'Friday\Caching\FileCache');
      *
      * // a configuration array
      * $locator->set('db', [
-     *     'class' => 'yii\db\Connection',
+     *     'class' => 'Friday\Db\Connection',
      *     'dsn' => 'mysql:host=127.0.0.1;dbname=demo',
      *     'username' => 'root',
      *     'password' => '',
@@ -153,11 +153,11 @@ class ServiceLocator extends Component
      *
      * // an anonymous function
      * $locator->set('cache', function ($params) {
-     *     return new \yii\caching\FileCache;
+     *     return new \Friday\Caching\FileCache;
      * });
      *
      * // an instance
-     * $locator->set('cache', new \yii\caching\FileCache);
+     * $locator->set('cache', new \Friday\Caching\FileCache);
      * ```
      *
      * If a component definition with the same ID already exists, it will be overwritten.
@@ -234,11 +234,11 @@ class ServiceLocator extends Component
      * ```php
      * [
      *     'db' => [
-     *         'class' => 'yii\db\Connection',
+     *         'class' => 'Friday\Db\Connection',
      *         'dsn' => 'sqlite:path/to/file.db',
      *     ],
      *     'cache' => [
-     *         'class' => 'yii\caching\DbCache',
+     *         'class' => 'Friday\Caching\DbCache',
      *         'db' => 'db',
      *     ],
      * ]

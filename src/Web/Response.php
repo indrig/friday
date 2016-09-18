@@ -5,6 +5,7 @@ use Friday;
 use Friday\Base\Component;
 use Friday\Base\Exception\InvalidArgumentException;
 use Friday\Base\Exception\InvalidConfigException;
+use Friday\Helper\Url;
 use Friday\Promise\Deferred;
 use Friday\Promise\PromiseInterface;
 use Friday\SocketServer\Connection;
@@ -23,6 +24,8 @@ use Throwable;
  */
 class Response extends Component
 {
+    use ConnectionContextTrait;
+
     /**
      * @event ResponseEvent an event that is triggered at the beginning of [[send()]].
      */
@@ -125,6 +128,7 @@ class Response extends Component
     private $closed = false;
 
     private $writable = true;
+
     /**
      * @var Connection
      */
@@ -146,10 +150,6 @@ class Response extends Component
      */
     protected $_cookies;
 
-    /**
-     * @return ConnectionContext|null
-     */
-    protected $_connectionContext;
 
     /**
      * @var resource|array the stream to be sent. This can be a stream handle or an array of stream handle,
@@ -167,7 +167,8 @@ class Response extends Component
     /**
      *
      */
-    public function init(){
+    public function init()
+    {
         $this->_connection->on('end', function () {
             $this->close();
         });
@@ -238,7 +239,7 @@ class Response extends Component
 
         if ($this->chunkedEncoding) {
             $len = strlen($data);
-            $chunk = dechex($len)."\r\n".$data."\r\n";
+            $chunk = dechex($len) . "\r\n" . $data . "\r\n";
             $flushed = $this->_connection->write($chunk);
         } else {
             $flushed = $this->_connection->write($data);
@@ -283,7 +284,8 @@ class Response extends Component
     /**
      * @return Connection
      */
-    public function getConnection(){
+    public function getConnection()
+    {
         return $this->_connection;
     }
 
@@ -295,7 +297,7 @@ class Response extends Component
     {
         $deferred = new Deferred();
 
-        $this->connectionContext->post(function () use ($deferred, $finishAfterSend){
+        $this->connectionContext->post(function () use ($deferred, $finishAfterSend) {
             if ($this->_isSent) {
                 $deferred->reject();
             } else {
@@ -304,39 +306,39 @@ class Response extends Component
                 try {
 
                     $this->trigger(self::EVENT_BEFORE_SEND);
-                    $this->prepare()->then(function () use ($deferred, $finishAfterSend){
+                    $this->prepare()->then(function () use ($deferred, $finishAfterSend) {
                         $this->trigger(self::EVENT_AFTER_PREPARE);
-                        $this->sendHeaders()->then(function () use ($deferred, $finishAfterSend){
-                            $this->sendContent()->then(function () use ($deferred, $finishAfterSend){
+                        $this->sendHeaders()->then(function () use ($deferred, $finishAfterSend) {
+                            $this->sendContent()->then(function () use ($deferred, $finishAfterSend) {
                                 $this->trigger(self::EVENT_AFTER_SEND);
-                                if($finishAfterSend) {
+                                if ($finishAfterSend) {
                                     $this->connectionContext->finish();
                                 }
 
                                 $deferred->resolve();
-                            }, function ($throwable = null)use ($deferred, $finishAfterSend){
-                                if($finishAfterSend) {
+                            }, function ($throwable = null) use ($deferred, $finishAfterSend) {
+                                if ($finishAfterSend) {
                                     $this->connectionContext->finish();
                                 }
 
                                 $deferred->reject($throwable);
                             });
-                        }, function ($throwable = null) use ($deferred, $finishAfterSend){
-                            if($finishAfterSend) {
+                        }, function ($throwable = null) use ($deferred, $finishAfterSend) {
+                            if ($finishAfterSend) {
                                 $this->connectionContext->finish();
                             }
                             $deferred->reject($throwable);
                         });
-                    }, function ($throwable = null) use ($deferred, $finishAfterSend){
-                        if($finishAfterSend) {
+                    }, function ($throwable = null) use ($deferred, $finishAfterSend) {
+                        if ($finishAfterSend) {
                             $this->connectionContext->finish();
                         }
 
                         $deferred->reject($throwable);
 
                     });
-                }catch (Throwable $throwable) {
-                    if($finishAfterSend) {
+                } catch (Throwable $throwable) {
+                    if ($finishAfterSend) {
                         $this->connectionContext->finish();
                     }
 
@@ -357,7 +359,7 @@ class Response extends Component
     {
         $deferred = new Deferred();
 
-        $this->connectionContext->post(function () use ($deferred){
+        $this->connectionContext->post(function () use ($deferred) {
             if (isset($this->formatters[$this->format])) {
                 $formatter = $this->formatters[$this->format];
                 if (!is_object($formatter)) {
@@ -393,6 +395,7 @@ class Response extends Component
 
         return $deferred->promise();
     }
+
     /**
      * Returns the header collection.
      * The header collection contains the currently registered HTTP headers.
@@ -441,8 +444,8 @@ class Response extends Component
     protected function sendHeaders()
     {
         $deferred = new Deferred();
-        $this->connectionContext->post(function () use ($deferred){
-            if($this->_isHeadersSent) {
+        $this->connectionContext->post(function () use ($deferred) {
+            if ($this->_isHeadersSent) {
                 $deferred->reject();
                 return;
             }
@@ -454,18 +457,18 @@ class Response extends Component
             $headers = $this->getHeaders();
 
 
-                if ($headers->has('content-length')) {
-                    $this->chunkedEncoding = false;
+            if ($headers->has('content-length')) {
+                $this->chunkedEncoding = false;
+            }
+            if ($this->chunkedEncoding) {
+                $headers->add('transfer-encoding', 'chunked');
+            }
+            foreach ($headers as $name => $values) {
+                $name = str_replace(' ', '-', ucwords(str_replace('-', ' ', $name)));
+                foreach ($values as $value) {
+                    $data .= "$name: $value\r\n";
                 }
-                if ($this->chunkedEncoding) {
-                    $headers->add('transfer-encoding', 'chunked');
-                }
-                foreach ($headers as $name => $values) {
-                    $name = str_replace(' ', '-', ucwords(str_replace('-', ' ', $name)));
-                    foreach ($values as $value) {
-                        $data .= "$name: $value\r\n";
-                    }
-                }
+            }
 
 
             if ($this->_cookies !== null && $this->getCookies()->count > 0) {
@@ -479,14 +482,13 @@ class Response extends Component
                     }
                     $validationKey = $request->cookieValidationKey;
                 }
-                $data = '';
                 foreach ($this->getCookies() as $cookie) {
                     $value = $cookie->value;
-                    if ($cookie->expire != 1  && isset($validationKey)) {
+                    if ($cookie->expire != 1 && isset($validationKey)) {
                         try {
                             $value = Friday::$app->security->hashData(serialize([$cookie->name, $value]), $validationKey);
 
-                        }catch (Throwable $e) {
+                        } catch (Throwable $e) {
                             $deferred->reject();
                             return;
                         }
@@ -513,7 +515,7 @@ class Response extends Component
     protected function sendContent()
     {
         $deferred = new Deferred();
-        $this->connectionContext->post(function () use ($deferred){
+        $this->connectionContext->post(function () use ($deferred) {
             if ($this->stream === null) {
                 $this->write($this->content);
                 $deferred->resolve();
@@ -533,24 +535,24 @@ class Response extends Component
                 }
                 fclose($handle);
                 $deferred->resolve();
-            } elseif(is_resource($this->stream)) {
+            } elseif (is_resource($this->stream)) {
                 while (!feof($this->stream)) {
                     $this->write(fread($this->stream, $chunkSize));
                 }
                 fclose($this->stream);
 
                 $deferred->resolve();
-            } elseif(is_object($this->stream)) {
-                if($this->stream instanceof Stream) {
+            } elseif (is_object($this->stream)) {
+                if ($this->stream instanceof Stream) {
                     $this->stream->on(Stream::EVENT_CONTENT, function (Friday\Stream\Event\ContentEvent $event) {
                         $this->write($event->content);
                     });
 
-                    $this->stream->on(Stream::EVENT_END, function (Friday\Stream\Event\Event $event) use($deferred) {
+                    $this->stream->on(Stream::EVENT_END, function (Friday\Stream\Event\Event $event) use ($deferred) {
                         $deferred->resolve();
                     });
 
-                    $this->stream->on(Stream::EVENT_ERROR, function (Friday\Stream\Event\ErrorEvent $event) use($deferred) {
+                    $this->stream->on(Stream::EVENT_ERROR, function (Friday\Stream\Event\ErrorEvent $event) use ($deferred) {
                         $deferred->reject();
                     });
                 }
@@ -581,7 +583,7 @@ class Response extends Component
         if ($value === null) {
             $value = 200;
         }
-        $this->_statusCode = (int) $value;
+        $this->_statusCode = (int)$value;
         if ($this->getIsInvalid()) {
             throw new InvalidArgumentException("The HTTP status code is invalid: $value");
         }
@@ -672,26 +674,102 @@ class Response extends Component
         return in_array($this->getStatusCode(), [201, 204, 304]);
     }
 
-    /**
-     * @param $connectionContext
-     * @return Response
-     */
-    public function setConnectionContext($connectionContext){
-        $this->_connectionContext = $connectionContext;
-        return $this;
-    }
-
-    /**
-     * @return ConnectionContext
-     */
-    public function getConnectionContext(){
-        return $this->_connectionContext;
-    }
 
     public function __destruct()
     {
 
-     var_dump('__destruct') ;  // TODO: Implement __destruct() method.
+        var_dump('__destruct');  // TODO: Implement __destruct() method.
+    }
+
+    /**
+     * Redirects the browser to the specified URL.
+     *
+     * This method adds a "Location" header to the current response. Note that it does not send out
+     * the header until [[send()]] is called. In a controller action you may use this method as follows:
+     *
+     * ```php
+     * return Yii::$app->getResponse()->redirect($url);
+     * ```
+     *
+     * In other places, if you want to send out the "Location" header immediately, you should use
+     * the following code:
+     *
+     * ```php
+     * Yii::$app->getResponse()->redirect($url)->send();
+     * return;
+     * ```
+     *
+     * In AJAX mode, this normally will not work as expected unless there are some
+     * client-side JavaScript code handling the redirection. To help achieve this goal,
+     * this method will send out a "X-Redirect" header instead of "Location".
+     *
+     * If you use the "yii" JavaScript module, it will handle the AJAX redirection as
+     * described above. Otherwise, you should write the following JavaScript code to
+     * handle the redirection:
+     *
+     * ```javascript
+     * $document.ajaxComplete(function (event, xhr, settings) {
+     *     var url = xhr.getResponseHeader('X-Redirect');
+     *     if (url) {
+     *         window.location = url;
+     *     }
+     * });
+     * ```
+     *
+     * @param string|array $url the URL to be redirected to. This can be in one of the following formats:
+     *
+     * - a string representing a URL (e.g. "http://example.com")
+     * - a string representing a URL alias (e.g. "@example.com")
+     * - an array in the format of `[$route, ...name-value pairs...]` (e.g. `['site/index', 'ref' => 1]`).
+     *   Note that the route is with respect to the whole application, instead of relative to a controller or module.
+     *   [[Url::to()]] will be used to convert the array into a URL.
+     *
+     * Any relative URL will be converted into an absolute one by prepending it with the host info
+     * of the current request.
+     *
+     * @param integer $statusCode the HTTP status code. Defaults to 302.
+     * See <http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html>
+     * for details about HTTP status code
+     * @param boolean $checkAjax whether to specially handle AJAX (and PJAX) requests. Defaults to true,
+     * meaning if the current request is an AJAX or PJAX request, then calling this method will cause the browser
+     * to redirect to the given URL. If this is false, a `Location` header will be sent, which when received as
+     * an AJAX/PJAX response, may NOT cause browser redirection.
+     * Takes effect only when request header `X-Ie-Redirect-Compatibility` is absent.
+     * @return $this the response object itself
+     */
+    public function redirect($url, $statusCode = 302, $checkAjax = true)
+    {
+        if (is_array($url) && isset($url[0])) {
+            // ensure the route is absolute
+            $url[0] = '/' . ltrim($url[0], '/');
+        }
+        $request = $this->connectionContext->request;
+        $url = Url::to($url);
+        if (strpos($url, '/') === 0 && strpos($url, '//') !== 0) {
+            $url = $request->getHostInfo() . $url;
+        }
+
+        if ($checkAjax) {
+            if ($request->getIsAjax()) {
+                if ($request->getHeaders()->get('X-Ie-Redirect-Compatibility') !== null && $statusCode === 302) {
+                    // Ajax 302 redirect in IE does not work. Change status code to 200. See https://github.com/yiisoft/yii2/issues/9670
+                    $statusCode = 200;
+                }
+                if ($request->getIsPjax()) {
+                    $this->getHeaders()->set('X-Pjax-Url', $url);
+                } else {
+                    $this->getHeaders()->set('X-Redirect', $url);
+                }
+            } else {
+                $this->getHeaders()->set('Location', $url);
+            }
+        } else {
+            $this->getHeaders()->set('Location', $url);
+        }
+
+        $this->setStatusCode($statusCode);
+
+        return $this;
     }
 
 }

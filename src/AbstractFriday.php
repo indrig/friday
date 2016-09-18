@@ -288,7 +288,17 @@ abstract class AbstractFriday{
         static::getLogger()->log($token, Logger::LEVEL_PROFILE_END, $category);
     }
 
-    public static function t($message){
-        return $message;
+    /**
+     * @param $message
+     * @param array $params
+     * @return string
+     */
+    public static function t($message, $params = []){
+        $p = [];
+        foreach ((array) $params as $name => $value) {
+            $p['{' . $name . '}'] = $value;
+        }
+
+        return ($p === []) ? $message : strtr($message, $p);
     }
 }
