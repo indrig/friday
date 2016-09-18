@@ -71,7 +71,7 @@ class AbstractApplication extends Module {
 
         $this->preInit($config);
 
-       // $this->registerErrorHandler($config);
+        $this->registerErrorHandler($config);
 
         Component::__construct($config);
     }
@@ -224,5 +224,30 @@ class AbstractApplication extends Module {
 
     public function run(){
         $this->runLoop->run();
+    }
+
+    /**
+     * Returns the error handler component.
+     * @return \Friday\Web\ErrorHandler|\Yii\Console\ErrorHandler the error handler application component.
+     */
+    public function getErrorHandler()
+    {
+        return $this->get('errorHandler');
+    }
+    /**
+     * Registers the errorHandler component as a PHP error handler.
+     * @param array $config application config
+     */
+    protected function registerErrorHandler(&$config)
+    {
+        if (FRIDAY_ENABLE_ERROR_HANDLER) {
+            if (!isset($config['components']['errorHandler']['class'])) {
+                echo "Error: no errorHandler component is configured.\n";
+                exit(1);
+            }
+            $this->set('errorHandler', $config['components']['errorHandler']);
+            unset($config['components']['errorHandler']);
+            $this->getErrorHandler()->register();
+        }
     }
 }

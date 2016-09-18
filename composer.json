@@ -10,7 +10,12 @@
         "source": "http://github.com/indrig/friday"
     },
     "require": {
-        "php": ">=7.0.1"
+        "php": ">=7.0.1",
+        "ext-mbstring": "*",
+        "ext-ctype": "*",
+        "lib-pcre": "*",
+        "ezyang/htmlpurifier": "~4.6",
+        "cebe/markdown": "~1.0.0 | ~1.1.0"
     },
     "authors": [
         {

@@ -4,6 +4,8 @@ use Friday\Base\Exception\InvalidConfigException;
 use Friday\Base\Exception\UnknownClassException;
 use Friday\Di\Container;
 use Friday\Helper\AliasHelper;
+use Friday\Log\Logger;
+
 /**
  * Gets the application start timestamp.
  */
@@ -171,6 +173,30 @@ abstract class AbstractFriday{
         }
     }
 
+
+    private static $_logger;
+
+    /**
+     * @return Logger message logger
+     */
+    public static function getLogger()
+    {
+        if (self::$_logger !== null) {
+            return self::$_logger;
+        } else {
+            return self::$_logger = static::createObject('Friday\Log\Logger');
+        }
+    }
+
+    /**
+     * Sets the logger object.
+     * @param Logger $logger the logger object.
+     */
+    public static function setLogger($logger)
+    {
+        self::$_logger = $logger;
+    }
+
     /**
      * Logs a trace message.
      * Trace messages are logged mainly for development purpose to see
@@ -181,8 +207,7 @@ abstract class AbstractFriday{
     public static function trace($message, $category = 'application')
     {
         if (FRIDAY_DEBUG) {
-            echo "TRACE: {$message}\n";
-            //static::getLogger()->log($message, Logger::LEVEL_TRACE, $category);
+            static::getLogger()->log($message, Logger::LEVEL_TRACE, $category);
         }
     }
 
@@ -195,9 +220,7 @@ abstract class AbstractFriday{
      */
     public static function error($message, $category = 'application')
     {
-        echo "ERROR: {$message}\n";
-
-        //static::getLogger()->log($message, Logger::LEVEL_ERROR, $category);
+        static::getLogger()->log($message, Logger::LEVEL_ERROR, $category);
     }
 
     /**
@@ -209,8 +232,7 @@ abstract class AbstractFriday{
      */
     public static function warning($message, $category = 'application')
     {
-        echo "WARNING: {$message}\n";
-      //  static::getLogger()->log($message, Logger::LEVEL_WARNING, $category);
+        static::getLogger()->log($message, Logger::LEVEL_WARNING, $category);
     }
 
     /**
@@ -222,11 +244,44 @@ abstract class AbstractFriday{
      */
     public static function info($message, $category = 'application')
     {
-        echo "INFO: {$message}\n";
-       // static::getLogger()->log($message, Logger::LEVEL_INFO, $category);
+        static::getLogger()->log($message, Logger::LEVEL_INFO, $category);
+    }
+
+    /**
+     * Marks the beginning of a code block for profiling.
+     * This has to be matched with a call to [[endProfile]] with the same category name.
+     * The begin- and end- calls must also be properly nested. For example,
+     *
+     * ```php
+     * \Yii::beginProfile('block1');
+     * // some code to be profiled
+     *     \Yii::beginProfile('block2');
+     *     // some other code to be profiled
+     *     \Yii::endProfile('block2');
+     * \Yii::endProfile('block1');
+     * ```
+     * @param string $token token for the code block
+     * @param string $category the category of this log message
+     * @see endProfile()
+     */
+    public static function beginProfile($token, $category = 'application')
+    {
+        static::getLogger()->log($token, Logger::LEVEL_PROFILE_BEGIN, $category);
+    }
+
+    /**
+     * Marks the end of a code block for profiling.
+     * This has to be matched with a previous call to [[beginProfile]] with the same category name.
+     * @param string $token token for the code block
+     * @param string $category the category of this log message
+     * @see beginProfile()
+     */
+    public static function endProfile($token, $category = 'application')
+    {
+        static::getLogger()->log($token, Logger::LEVEL_PROFILE_END, $category);
     }
 
     public static function t($message){
-
-}
+        return $message;
+    }
 }
