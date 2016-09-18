@@ -1,6 +1,6 @@
 <?php
 
-$path = realpath(__DIR__ . '/../');
+$path = realpath(__DIR__ . '/../src/');
 $di = new RecursiveDirectoryIterator($path);
 $ita = new RecursiveIteratorIterator($di);
 $regex = new RegexIterator($ita, '/^.+\.php$/i',
@@ -28,4 +28,4 @@ foreach( $regex as $matches ) foreach( $matches as $match ) {
     }
 }
 $content .= '];';
-file_put_contents(__DIR__.'/../autoload_classmap.php',$content);
+file_put_contents(__DIR__ . '/../src/autoload_classmap.php',$content);
