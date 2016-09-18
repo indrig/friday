@@ -5,6 +5,7 @@ use Friday;
 use Friday\Base\Component;
 use Friday\Base\Exception\InvalidConfigException;
 use Friday\Base\Exception\RuntimeException;
+use Friday\Helper\StringHelper;
 use Friday\Promise\Deferred;
 use Friday\Stream\ReadableStreamInterface;
 use Friday\Stream\WritableStreamInterface;
@@ -99,6 +100,27 @@ class Request extends Component implements ReadableStreamInterface
     protected $_remoteAddress;
 
     /**
+     * @var array the parsers for converting the raw HTTP request body into [[bodyParams]].
+     * The array keys are the request `Content-Types`, and the array values are the
+     * corresponding configurations for [[Yii::createObject|creating the parser objects]].
+     * A parser must implement the [[RequestParserInterface]].
+     *
+     * To enable parsing for JSON requests you can use the [[JsonParser]] class like in the following example:
+     *
+     * ```
+     * [
+     *     'application/json' => 'yii\web\JsonParser',
+     * ]
+     * ```
+     *
+     * To register a parser for parsing all request types you can use `'*'` as the array key.
+     * This one will be used as a fallback in case no other types match.
+     *
+     * @see getBodyParams()
+     */
+    public $parsers = [];
+
+    /**
      * @var array
      */
     protected $_get = [];
@@ -135,6 +157,10 @@ class Request extends Component implements ReadableStreamInterface
      */
     protected $_pathInfo;
 
+    /**
+     * @var
+     */
+    private $_bodyParams;
 
     /**
      * @return ConnectionContext|null
@@ -606,5 +632,146 @@ class Request extends Component implements ReadableStreamInterface
         }
 
         return $cookies;
+    }
+
+    /**
+     * Performs the CSRF validation.
+     *
+     * This method will validate the user-provided CSRF token by comparing it with the one stored in cookie or session.
+     * This method is mainly called in [[Controller::beforeAction()]].
+     *
+     * Note that the method will NOT perform CSRF validation if [[enableCsrfValidation]] is false or the HTTP method
+     * is among GET, HEAD or OPTIONS.
+     *
+     * @param string $token the user-provided CSRF token to be validated. If null, the token will be retrieved from
+     * the [[csrfParam]] POST field or HTTP header.
+     * This parameter is available since version 2.0.4.
+     * @return boolean whether CSRF token is valid. If [[enableCsrfValidation]] is false, this method will return true.
+     */
+    public function validateCsrfToken($token = null)
+    {
+        $method = $this->getMethod();
+        // only validate CSRF token on non-"safe" methods http://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html#sec9.1.1
+        if (!$this->enableCsrfValidation || in_array($method, ['GET', 'HEAD', 'OPTIONS'], true)) {
+            return true;
+        }
+
+        $trueToken = $this->loadCsrfToken();
+
+        if ($token !== null) {
+            return $this->validateCsrfTokenInternal($token, $trueToken);
+        } else {
+            return $this->validateCsrfTokenInternal($this->getBodyParam($this->csrfParam), $trueToken)
+            || $this->validateCsrfTokenInternal($this->getCsrfTokenFromHeader(), $trueToken);
+        }
+    }
+
+    public function getContentType(){
+        return $this->_contentType;
+    }
+    /**
+     * Returns the request parameters given in the request body.
+     *
+     * Request parameters are determined using the parsers configured in [[parsers]] property.
+     * If no parsers are configured for the current [[contentType]] it uses the PHP function `mb_parse_str()`
+     * to parse the [[rawBody|request body]].
+     * @return array the request parameters given in the request body.
+     * @throws InvalidConfigException if a registered parser does not implement the [[RequestParserInterface]].
+     * @see getMethod()
+     * @see getBodyParam()
+     * @see setBodyParams()
+     */
+    public function getBodyParams()
+    {
+        if ($this->_bodyParams === null) {
+            if (isset($_POST[$this->methodParam])) {
+                $this->_bodyParams = $_POST;
+                unset($this->_bodyParams[$this->methodParam]);
+                return $this->_bodyParams;
+            }
+
+            $contentType = $this->getContentType();
+            if (($pos = strpos($this->_contentType, ';')) !== false) {
+                // e.g. application/json; charset=UTF-8
+                $contentType = substr($contentType, 0, $pos);
+            }
+
+            if (isset($this->parsers[$contentType])) {
+                $parser = Friday::createObject($this->parsers[$contentType]);
+                if (!($parser instanceof RequestParserInterface)) {
+                    throw new InvalidConfigException("The '$contentType' request parser is invalid. It must implement the Friday\\Web\\RequestParserInterface.");
+                }
+                $this->_bodyParams = $parser->parse($this->getRawBody(), $contentType);
+            } elseif (isset($this->parsers['*'])) {
+                $parser = Friday::createObject($this->parsers['*']);
+                if (!($parser instanceof RequestParserInterface)) {
+                    throw new InvalidConfigException("The fallback request parser is invalid. It must implement the Friday\\Web\\RequestParserInterface.");
+                }
+                $this->_bodyParams = $parser->parse($this->getRawBody(), $contentType);
+            } elseif ($this->getMethod() === 'POST') {
+                // PHP has already parsed the body so we have all params in $_POST
+                $this->_bodyParams = $this->post();
+            } else {
+                $this->_bodyParams = [];
+                mb_parse_str($this->getRawBody(), $this->_bodyParams);
+            }
+        }
+
+        return $this->_bodyParams;
+    }
+
+    /**
+     * Returns the named request body parameter value.
+     * If the parameter does not exist, the second parameter passed to this method will be returned.
+     * @param string $name the parameter name
+     * @param mixed $defaultValue the default parameter value if the parameter does not exist.
+     * @return mixed the parameter value
+     * @see getBodyParams()
+     * @see setBodyParams()
+     */
+    public function getBodyParam($name, $defaultValue = null)
+    {
+        $params = $this->getBodyParams();
+
+        return isset($params[$name]) ? $params[$name] : $defaultValue;
+    }
+
+    /**
+     * Validates CSRF token
+     *
+     * @param string $token
+     * @param string $trueToken
+     * @return boolean
+     */
+    private function validateCsrfTokenInternal($token, $trueToken)
+    {
+        if (!is_string($token)) {
+            return false;
+        }
+
+        $token = base64_decode(str_replace('.', '+', $token));
+        $n = StringHelper::byteLength($token);
+        if ($n <= static::CSRF_MASK_LENGTH) {
+            return false;
+        }
+        $mask = StringHelper::byteSubstr($token, 0, static::CSRF_MASK_LENGTH);
+        $token = StringHelper::byteSubstr($token, static::CSRF_MASK_LENGTH, $n - static::CSRF_MASK_LENGTH);
+        $token = $this->xorTokens($mask, $token);
+
+        return $token === $trueToken;
+    }
+
+    /**
+     * Loads the CSRF token from cookie or session.
+     * @return string the CSRF token loaded from cookie or session. Null is returned if the cookie or session
+     * does not have CSRF token.
+     */
+    protected function loadCsrfToken()
+    {
+        if ($this->enableCsrfCookie) {
+            return $this->getCookies()->getValue($this->csrfParam);
+        } else {
+            return $this->connectionContext->session->get($this->csrfParam);
+        }
     }
 }
