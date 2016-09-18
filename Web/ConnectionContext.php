@@ -16,6 +16,7 @@ use Friday\Promise\Deferred;
  * @property Response $response
  * @property string|null $requestedRoute
  * @property Friday\EventLoop\LoopInterface $loop
+ * @property Controller $controller
  */
 class ConnectionContext extends BaseObject
 {
@@ -50,6 +51,7 @@ class ConnectionContext extends BaseObject
      */
     private $_loop;
 
+    private $_controller;
     /**
      * @return Request
      */
@@ -187,5 +189,20 @@ throw new \RuntimeException('aaa');
         return $this->_loop;
     }
 
+    /**
+     * @return mixed
+     */
+    public function getController(){
+        return $this->_controller;
+    }
+
+    /**
+     * @param $controller
+     * @return $this
+     */
+    public function setController($controller){
+        $this->_controller = $controller;
+        return $this;
+    }
 
 }

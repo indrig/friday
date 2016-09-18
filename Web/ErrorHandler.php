@@ -58,16 +58,16 @@ class ErrorHandler extends AbstractErrorHandler{
      */
     protected function renderException($exception)
     {
-
         if(null !== $currentContext = Friday::$app->currentContext){
-            $response = $currentContext->response;
-            $request = $currentContext->request;
+            $response   = $currentContext->response;
+            $request    = $currentContext->request;
+
             // reset parameters of response to avoid interference with partially created response data
             // in case the error occurred while sending the response.
             //$response->isSent = false;
-            $response->stream = null;
-            $response->data = null;
-            $response->content = null;
+            $response->stream   = null;
+            $response->data     = null;
+            $response->content  = null;
             $useErrorView = $response->format === Response::FORMAT_HTML && (!FRIDAY_DEBUG || $exception instanceof UserException);
 
             if ($useErrorView && $this->errorAction !== null) {
@@ -102,10 +102,12 @@ class ErrorHandler extends AbstractErrorHandler{
             } else {
                 $response->setStatusCode(500);
             }
+
+            $response->send();
+            return;
         }
 
 
-        var_dump($currentContext);
         if ($exception instanceof Exception && !FRIDAY_DEBUG) {
             $message = $this->formatMessage($exception->getName() . ': ') . $exception->getMessage();
         } elseif (FRIDAY_DEBUG) {
@@ -391,6 +393,71 @@ class ErrorHandler extends AbstractErrorHandler{
         }
 
         return '<pre>' . rtrim($request, "\n") . '</pre>';
+    }
+
+    /**
+     * Determines whether given name of the file belongs to the framework.
+     * @param string $file name to be checked.
+     * @return boolean whether given name of the file belongs to the framework.
+     */
+    public function isCoreFile($file)
+    {
+        return $file === null || strpos(realpath($file), FRIDAY_PATH . DIRECTORY_SEPARATOR) === 0;
+    }
+
+    /**
+     * Converts arguments array to its string representation
+     *
+     * @param array $args arguments array to be converted
+     * @return string string representation of the arguments array
+     */
+    public function argumentsToString($args)
+    {
+        $count = 0;
+        $isAssoc = $args !== array_values($args);
+
+        foreach ($args as $key => $value) {
+            $count++;
+            if ($count>=5) {
+                if ($count>5) {
+                    unset($args[$key]);
+                } else {
+                    $args[$key] = '...';
+                }
+                continue;
+            }
+
+            if (is_object($value)) {
+                $args[$key] = '<span class="title">' . $this->htmlEncode(get_class($value)) . '</span>';
+            } elseif (is_bool($value)) {
+                $args[$key] = '<span class="keyword">' . ($value ? 'true' : 'false') . '</span>';
+            } elseif (is_string($value)) {
+                $fullValue = $this->htmlEncode($value);
+                if (mb_strlen($value, 'UTF-8') > 32) {
+                    $displayValue = $this->htmlEncode(mb_substr($value, 0, 32, 'UTF-8')) . '...';
+                    $args[$key] = "<span class=\"string\" title=\"$fullValue\">'$displayValue'</span>";
+                } else {
+                    $args[$key] = "<span class=\"string\">'$fullValue'</span>";
+                }
+            } elseif (is_array($value)) {
+                $args[$key] = '[' . $this->argumentsToString($value) . ']';
+            } elseif ($value === null) {
+                $args[$key] = '<span class="keyword">null</span>';
+            } elseif (is_resource($value)) {
+                $args[$key] = '<span class="keyword">resource</span>';
+            } else {
+                $args[$key] = '<span class="number">' . $value . '</span>';
+            }
+
+            if (is_string($key)) {
+                $args[$key] = '<span class="string">\'' . $this->htmlEncode($key) . "'</span> => $args[$key]";
+            } elseif ($isAssoc) {
+                $args[$key] = "<span class=\"number\">$key</span> => $args[$key]";
+            }
+        }
+        $out = implode(', ', $args);
+
+        return $out;
     }
 
 }

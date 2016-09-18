@@ -104,7 +104,7 @@ abstract class AbstractErrorHandler extends Component
                 if (defined('HHVM_VERSION')) {
                     flush();
                 }
-                exit(1);
+                //exit(1);
             }
         } catch (\Exception $e) {
             // an other exception could be thrown while displaying the exception
@@ -126,7 +126,7 @@ abstract class AbstractErrorHandler extends Component
             if (defined('HHVM_VERSION')) {
                 flush();
             }
-            exit(1);
+            //exit(1);
         }
 
         $this->exception = null;

@@ -428,13 +428,13 @@ class UrlManager extends Component
      * It defaults to [[Request::baseUrl]].
      * This is mainly used when [[enablePrettyUrl]] is true and [[showScriptName]] is false.
      *
-     * @param Request $request
      * @return string the base URL that is used by [[createUrl()]] to prepend to created URLs.
      * @throws InvalidConfigException if running in console application and [[baseUrl]] is not configured.
      */
-    public function getBaseUrl(Request $request)
+    public function getBaseUrl()
     {
         if ($this->_baseUrl === null) {
+            $request = Friday::$app->getRequest();
             if ($request instanceof Request) {
                 $this->_baseUrl = $request->getBaseUrl();
             } else {
@@ -465,7 +465,7 @@ class UrlManager extends Component
     public function getScriptUrl()
     {
         if ($this->_scriptUrl === null) {
-            $request = Yii::$app->getRequest();
+            $request = Friday::$app->getRequest();
             if ($request instanceof Request) {
                 $this->_scriptUrl = $request->getScriptUrl();
             } else {

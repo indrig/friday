@@ -15,6 +15,9 @@ use Throwable;
  * @property Server $server
  * @property UrlManager $urlManager
  * @property View $view
+ * @property Request $request
+ * @property Response $response
+ * @property Controller $controller
  * @property ConnectionContext|null $currentContext
  */
 class Application extends AbstractApplication {
@@ -152,5 +155,35 @@ class Application extends AbstractApplication {
      */
     public function getCurrentContext(){
         return $this->_currentContext;
+    }
+
+    /**
+     * @return Request|null
+     */
+    public function getRequest(){
+        if($this->_currentContext !== null) {
+            return $this->currentContext->request;
+        }
+        return null;
+    }
+
+    /**
+     * @return Response|null
+     */
+    public function getResponse(){
+        if($this->_currentContext !== null) {
+            return $this->currentContext->response;
+        }
+        return null;
+    }
+
+    /**
+     * @return Controller|null
+     */
+    public function getController(){
+        if($this->_currentContext !== null) {
+            return $this->currentContext->controller;
+        }
+        return null;
     }
 }

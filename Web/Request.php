@@ -484,7 +484,7 @@ class Request extends Component implements ReadableStreamInterface
         $deferred = new Deferred();
 
         $this->connectionContext->post(function () use ($deferred){
-
+            throw new  RuntimeException('test');
             try {
                 $result = Friday::$app->urlManager->parseRequest($this);
                 if ($result !== false) {
@@ -523,5 +523,13 @@ class Request extends Component implements ReadableStreamInterface
 
     public function getIsAjax(){
         return $this->headers->get('x-requested-with') === 'XMLHttpRequest';
+    }
+
+    public function getBaseUrl (){
+        return '/';
+    }
+
+    public function getScriptUrl(){
+        return '/index.php';
     }
 }

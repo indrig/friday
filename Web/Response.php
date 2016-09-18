@@ -290,7 +290,7 @@ class Response extends Component
     {
         $deferred = new Deferred();
 
-        Friday\Helper\RunLoopHelper::post(function () use ($deferred){
+        $this->connectionContext->post(function () use ($deferred){
             if ($this->_isSent) {
                 $deferred->reject();
             } else {
@@ -341,7 +341,7 @@ class Response extends Component
     {
         $deferred = new Deferred();
 
-        Friday\Helper\RunLoopHelper::post(function () use ($deferred){
+        $this->connectionContext->post(function () use ($deferred){
             if (isset($this->formatters[$this->format])) {
                 $formatter = $this->formatters[$this->format];
                 if (!is_object($formatter)) {
@@ -426,7 +426,7 @@ class Response extends Component
     {
         $deferred = new Deferred();
 
-        Friday\Helper\RunLoopHelper::post(function () use ($deferred){
+        $this->connectionContext->post(function () use ($deferred){
             if($this->_isHeadersSent) {
                 $deferred->reject();
                 return;
@@ -469,7 +469,7 @@ class Response extends Component
     protected function sendCookies()
     {
         $deferred = new Deferred();
-        Friday\Helper\RunLoopHelper::post(function () use ($deferred){
+        $this->connectionContext->post(function () use ($deferred){
             if ($this->_cookies === null || $this->getCookies()->count === 0) {
                 $deferred->resolve();
                 return;
@@ -511,7 +511,7 @@ class Response extends Component
     protected function sendContent()
     {
         $deferred = new Deferred();
-        Friday\Helper\RunLoopHelper::post(function () use ($deferred){
+        $this->connectionContext->post(function () use ($deferred){
             if ($this->stream === null) {
                 $this->connection->write($this->content);
                 $deferred->resolve();
