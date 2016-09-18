@@ -74,7 +74,7 @@ abstract class AbstractErrorHandler extends Component
      *
      * This method is implemented as a PHP exception handler.
      *
-     * @param \Exception $exception the exception that is not caught
+     * @param \Throwable $exception the exception that is not caught
      */
     public function handleException($exception)
     {
@@ -86,12 +86,6 @@ abstract class AbstractErrorHandler extends Component
 
         // disable error capturing to avoid recursive errors while handling exceptions
         $this->unregister();
-
-        // set preventive HTTP status code to 500 in case error handling somehow fails and headers are sent
-        // HTTP exceptions will override this value in renderException()
-        if (PHP_SAPI !== 'cli') {
-            http_response_code(500);
-        }
 
         try {
             $this->logException($exception);
@@ -221,6 +215,7 @@ abstract class AbstractErrorHandler extends Component
         $error = error_get_last();
 
         if (ErrorException::isFatalError($error)) {
+
             if (!empty($this->_hhvmException)) {
                 $exception = $this->_hhvmException;
             } else {
@@ -240,19 +235,19 @@ abstract class AbstractErrorHandler extends Component
             if (defined('HHVM_VERSION')) {
                 flush();
             }
-            exit(1);
+
         }
     }
 
     /**
      * Renders the exception.
-     * @param \Exception $exception the exception to be rendered.
+     * @param \Throwable $exception the exception to be rendered.
      */
     abstract protected function renderException($exception);
 
     /**
      * Logs the given exception
-     * @param \Exception $exception the exception to be logged
+     * @param \Throwable $exception the exception to be logged
      * @since 2.0.3 this method is now public.
      */
     public function logException($exception)

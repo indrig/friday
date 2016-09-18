@@ -460,4 +460,15 @@ class ErrorHandler extends AbstractErrorHandler{
         return $out;
     }
 
+    /**
+     * Creates HTML containing link to the page with the information on given HTTP status code.
+     * @param integer $statusCode to be used to generate information link.
+     * @param string $statusDescription Description to display after the the status code.
+     * @return string generated HTML with HTTP status code information.
+     */
+    public function createHttpStatusLink($statusCode, $statusDescription)
+    {
+        return '<a href="http://en.wikipedia.org/wiki/List_of_HTTP_status_codes#' . (int) $statusCode . '" target="_blank">HTTP ' . (int) $statusCode . ' &ndash; ' . $statusDescription . '</a>';
+    }
+
 }

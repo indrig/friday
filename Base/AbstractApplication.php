@@ -12,6 +12,7 @@ use Friday\EventLoop\LoopInterface;
  *
  * @property LoopInterface $runLoop
  * @property Security $security
+ * @property AbstractErrorHandler $errorHandler
  */
 class AbstractApplication extends Module {
     /**
@@ -228,7 +229,7 @@ class AbstractApplication extends Module {
 
     /**
      * Returns the error handler component.
-     * @return \Friday\Web\ErrorHandler|\Yii\Console\ErrorHandler the error handler application component.
+     * @return \Friday\Web\ErrorHandler|\Friday\Console\ErrorHandler the error handler application component.
      */
     public function getErrorHandler()
     {

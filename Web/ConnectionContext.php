@@ -7,6 +7,7 @@ use Friday\Base\EventTrait;
 use Friday\Base\Exception\RuntimeException;
 use Friday\Base\Exception\InvalidRouteException;
 use Friday\Promise\Deferred;
+use Throwable;
 
 /**
  * Class ConnectionContext
@@ -51,6 +52,9 @@ class ConnectionContext extends BaseObject
      */
     private $_loop;
 
+    /**
+     * @var Controller
+     */
     private $_controller;
     /**
      * @return Request
@@ -85,11 +89,18 @@ class ConnectionContext extends BaseObject
         return $context;
     }
 
+    /**
+     * @return null|string
+     */
     public function getRequestedRoute()
     {
         return $this->_requestedRoute;
     }
 
+    /**
+     * @param $requestedRoute
+     * @return $this
+     */
     public function setRequestedRoute($requestedRoute)
     {
         if ($this->_requestedRoute !== null) {
@@ -113,13 +124,13 @@ class ConnectionContext extends BaseObject
         $deferred = new Deferred();
 
         $parts = Friday::$app->createController($route);
-throw new \RuntimeException('aaa');
         if (is_array($parts)) {
             /* @var $controller Controller */
             list($controller, $actionID) = $parts;
             $this->_requestedRoute = $route;
 
-            $controller->setConnectionContext($this);
+            $this->setController($controller);
+
 
             $this->post(function () use ($deferred, $controller, $actionID, $params) {
                 $deferred->resolve($controller->runAction($actionID, $params));
@@ -138,9 +149,7 @@ throw new \RuntimeException('aaa');
      */
     public function error($throwable = null)
     {
-        $response = $this->response;
-
-        $response->send();
+        Friday::$app->errorHandler->handleException($throwable);
     }
 
     /**
@@ -149,12 +158,19 @@ throw new \RuntimeException('aaa');
     public function post(callable $callback)
     {
         $this->loop->addTimer(0.000001, function () use ($callback) {
+
             $application = Friday::$app;
 
             $oldContext = $application->currentContext;
 
             $application->currentContext = $this;
-            call_user_func($callback);
+
+            try {
+                call_user_func($callback);
+            } catch (Throwable $throwable) {
+                $this->error($throwable);
+            }
+
             $application->currentContext = $oldContext;
         });
     }
@@ -172,7 +188,11 @@ throw new \RuntimeException('aaa');
             $oldContext = $application->currentContext;
 
             $application->currentContext = $this;
-            call_user_func($callback);
+            try {
+                call_user_func($callback);
+            } catch (Throwable $throwable) {
+                $this->error($throwable);
+            }
             $application->currentContext = $oldContext;
         });
     }
@@ -197,12 +217,20 @@ throw new \RuntimeException('aaa');
     }
 
     /**
-     * @param $controller
+     * @param Controller $controller
      * @return $this
      */
     public function setController($controller){
+        $controller->setConnectionContext($this);
         $this->_controller = $controller;
         return $this;
+    }
+
+    public function finish(){
+        $this->response->end();
+
+        //TODO: unset all
+        Friday::$app->detachContext($this);
     }
 
 }

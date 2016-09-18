@@ -2,9 +2,12 @@
 namespace Friday\Web;
 
 use Friday;
+use Friday\Base\Exception\InvalidRouteException;
+use Friday\Web\Event\ConnectionContextErrorEvent;
 use Friday\Web\Event\ConnectionContextEvent;
 use Friday\Web\Event\RequestEvent;
 use Friday\Base\AbstractApplication;
+use Friday\Web\HttpException\NotFoundHttpException;
 use SplObjectStorage;
 use Throwable;
 
@@ -39,6 +42,9 @@ class Application extends AbstractApplication {
         $this->_contexts = new SplObjectStorage();
     }
 
+    public function detachContext(ConnectionContext $context){
+        $this->_contexts->detach($context);
+    }
     /**
      *
      */
@@ -79,6 +85,7 @@ class Application extends AbstractApplication {
                     $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_BEFORE_RUN_ACTION,new ConnectionContextEvent([
                         'connectionContent' => $connectionContent
                     ]));
+
                     $connectionContent->runAction($route, $params)->then(function ($result) use($connectionContent){
                         $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_AFTER_RUN_ACTION, new ConnectionContextEvent([
                             'connectionContent' => $connectionContent
@@ -93,36 +100,44 @@ class Application extends AbstractApplication {
                             }
                         }
 
-                       /* $response->send() -> then(function () use ($connectionContent){
-                            $this->_contexts->detach($connectionContent);
-                        }, function () use ($connectionContent){
-                            $this->_contexts->detach($connectionContent);
-                        });*/
+                        $response->send();
+
                     }, function ($throwable = null) use ($connectionContent) {
-                        $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_ERROR,new ConnectionContextEvent([
+                        if($throwable !== null) {
+                            if($throwable instanceof InvalidRouteException) {
+                                $throwable = new NotFoundHttpException('Page not found.');
+                            }
+                        }
+
+                        $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_ERROR, new ConnectionContextErrorEvent([
                             'connectionContent' => $connectionContent,
                             'error' => $throwable
                         ]));
 
-                        $connectionContent->error($throwable);
+                        Friday::$app->errorHandler->handleException($throwable);
                     });
                 }catch (Throwable $throwable) {
-                    $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_ERROR,new ConnectionContextEvent([
+                    $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_ERROR,new ConnectionContextErrorEvent([
                         'connectionContent' => $connectionContent,
                         'error' => $throwable
                     ]));
 
-                    $connectionContent->error($throwable);
+                    Friday::$app->errorHandler->handleException($throwable);
                 }
             },
             //Error
             function (Throwable $throwable) use($connectionContent) {
-                $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_ERROR,new ConnectionContextEvent([
+                if($throwable !== null) {
+                    if($throwable instanceof InvalidRouteException) {
+                        $throwable = new NotFoundHttpException('Page not found.');
+                    }
+                }
+                $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_ERROR,new ConnectionContextErrorEvent([
                     'connectionContent' => $connectionContent,
                     'error' => $throwable
                 ]));
 
-                $connectionContent->error($throwable);
+                Friday::$app->errorHandler->handleException($throwable);
             }
         );
     }

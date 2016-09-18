@@ -6,6 +6,7 @@ use Friday\Base\Component;
 use Friday\Base\Exception\InvalidArgumentException;
 use Friday\Base\Exception\InvalidConfigException;
 use Friday\Promise\Deferred;
+use Friday\Promise\PromiseInterface;
 use Friday\SocketServer\Connection;
 use Friday\Stream\Stream;
 use Throwable;
@@ -130,7 +131,9 @@ class Response extends Component
     private $_connection;
 
 
-
+    /**
+     * @var bool
+     */
     private $chunkedEncoding = true;
 
     /**
@@ -229,6 +232,7 @@ class Response extends Component
     protected function write($data)
     {
         if (!$this->_isHeadersSent) {
+
             throw new \Exception('Response head has not yet been written.');
         }
 
@@ -246,7 +250,7 @@ class Response extends Component
     /**
      * @param null $data
      */
-    protected function end($data = null)
+    public function end($data = null)
     {
         if (null !== $data) {
             $this->write($data);
@@ -263,7 +267,7 @@ class Response extends Component
     /**
      *
      */
-    protected function close()
+    public function close()
     {
         if ($this->closed) {
             return;
@@ -284,45 +288,57 @@ class Response extends Component
     }
 
     /**
-     * @return Friday\Promise\PromiseInterface
+     * @param bool $finishAfterSend
+     * @return PromiseInterface
      */
-    public function send()
+    public function send(bool $finishAfterSend = true) : PromiseInterface
     {
         $deferred = new Deferred();
 
-        $this->connectionContext->post(function () use ($deferred){
+        $this->connectionContext->post(function () use ($deferred, $finishAfterSend){
             if ($this->_isSent) {
                 $deferred->reject();
             } else {
                 $this->_isSent = true;
 
                 try {
+
                     $this->trigger(self::EVENT_BEFORE_SEND);
-                    $this->prepare()->then(function () use ($deferred){
+                    $this->prepare()->then(function () use ($deferred, $finishAfterSend){
                         $this->trigger(self::EVENT_AFTER_PREPARE);
-                        $this->sendHeaders()->then(function () use ($deferred){
-                            $this->sendContent()->then(function () use ($deferred){
-                                $this->close();
+                        $this->sendHeaders()->then(function () use ($deferred, $finishAfterSend){
+                            $this->sendContent()->then(function () use ($deferred, $finishAfterSend){
                                 $this->trigger(self::EVENT_AFTER_SEND);
+                                if($finishAfterSend) {
+                                    $this->connectionContext->finish();
+                                }
+
                                 $deferred->resolve();
-                            }, function ($throwable = null)use ($deferred){
-                                $this->close();
+                            }, function ($throwable = null)use ($deferred, $finishAfterSend){
+                                if($finishAfterSend) {
+                                    $this->connectionContext->finish();
+                                }
 
                                 $deferred->reject($throwable);
                             });
-                        }, function ($throwable = null) use ($deferred){
-                            $this->close();
-
+                        }, function ($throwable = null) use ($deferred, $finishAfterSend){
+                            if($finishAfterSend) {
+                                $this->connectionContext->finish();
+                            }
                             $deferred->reject($throwable);
-
                         });
-                    }, function ($throwable = null)use ($deferred){
-                        $this->close();
+                    }, function ($throwable = null) use ($deferred, $finishAfterSend){
+                        if($finishAfterSend) {
+                            $this->connectionContext->finish();
+                        }
 
                         $deferred->reject($throwable);
+
                     });
                 }catch (Throwable $throwable) {
-                    $this->close();
+                    if($finishAfterSend) {
+                        $this->connectionContext->finish();
+                    }
 
                     $deferred->reject($throwable);
                 }
@@ -425,84 +441,70 @@ class Response extends Component
     protected function sendHeaders()
     {
         $deferred = new Deferred();
-
         $this->connectionContext->post(function () use ($deferred){
             if($this->_isHeadersSent) {
                 $deferred->reject();
                 return;
             }
 
+
             $statusCode = $this->getStatusCode();
             $data = "HTTP/{$this->version} {$statusCode} {$this->statusText}\r\n";
-            if ($this->_headers !== null) {
-                $headers = $this->getHeaders();
+
+            $headers = $this->getHeaders();
+
+
+                if ($headers->has('content-length')) {
+                    $this->chunkedEncoding = false;
+                }
+                if ($this->chunkedEncoding) {
+                    $headers->add('transfer-encoding', 'chunked');
+                }
                 foreach ($headers as $name => $values) {
                     $name = str_replace(' ', '-', ucwords(str_replace('-', ' ', $name)));
                     foreach ($values as $value) {
                         $data .= "$name: $value\r\n";
                     }
                 }
-            }
 
-            $this->connection->write($data);
 
-            $this->sendCookies()->then(function () use ($deferred){
-                    $deferred->resolve();
-                    $this->connection->write("\r\n");
-                    $this->_isHeadersSent = true;
-                },
-                function ($throwable) use ($deferred){
-                    $deferred->reject($throwable);
+            if ($this->_cookies !== null && $this->getCookies()->count > 0) {
+                $request = $this->connectionContext->request;
 
-                    $this->connection->write("\r\n");
-                    $this->_isHeadersSent = true;
-                });
-        });
 
-        return $deferred->promise();
-
-    }
-
-    /**
-     * Sends the cookies to the client.
-     */
-    protected function sendCookies()
-    {
-        $deferred = new Deferred();
-        $this->connectionContext->post(function () use ($deferred){
-            if ($this->_cookies === null || $this->getCookies()->count === 0) {
-                $deferred->resolve();
-                return;
-            }
-
-            $request = $this->connectionContext->request;
-
-            if ($request->enableCookieValidation) {
-                if ($request->cookieValidationKey == '') {
-                    $deferred->reject(new InvalidConfigException(get_class($this) . '::cookieValidationKey must be configured with a secret key.'));
-                    return;
-                }
-                $validationKey = $request->cookieValidationKey;
-            }
-            $data = '';
-            foreach ($this->getCookies() as $cookie) {
-                $value = $cookie->value;
-                if ($cookie->expire != 1  && isset($validationKey)) {
-                    try {
-                        $value = Friday::$app->security->hashData(serialize([$cookie->name, $value]), $validationKey);
-
-                    }catch (Throwable $e) {
-                        $deferred->reject();
+                if ($request->enableCookieValidation) {
+                    if ($request->cookieValidationKey == '') {
+                        $deferred->reject(new InvalidConfigException(get_class($this) . '::cookieValidationKey must be configured with a secret key.'));
                         return;
                     }
+                    $validationKey = $request->cookieValidationKey;
                 }
-                $data .= Cookie::createCookieHeader($cookie->name, $value, $cookie->expire, $cookie->path, $cookie->domain, $cookie->secure, $cookie->httpOnly) . "\r\n";
+                $data = '';
+                foreach ($this->getCookies() as $cookie) {
+                    $value = $cookie->value;
+                    if ($cookie->expire != 1  && isset($validationKey)) {
+                        try {
+                            $value = Friday::$app->security->hashData(serialize([$cookie->name, $value]), $validationKey);
 
-                $this->connection->write($data);
+                        }catch (Throwable $e) {
+                            $deferred->reject();
+                            return;
+                        }
+                    }
+                    $data .= Cookie::createCookieHeader($cookie->name, $value, $cookie->expire, $cookie->path, $cookie->domain, $cookie->secure, $cookie->httpOnly) . "\r\n";
+                }
             }
+
+            $data .= "\r\n";
+            $this->connection->write($data);
+
+            $this->_isHeadersSent = true;
+
             $deferred->resolve();
         });
+
         return $deferred->promise();
+
     }
 
     /**
@@ -513,7 +515,7 @@ class Response extends Component
         $deferred = new Deferred();
         $this->connectionContext->post(function () use ($deferred){
             if ($this->stream === null) {
-                $this->connection->write($this->content);
+                $this->write($this->content);
                 $deferred->resolve();
                 return;
             }
@@ -685,4 +687,11 @@ class Response extends Component
     public function getConnectionContext(){
         return $this->_connectionContext;
     }
+
+    public function __destruct()
+    {
+
+     var_dump('__destruct') ;  // TODO: Implement __destruct() method.
+    }
+
 }

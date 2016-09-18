@@ -484,7 +484,6 @@ class Request extends Component implements ReadableStreamInterface
         $deferred = new Deferred();
 
         $this->connectionContext->post(function () use ($deferred){
-            throw new  RuntimeException('test');
             try {
                 $result = Friday::$app->urlManager->parseRequest($this);
                 if ($result !== false) {
