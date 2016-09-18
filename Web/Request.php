@@ -21,6 +21,7 @@ use Throwable;
  * @property bool $isSecureConnection
  * @property null|string $host
  * @property ConnectionContext $connectionContext
+ * @property bool $isAjax
  */
 class Request extends Component implements ReadableStreamInterface
 {
@@ -482,7 +483,8 @@ class Request extends Component implements ReadableStreamInterface
     {
         $deferred = new Deferred();
 
-        Friday\Helper\RunLoopHelper::post(function () use ($deferred){
+        $this->connectionContext->post(function () use ($deferred){
+
             try {
                 $result = Friday::$app->urlManager->parseRequest($this);
                 if ($result !== false) {
@@ -517,5 +519,9 @@ class Request extends Component implements ReadableStreamInterface
      */
     public function getConnectionContext(){
         return $this->_connectionContext;
+    }
+
+    public function getIsAjax(){
+        return $this->headers->get('x-requested-with') === 'XMLHttpRequest';
     }
 }

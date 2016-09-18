@@ -2,7 +2,7 @@
 namespace Friday\Web\HttpException;
 
 use Friday\Base\Exception\Exception;
-use Friday\Web\ResponseCodes;
+use Friday\Web\HttpCodes;
 
 /**
  * HttpException represents an exception caused by an improper request of the end-user.
@@ -45,8 +45,8 @@ class HttpException extends Exception
      */
     public function getName()
     {
-        if (isset(ResponseCodes::$httpStatuses[$this->statusCode])) {
-            return ResponseCodes::$httpStatuses[$this->statusCode];
+        if (isset(HttpCodes::$httpStatuses[$this->statusCode])) {
+            return HttpCodes::$httpStatuses[$this->statusCode];
         } else {
             return 'Error';
         }

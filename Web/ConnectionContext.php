@@ -15,8 +15,10 @@ use Friday\Promise\Deferred;
  * @property Request $request
  * @property Response $response
  * @property string|null $requestedRoute
+ * @property Friday\EventLoop\LoopInterface $loop
  */
-class ConnectionContext extends BaseObject {
+class ConnectionContext extends BaseObject
+{
     const EVENT_CONNECTION_CONTENT_BEFORE_RUN_ACTION = 'before-run-action';
     const EVENT_CONNECTION_CONTENT_AFTER_RUN_ACTION = 'after-run-action';
 
@@ -44,16 +46,23 @@ class ConnectionContext extends BaseObject {
     private $_requestedRoute;
 
     /**
+     * @var Friday\EventLoop\LoopInterface
+     */
+    private $_loop;
+
+    /**
      * @return Request
      */
-    public function getRequest(){
+    public function getRequest()
+    {
         return $this->_request;
     }
 
     /**
      * @return Response
      */
-    public function getResponse(){
+    public function getResponse()
+    {
         return $this->_response;
     }
 
@@ -62,9 +71,10 @@ class ConnectionContext extends BaseObject {
      * @param Response $response
      * @return static
      */
-    public static function create(Request $request, Response $response){
+    public static function create(Request $request, Response $response)
+    {
         $context = new static();
-        $context->_request  = $request;
+        $context->_request = $request;
         $context->_response = $response;
 
         $request->setConnectionContext($context);
@@ -73,12 +83,14 @@ class ConnectionContext extends BaseObject {
         return $context;
     }
 
-    public function getRequestedRoute(){
+    public function getRequestedRoute()
+    {
         return $this->_requestedRoute;
     }
 
-    public function setRequestedRoute($requestedRoute){
-        if($this->_requestedRoute !== null) {
+    public function setRequestedRoute($requestedRoute)
+    {
+        if ($this->_requestedRoute !== null) {
             throw new RuntimeException('User context parameter "requestedRoute" already set.');
         }
         $this->_requestedRoute = $requestedRoute;
@@ -99,7 +111,7 @@ class ConnectionContext extends BaseObject {
         $deferred = new Deferred();
 
         $parts = Friday::$app->createController($route);
-
+throw new \RuntimeException('aaa');
         if (is_array($parts)) {
             /* @var $controller Controller */
             list($controller, $actionID) = $parts;
@@ -107,12 +119,11 @@ class ConnectionContext extends BaseObject {
 
             $controller->setConnectionContext($this);
 
-
-           Friday\Helper\RunLoopHelper::post(function () use ($deferred, $controller, $actionID, $params) {
-               $deferred->resolve($controller->runAction($actionID, $params));
-           });
+            $this->post(function () use ($deferred, $controller, $actionID, $params) {
+                $deferred->resolve($controller->runAction($actionID, $params));
+            });
         } else {
-            Friday\Helper\RunLoopHelper::post(function () use ($deferred, $route) {
+            $this->post(function () use ($deferred, $route) {
                 $deferred->reject(new InvalidRouteException("Unable to resolve the request '{$route}'."));
             });
         }
@@ -123,13 +134,58 @@ class ConnectionContext extends BaseObject {
     /**
      * @param null $throwable
      */
-    public function error($throwable = null){
+    public function error($throwable = null)
+    {
         $response = $this->response;
 
         $response->send();
     }
 
-    public function close(){
+    /**
+     * @param callable $callback
+     */
+    public function post(callable $callback)
+    {
+        $this->loop->addTimer(0.000001, function () use ($callback) {
+            $application = Friday::$app;
 
+            $oldContext = $application->currentContext;
+
+            $application->currentContext = $this;
+            call_user_func($callback);
+            $application->currentContext = $oldContext;
+        });
     }
+
+    /**
+     * @param callable $callback
+     * @param float $delay
+     * @return Friday\EventLoop\TimerInterface
+     */
+    public function postDelayed(callable $callback, float $delay)
+    {
+        $this->loop->addTimer($delay, function () use ($callback) {
+            $application = Friday::$app;
+
+            $oldContext = $application->currentContext;
+
+            $application->currentContext = $this;
+            call_user_func($callback);
+            $application->currentContext = $oldContext;
+        });
+    }
+
+    /**
+     * @return Friday\EventLoop\LoopInterface
+     */
+    public function getLoop()
+    {
+        if ($this->_loop === null) {
+            $this->_loop = Friday::$app->runLoop;
+        }
+
+        return $this->_loop;
+    }
+
+
 }

@@ -11,7 +11,7 @@ use Friday\Console\Markdown as ConsoleMarkdown;
  * @author Carsten Brandt <mail@cebe.cc>
  * @since 2.0
  */
-class BaseConsole
+class Console
 {
     // foreground color control codes
     const FG_BLACK  = 30;

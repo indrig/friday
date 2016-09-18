@@ -14,7 +14,8 @@ use Throwable;
  *
  * @property Server $server
  * @property UrlManager $urlManager
- *
+ * @property View $view
+ * @property ConnectionContext|null $currentContext
  */
 class Application extends AbstractApplication {
 
@@ -22,6 +23,11 @@ class Application extends AbstractApplication {
      * @var SplObjectStorage
      */
     protected $_contexts;
+
+    /**
+     * @var ConnectionContext
+     */
+    protected $_currentContext;
 
     public function init()
     {
@@ -84,23 +90,26 @@ class Application extends AbstractApplication {
                             }
                         }
 
-                        $response->send() -> then(function () use ($connectionContent){
+                       /* $response->send() -> then(function () use ($connectionContent){
                             $this->_contexts->detach($connectionContent);
                         }, function () use ($connectionContent){
                             $this->_contexts->detach($connectionContent);
-                        });
+                        });*/
                     }, function ($throwable = null) use ($connectionContent) {
                         $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_ERROR,new ConnectionContextEvent([
                             'connectionContent' => $connectionContent,
                             'error' => $throwable
                         ]));
 
+                        $connectionContent->error($throwable);
                     });
                 }catch (Throwable $throwable) {
                     $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_ERROR,new ConnectionContextEvent([
                         'connectionContent' => $connectionContent,
                         'error' => $throwable
                     ]));
+
+                    $connectionContent->error($throwable);
                 }
             },
             //Error
@@ -109,6 +118,8 @@ class Application extends AbstractApplication {
                     'connectionContent' => $connectionContent,
                     'error' => $throwable
                 ]));
+
+                $connectionContent->error($throwable);
             }
         );
     }
@@ -121,7 +132,25 @@ class Application extends AbstractApplication {
     {
         return array_merge(parent::coreComponents(), [
             'server' => ['class' => 'Friday\Web\Server'],
-            'urlManager' => ['class' => 'Friday\Web\UrlManager']
+            'urlManager' => ['class' => 'Friday\Web\UrlManager'],
+            'errorHandler' => ['class' => 'Friday\Web\ErrorHandler'],
+            'view' => ['class' => 'Friday\Web\View'],
         ]);
+    }
+
+    /**
+     * @param $connectionContext
+     * @return $this
+     */
+    public function setCurrentContext($connectionContext){
+        $this->_currentContext = $connectionContext;
+        return $this;
+    }
+
+    /**
+     * @return ConnectionContext
+     */
+    public function getCurrentContext(){
+        return $this->_currentContext;
     }
 }

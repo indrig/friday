@@ -68,6 +68,9 @@ abstract class AbstractFriday{
      */
     public static $app;
 
+    public static function getVersion(){
+        return '0.1.0';
+    }
     /**
      * Class autoload loader.
      * This method is invoked automatically when PHP sees an unknown class.

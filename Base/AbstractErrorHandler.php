@@ -5,6 +5,7 @@ use Friday;
 use Friday\Base\Exception\ErrorException;
 use Friday\Base\Exception\Exception;
 use Friday\Base\Exception\ExitException;
+use Friday\Helper\VarDumper;
 use Friday\Web\HttpException\HttpException;
 
 /**
@@ -99,7 +100,7 @@ abstract class AbstractErrorHandler extends Component
             }
             $this->renderException($exception);
             if (!FRIDAY_ENV_TEST) {
-                \Yii::getLogger()->flush(true);
+                Friday::getLogger()->flush(true);
                 if (defined('HHVM_VERSION')) {
                     flush();
                 }
@@ -181,7 +182,7 @@ abstract class AbstractErrorHandler extends Component
         if (error_reporting() & $code) {
             // load ErrorException manually here because autoloading them will not work
             // when error occurs while autoloading a class
-            if (!class_exists('Friday\\Base\\ErrorException', false)) {
+            if (!class_exists('Friday\Base\Exception\ErrorException', false)) {
                 require_once(__DIR__ . '/Exception/ErrorException.php');
             }
             $exception = new ErrorException($message, $code, $code, $file, $line);
@@ -213,7 +214,7 @@ abstract class AbstractErrorHandler extends Component
 
         // load ErrorException manually here because autoloading them will not work
         // when error occurs while autoloading a class
-        if (!class_exists('Friday\\Base\\ErrorException', false)) {
+        if (!class_exists('Friday\Base\Exception\ErrorException', false)) {
             require_once(__DIR__ . '/Exception/ErrorException.php');
         }
 
@@ -235,7 +236,7 @@ abstract class AbstractErrorHandler extends Component
             $this->renderException($exception);
 
             // need to explicitly flush logs because exit() next will terminate the app immediately
-            Yii::getLogger()->flush(true);
+            Friday::getLogger()->flush(true);
             if (defined('HHVM_VERSION')) {
                 flush();
             }
@@ -258,7 +259,7 @@ abstract class AbstractErrorHandler extends Component
     {
         $category = get_class($exception);
         if ($exception instanceof HttpException) {
-            $category = 'yii\\web\\HttpException:' . $exception->statusCode;
+            $category = 'Friday\Web\Exception\HttpException:' . $exception->statusCode;
         } elseif ($exception instanceof \ErrorException) {
             $category .= ':' . $exception->getSeverity();
         }
