@@ -67,6 +67,10 @@ class Application extends AbstractApplication {
             ->on(Server::EVENT_REQUEST, [$this, 'handleRequest'])
             ->run();
 
+
+        $this->runLoop->addPeriodicTimer(2, function (){
+            Friday\Helper\Console::stdout('memory_usage: '.number_format(memory_get_usage(true),0, '.', ' ') . "b\n");
+        });
         $this->runLoop->run();
 
     }
@@ -81,30 +85,30 @@ class Application extends AbstractApplication {
 
         $this->_contexts->attach($connectionContent);
 
-       /* $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_BEFORE_ROUTING, new ConnectionContextEvent([
+        $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_BEFORE_ROUTING, new ConnectionContextEvent([
             'connectionContent' => $connectionContent
         ]));
-*/
+
         $event->request->resolve()->then(
             //Success
-            function (array $params) use($connectionContent) {
-              /*  $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_AFTER_ROUTING, new ConnectionContextEvent([
+            function (array $params) use(&$connectionContent) {
+                $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_AFTER_ROUTING, new ConnectionContextEvent([
                     'connectionContent' => $connectionContent
                 ]));
-*/
+
                 //Select controller and action
                 list ($route, $params) = $params;
                 Friday::trace("Route requested: '{$route}'", __METHOD__);
                 try {
-                   /* $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_BEFORE_RUN_ACTION,new ConnectionContextEvent([
+                    $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_BEFORE_RUN_ACTION,new ConnectionContextEvent([
                         'connectionContent' => $connectionContent
                     ]));
-*/
+
                     $connectionContent->runAction($route, $params)->then(function ($result) use($connectionContent){
-  /*                      $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_AFTER_RUN_ACTION, new ConnectionContextEvent([
+                        $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_AFTER_RUN_ACTION, new ConnectionContextEvent([
                             'connectionContent' => $connectionContent
                         ]));
-*/
+
                         if($result instanceof ExtendedPromiseInterface) {
                             $result->always(function ($result) use ($connectionContent){
                                 if ($result instanceof Response) {
@@ -136,19 +140,19 @@ class Application extends AbstractApplication {
                             }
                         }
 
-                       /* $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_ERROR, new ConnectionContextErrorEvent([
+                        $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_ERROR, new ConnectionContextErrorEvent([
                             'connectionContent' => $connectionContent,
                             'error' => $throwable
-                        ]));*/
+                        ]));
 
                         Friday::$app->errorHandler->handleException($throwable);
                     });
                 }catch (Throwable $throwable) {
-                    /*$this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_ERROR,new ConnectionContextErrorEvent([
+                    $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_ERROR,new ConnectionContextErrorEvent([
                         'connectionContent' => $connectionContent,
                         'error' => $throwable
                     ]));
-*/
+
                     Friday::$app->errorHandler->handleException($throwable);
                 }
             },

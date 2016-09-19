@@ -80,18 +80,21 @@ class FileCache extends AbstractCache
      */
     protected function getValue($key) : ExtendedPromiseInterface
     {
+
         $cacheFile = $this->getCacheFile($key);
+
         if (@filemtime($cacheFile) > time()) {
+
             $fp = @fopen($cacheFile, 'r');
             if ($fp !== false) {
                 @flock($fp, LOCK_SH);
                 $cacheValue = @stream_get_contents($fp);
                 @flock($fp, LOCK_UN);
                 @fclose($fp);
-                return $cacheValue;
+                return PromiseUtil::resolve($cacheValue);
             }
         }
-        return false;
+        return PromiseUtil::resolve(false);
     }
 
     /**
@@ -104,6 +107,7 @@ class FileCache extends AbstractCache
         if ($this->directoryLevel > 0) {
             @FileHelper::createDirectory(dirname($cacheFile), $this->dirMode, true);
         }
+
         if (@file_put_contents($cacheFile, $value, LOCK_EX) !== false) {
             if ($this->fileMode !== null) {
                 @chmod($cacheFile, $this->fileMode);
@@ -111,11 +115,11 @@ class FileCache extends AbstractCache
             if ($duration <= 0) {
                 $duration = 31536000; // 1 year
             }
-            return @touch($cacheFile, $duration + time());
+            return PromiseUtil::resolve(@touch($cacheFile, $duration + time()));
         } else {
             $error = error_get_last();
             Friday::warning("Unable to write cache file '{$cacheFile}': {$error['message']}", __METHOD__);
-            return false;
+            return PromiseUtil::resolve(false);
         }
     }
 

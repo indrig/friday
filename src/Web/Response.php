@@ -770,9 +770,4 @@ class Response extends Component
         return $this;
     }
 
-
-    public function __destruct()
-    {
-        Friday::trace(__CLASS__.'::__destruct()');
-    }
 }

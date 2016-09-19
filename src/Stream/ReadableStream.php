@@ -40,5 +40,7 @@ class ReadableStream implements ReadableStreamInterface
 
         $this->trigger(static::EVENT_END);
         $this->trigger(static::EVENT_CLOSE);
+
+        $this->clearEvents();
     }
 }

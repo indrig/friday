@@ -171,4 +171,5 @@ class Buffer extends Component implements WritableStreamInterface
             'line'    => 0,
         );
     }
+
 }

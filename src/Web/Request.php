@@ -873,8 +873,4 @@ class Request extends Component implements ReadableStreamInterface
         return new Cookie($options);
     }
 
-    public function __destruct()
-    {
-        Friday::trace(__CLASS__.'::__destruct()');
-    }
 }

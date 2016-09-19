@@ -23,7 +23,7 @@ class ConsoleTarget extends Target
     public function init()
     {
         parent::init();
-        var_dump('test');
+        //var_dump('test');
     }
 
     /**

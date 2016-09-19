@@ -10,6 +10,8 @@ interface StreamInterface{
     const EVENT_PIPE        = 'pipe';
     const EVENT_ERROR       = 'error';
     const EVENT_DRAIN       = 'drain';
+    const EVENT_PAUSE       = 'pause';
+    const EVENT_RESUME      = 'resume';
 
     public function trigger($name, Event $event = null);
 

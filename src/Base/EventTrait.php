@@ -292,4 +292,9 @@ trait EventTrait{
      * @var Behavior[]|null the attached behaviors (behavior name => behavior). This is `null` when not initialized.
      */
     private $_behaviors;
+
+    public function clearEvents(){
+        $this->_events      = [];
+        $this->_behaviors   = null;
+    }
 }

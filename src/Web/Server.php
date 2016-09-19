@@ -33,22 +33,25 @@ class Server extends Component
             $parser = new RequestHeaderParser();
             $parser->on(RequestHeaderParser::EVENT_PARSED, function (RequestParsedEvent $event) use ($connection, $parser) {
                 $request = $event->request;
+
                 $this->handleRequest($connection, $request);
 
                 $connection->off(Connection::EVENT_CONTENT, array($parser, 'feed'));
+                $parser->destroy();
 
-                $connection->on('end', function () use ($request) {
-                    $request->trigger('end');
+                $connection->on(Connection::EVENT_END, function () use ($request) {
+                    $request->trigger(Request::EVENT_END);
                 });
-                $connection->on('data', function ($data) use ($request) {
-                    $request->trigger('data', array($data));
+                $connection->on(Connection::EVENT_CONTENT, function ($data) use ($request) {
+                    $request->trigger(Request::EVENT_CONTENT, array($data));
                 });
-                $request->on('pause', function () use ($connection) {
-                    $connection->trigger('pause');
+                $request->on(Request::EVENT_PAUSE, function () use ($connection) {
+                    $connection->trigger(Connection::EVENT_PAUSE);
                 });
-                $request->on('resume', function () use ($connection) {
-                    $connection->trigger('resume');
+                $request->on(Request::EVENT_RESUME, function () use ($connection) {
+                    $connection->trigger(Connection::EVENT_RESUME);
                 });
+
             })->on(RequestHeaderParser::EVENT_ERROR, function (ErrorEvent $event) use ($connection) {
                 $connection->close();
             });

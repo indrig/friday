@@ -36,11 +36,11 @@ class Util
     }
 
     /**
-     * @param $source
-     * @param $target
+     * @param StreamInterface $source
+     * @param StreamInterface $target
      * @param array $events
      */
-    public static function forwardEvents(ReadableStreamInterface $source, WritableStreamInterface $target, array $events)
+    public static function forwardEvents(StreamInterface $source, StreamInterface $target, array $events)
     {
         foreach ($events as $eventName) {
             $source->on($eventName, function ($event) use ($eventName, $target) {

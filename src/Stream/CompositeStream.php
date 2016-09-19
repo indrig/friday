@@ -3,6 +3,7 @@
 namespace Friday\Stream;
 
 use Friday\Base\EventTrait;
+use Friday\Stream\Event\PipeEvent;
 
 class CompositeStream implements DuplexStreamInterface
 {
@@ -17,7 +18,7 @@ class CompositeStream implements DuplexStreamInterface
      */
     protected $writable;
     /**
-     * @var
+     * @var ReadableStreamInterface
      */
     protected $pipeSource;
 
@@ -29,15 +30,15 @@ class CompositeStream implements DuplexStreamInterface
         Util::forwardEvents($this->readable, $this, array('data', 'end', 'error', 'close'));
         Util::forwardEvents($this->writable, $this, array('drain', 'error', 'close', 'pipe'));
 
-        $this->readable->on('close', array($this, 'close'));
-        $this->writable->on('close', array($this, 'close'));
+        $this->readable->on(ReadableStreamInterface::EVENT_CLOSE, [$this, 'close']);
+        $this->writable->on(ReadableStreamInterface::EVENT_CLOSE, [$this, 'close']);
 
-        $this->on('pipe', array($this, 'handlePipeEvent'));
+        $this->on(static::EVENT_PIPE, array($this, 'handlePipeEvent'));
     }
 
-    public function handlePipeEvent($source)
+    public function handlePipeEvent(PipeEvent $event)
     {
-        $this->pipeSource = $source;
+        $this->pipeSource = $event->source;
     }
 
     public function isReadable()
@@ -63,11 +64,11 @@ class CompositeStream implements DuplexStreamInterface
         $this->readable->resume();
     }
 
-    public function pipe(WritableStreamInterface $dest, array $options = array())
+    public function pipe(WritableStreamInterface $destination, array $options = array()) : WritableStreamInterface
     {
-        Util::pipe($this, $dest, $options);
+        Util::pipe($this, $destination, $options);
 
-        return $dest;
+        return $destination;
     }
 
     public function isWritable()

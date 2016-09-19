@@ -21,6 +21,7 @@ use SplObjectStorage;
  * @property string|null $requestedRoute
  * @property Friday\EventLoop\LoopInterface $loop
  * @property Controller $controller
+ * @property bool $isFinished
  */
 class ConnectionContext extends ServiceLocator
 {
@@ -55,6 +56,8 @@ class ConnectionContext extends ServiceLocator
      * @var SplObjectStorage
      */
     private $_timers;
+
+    private $_isFinished = false;
 
     public function init()
     {
@@ -263,36 +266,36 @@ class ConnectionContext extends ServiceLocator
     public function finish(){
 
         $this->response->end();
-try{
-
-    $this->response->close();
-    $this->request->close();
-    $this->clear();
-
-    unset($this->_controller);
-   // var_dump('finish');
 
 
-    $this->_loop = null;
+
+
+        $this->destroy();
+
+        Friday::$app->detachContext($this);
+        $this->_isFinished = true;
+    }
+
     /**
-     * @var Friday\EventLoop\TimerInterface $timer
+     *
      */
-    foreach ($this->_timers as $timer){
-        $timer->cancel();
-        $this->_timers->detach($timer);
+    protected function destroy(){
+        $this->clearEvents();
+        $this->_controller = null;
+        $components =   $this->getComponents(false);
+        foreach ($components as $component) {
+            if(method_exists($component, 'setConnectionContext')) {
+                $component->setConnectionContext(null);
+            }
+        }
     }
 
-   // var_dump($this);
-    Friday::$app->detachContext($this);
-}catch (Throwable $e){
-    echo $e;
-}
-
-
+    public function getIsFinished(){
+        return $this->_isFinished;
     }
 
-    public function __destruct()
+    public function __debugInfo()
     {
-        Friday::trace(__CLASS__.'::__destruct');
+        return [];
     }
 }

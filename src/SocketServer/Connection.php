@@ -6,6 +6,7 @@ use Friday\Stream\Stream;
 
 class Connection extends Stream
 {
+
     public function handleData($stream)
     {
         // Socket is raw, not using fread as it's interceptable by filters

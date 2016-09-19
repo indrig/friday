@@ -38,5 +38,7 @@ class WritableStream implements WritableStreamInterface
         $this->closed = true;
         $this->trigger(static::EVENT_END);
         $this->trigger(static::EVENT_CLOSE);
+
+        $this->clearEvents();
     }
 }

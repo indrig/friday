@@ -18,6 +18,7 @@ use Friday\Base\Exception\RuntimeException;
  */
 class Stream extends BaseObject implements DuplexStreamInterface
 {
+
     use EventTrait;
 
 
@@ -78,7 +79,7 @@ class Stream extends BaseObject implements DuplexStreamInterface
         });
 
         $this->buffer->on(Buffer::EVENT_DRAIN, function ()  {
-            $this->trigger(static::EVENT_DRAIN, new Event());
+            $this->trigger(static::EVENT_DRAIN);
         });
 
         $this->resume();
@@ -127,16 +128,19 @@ class Stream extends BaseObject implements DuplexStreamInterface
             return;
         }
 
+
         $this->closing = false;
 
         $this->readable = false;
         $this->writable = false;
 
-        $this->trigger(static::EVENT_END, new Event());
-        $this->trigger(static::EVENT_CLOSE, new Event());
+        $this->trigger(static::EVENT_END);
+        $this->trigger(static::EVENT_CLOSE);
 
         Friday::$app->runLoop->removeStream($this->stream);
 
+        $this->buffer->clearEvents();
+        $this->clearEvents();
 
         $this->handleClose();
     }

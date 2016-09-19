@@ -2,6 +2,7 @@
 namespace Friday\Web;
 
 use Exception;
+use Friday;
 use Friday\Helper\AliasHelper;
 use Friday\Helper\FileHelper;
 use Friday\Web\Event\ErrorEvent;
@@ -235,4 +236,7 @@ class RequestHeaderParser extends Request
         ]));
     }
 
+    public function destroy(){
+        $this->clearEvents();
+    }
 }

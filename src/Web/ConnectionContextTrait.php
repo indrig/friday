@@ -10,10 +10,10 @@ trait ConnectionContextTrait {
     protected $_connectionContext;
 
     /**
-     * @param $connectionContext
+     * @param ConnectionContext $connectionContext
      * @return static
      */
-    public function setConnectionContext(ConnectionContext $connectionContext){
+    public function setConnectionContext($connectionContext){
         $this->_connectionContext = $connectionContext;
         return $this;
     }
