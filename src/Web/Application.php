@@ -52,6 +52,9 @@ class Application extends AbstractApplication {
         $this->_contexts = new SplObjectStorage();
     }
 
+    /**
+     * @param ConnectionContext $context
+     */
     public function detachContext(ConnectionContext $context){
         $this->_contexts->detach($context);
     }
@@ -75,32 +78,33 @@ class Application extends AbstractApplication {
 
         $connectionContent = ConnectionContext::create($event->request, $event->response);
 
+
         $this->_contexts->attach($connectionContent);
 
-        $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_BEFORE_ROUTING, new ConnectionContextEvent([
+       /* $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_BEFORE_ROUTING, new ConnectionContextEvent([
             'connectionContent' => $connectionContent
         ]));
-
+*/
         $event->request->resolve()->then(
             //Success
             function (array $params) use($connectionContent) {
-                $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_AFTER_ROUTING, new ConnectionContextEvent([
+              /*  $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_AFTER_ROUTING, new ConnectionContextEvent([
                     'connectionContent' => $connectionContent
                 ]));
-
+*/
                 //Select controller and action
                 list ($route, $params) = $params;
                 Friday::trace("Route requested: '{$route}'", __METHOD__);
                 try {
-                    $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_BEFORE_RUN_ACTION,new ConnectionContextEvent([
+                   /* $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_BEFORE_RUN_ACTION,new ConnectionContextEvent([
                         'connectionContent' => $connectionContent
                     ]));
-
+*/
                     $connectionContent->runAction($route, $params)->then(function ($result) use($connectionContent){
-                        $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_AFTER_RUN_ACTION, new ConnectionContextEvent([
+  /*                      $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_AFTER_RUN_ACTION, new ConnectionContextEvent([
                             'connectionContent' => $connectionContent
                         ]));
-
+*/
                         if($result instanceof ExtendedPromiseInterface) {
                             $result->always(function ($result) use ($connectionContent){
                                 if ($result instanceof Response) {
@@ -132,19 +136,19 @@ class Application extends AbstractApplication {
                             }
                         }
 
-                        $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_ERROR, new ConnectionContextErrorEvent([
+                       /* $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_ERROR, new ConnectionContextErrorEvent([
                             'connectionContent' => $connectionContent,
                             'error' => $throwable
-                        ]));
+                        ]));*/
 
                         Friday::$app->errorHandler->handleException($throwable);
                     });
                 }catch (Throwable $throwable) {
-                    $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_ERROR,new ConnectionContextErrorEvent([
+                    /*$this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_ERROR,new ConnectionContextErrorEvent([
                         'connectionContent' => $connectionContent,
                         'error' => $throwable
                     ]));
-
+*/
                     Friday::$app->errorHandler->handleException($throwable);
                 }
             },
@@ -155,11 +159,11 @@ class Application extends AbstractApplication {
                         $throwable = new NotFoundHttpException('Page not found.');
                     }
                 }
-                $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_ERROR,new ConnectionContextErrorEvent([
+                /*$this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_ERROR,new ConnectionContextErrorEvent([
                     'connectionContent' => $connectionContent,
                     'error' => $throwable
                 ]));
-
+*/
                 Friday::$app->errorHandler->handleException($throwable);
             }
         );

@@ -872,4 +872,9 @@ class Request extends Component implements ReadableStreamInterface
         $options['value'] = $token;
         return new Cookie($options);
     }
+
+    public function __destruct()
+    {
+        Friday::trace(__CLASS__.'::__destruct()');
+    }
 }

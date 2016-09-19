@@ -2,10 +2,12 @@
 
 namespace Friday\Stream;
 
-use Evenement\EventEmitter;
+use Friday\Base\EventTrait;
 
-class ReadableStream extends EventEmitter implements ReadableStreamInterface
+class ReadableStream implements ReadableStreamInterface
 {
+    use EventTrait;
+
     protected $closed = false;
 
     public function isReadable()
@@ -21,11 +23,11 @@ class ReadableStream extends EventEmitter implements ReadableStreamInterface
     {
     }
 
-    public function pipe(WritableStreamInterface $dest, array $options = array())
+    public function pipe(WritableStreamInterface $destination, array $options = array())
     {
-        Util::pipe($this, $dest, $options);
+        Util::pipe($this, $destination, $options);
 
-        return $dest;
+        return $destination;
     }
 
     public function close()
@@ -35,8 +37,8 @@ class ReadableStream extends EventEmitter implements ReadableStreamInterface
         }
 
         $this->closed = true;
-        $this->emit('end', array($this));
-        $this->emit('close', array($this));
-        $this->removeAllListeners();
+
+        $this->trigger(static::EVENT_END);
+        $this->trigger(static::EVENT_CLOSE);
     }
 }

@@ -11,7 +11,7 @@ use Friday\Promise\PromiseInterface;
 use Friday\SocketServer\Connection;
 use Friday\Stream\Stream;
 use Throwable;
-
+use Friday\SocketServer\Event\ErrorEvent as SocketServerErrorEvent;
 /**
  * Class Response
  * @package Friday\Web
@@ -39,6 +39,10 @@ class Response extends Component
      * You may respond to this event to filter the response content before it is sent to the client.
      */
     const EVENT_AFTER_PREPARE = 'afterPrepare';
+
+    const EVENT_ERROR = 'error';
+    const EVENT_DRAIN = 'drain';
+    const EVENT_CLOSE = 'close';
 
     const FORMAT_RAW = 'raw';
     const FORMAT_HTML = 'html';
@@ -169,17 +173,17 @@ class Response extends Component
      */
     public function init()
     {
-        $this->_connection->on('end', function () {
+        $this->_connection->on(Connection::EVENT_END, function () {
             $this->close();
         });
 
-        $this->_connection->on('error', function ($error) {
-            $this->trigger('error', array($error, $this));
+        $this->_connection->on(Connection::EVENT_ERROR, function (SocketServerErrorEvent $event) {
+            $this->trigger(static::EVENT_ERROR, $event);
             $this->close();
         });
 
-        $this->_connection->on('drain', function () {
-            $this->trigger('drain');
+        $this->_connection->on(Connection::EVENT_DRAIN, function () {
+            $this->trigger(static::EVENT_DRAIN);
         });
 
         if ($this->charset === null) {
@@ -277,7 +281,7 @@ class Response extends Component
         $this->closed = true;
 
         $this->writable = false;
-        $this->trigger('close');
+        $this->trigger(static::EVENT_CLOSE);
         $this->_connection->close();
     }
 
@@ -675,12 +679,6 @@ class Response extends Component
     }
 
 
-    public function __destruct()
-    {
-
-        var_dump('__destruct');  // TODO: Implement __destruct() method.
-    }
-
     /**
      * Redirects the browser to the specified URL.
      *
@@ -772,4 +770,9 @@ class Response extends Component
         return $this;
     }
 
+
+    public function __destruct()
+    {
+        Friday::trace(__CLASS__.'::__destruct()');
+    }
 }

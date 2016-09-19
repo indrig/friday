@@ -204,9 +204,19 @@ class ServiceLocator extends Component
      * Removes the component from the locator.
      * @param string $id the component ID
      */
-    public function clear($id)
+    public function clear($id = null)
     {
-        unset($this->_definitions[$id], $this->_components[$id]);
+        if($id === null) {
+            foreach(array_keys($this->_definitions) as $id){
+                unset($this->_definitions[$id]);
+            }
+            foreach(array_keys($this->_components) as $id){
+                unset($this->_components[$id]);
+            }
+        } else {
+            unset($this->_definitions[$id], $this->_components[$id]);
+        }
+
     }
 
     /**

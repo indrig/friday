@@ -2,17 +2,18 @@
 
 namespace Friday\Stream;
 
-use Evenement\EventEmitter;
+use Friday\Base\EventTrait;
 
-class CompositeStream extends EventEmitter implements DuplexStreamInterface
+class CompositeStream implements DuplexStreamInterface
 {
+    use EventTrait;
     /**
-     * @var ReadableStreamInterface
+     * @var ReadableStream
      */
     protected $readable;
 
     /**
-     * @var WritableStreamInterface
+     * @var WritableStream
      */
     protected $writable;
     /**

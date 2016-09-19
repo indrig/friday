@@ -2,8 +2,10 @@
 namespace Friday\Stream;
 
 use Friday;
+use Friday\Base\BaseObject;
 use Friday\Base\Component;
 
+use Friday\Base\EventTrait;
 use Friday\Base\Exception\InvalidArgumentException;
 use Friday\Stream\Event\Event;
 use Friday\Stream\Event\ContentEvent;
@@ -14,13 +16,11 @@ use Friday\Base\Exception\RuntimeException;
  * Class Stream
  * @package Friday\Stream
  */
-class Stream extends Component implements DuplexStreamInterface
+class Stream extends BaseObject implements DuplexStreamInterface
 {
-    const EVENT_ERROR   = 'error';
-    const EVENT_CONTENT    = 'content';
-    const EVENT_CLOSE   = 'close';
-    const EVENT_END     = 'end';
-    const EVENT_DRAIN     = 'drain';
+    use EventTrait;
+
+
 
     /**
      * @var int
@@ -84,11 +84,17 @@ class Stream extends Component implements DuplexStreamInterface
         $this->resume();
     }
 
+    /**
+     * @inheritdoc
+     */
     public function isReadable()
     {
         return $this->readable;
     }
 
+    /**
+     * @inheritdoc
+     */
     public function isWritable()
     {
         return $this->writable;
@@ -96,7 +102,7 @@ class Stream extends Component implements DuplexStreamInterface
 
     public function pause()
     {
-        $this->loop->removeReadStream($this->stream);
+        Friday::$app->runLoop->removeReadStream($this->stream);
     }
 
     public function resume()
@@ -146,7 +152,7 @@ class Stream extends Component implements DuplexStreamInterface
         $this->readable = false;
         $this->writable = false;
 
-        $this->buffer->on('close', array($this, 'close'));
+        $this->buffer->on(Buffer::EVENT_CLOSE, array($this, 'close'));
 
         $this->buffer->end($data);
     }
@@ -189,7 +195,7 @@ class Stream extends Component implements DuplexStreamInterface
         }
 
         if ($data !== '') {
-            $this->trigger('data', new ContentEvent([
+            $this->trigger(static::EVENT_CONTENT, new ContentEvent([
                 'content' => $data
             ]));
         }

@@ -15,8 +15,7 @@
         "ext-ctype": "*",
         "lib-pcre": "*",
         "ezyang/htmlpurifier": "~4.6",
-        "cebe/markdown": "~1.0.0 | ~1.1.0",
-        "wyrihaximus/react-child-process-pool": "^1.3"
+        "cebe/markdown": "~1.0.0 | ~1.1.0"
     },
     "authors": [
         {

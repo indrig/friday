@@ -13,9 +13,6 @@ use Friday\Base\Exception\RuntimeException;
  */
 class Buffer extends Component implements WritableStreamInterface
 {
-    const EVENT_CLOSE       = 'close';
-    const EVENT_ERROR       = 'error';
-    const EVENT_DRAIN       = 'drain';
     const EVENT_FULL_DRAIN  = 'full-drain';
     public $stream;
     public $listening = false;

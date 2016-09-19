@@ -2,10 +2,13 @@
 
 namespace Friday\Stream;
 
-use Evenement\EventEmitter;
 
-class WritableStream extends EventEmitter implements WritableStreamInterface
+use Friday\Base\EventTrait;
+
+class WritableStream implements WritableStreamInterface
 {
+    use EventTrait;
+
     protected $closed = false;
 
     public function write($data)
@@ -33,8 +36,7 @@ class WritableStream extends EventEmitter implements WritableStreamInterface
         }
 
         $this->closed = true;
-        $this->emit('end', array($this));
-        $this->emit('close', array($this));
-        $this->removeAllListeners();
+        $this->trigger(static::EVENT_END);
+        $this->trigger(static::EVENT_CLOSE);
     }
 }

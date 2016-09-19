@@ -10,11 +10,32 @@ use Evenement\EventEmitterInterface;
  * @event error
  * @event close
  */
-interface ReadableStreamInterface
+interface ReadableStreamInterface extends StreamInterface
 {
+    /**
+     * @return bool
+     */
     public function isReadable();
+
+    /**
+     * @return void
+     */
     public function pause();
+
+    /**
+     * @return void
+     */
     public function resume();
-    public function pipe(WritableStreamInterface $dest, array $options = array());
+
+    /**
+     * @param WritableStreamInterface $destination
+     * @param array $options
+     * @return mixed
+     */
+    public function pipe(WritableStreamInterface $destination, array $options = []);
+
+    /**
+     * @return void
+     */
     public function close();
 }

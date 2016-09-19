@@ -4,32 +4,33 @@ namespace Friday\Stream;
 
 // TODO: move to a trait
 
+use Friday\Stream\Event\ContentEvent;
+use Friday\Stream\Event\PipeEvent;
+
 class Util
 {
-    public static function pipe(ReadableStreamInterface $source, WritableStreamInterface $dest, array $options = array())
+    public static function pipe(ReadableStreamInterface $source, WritableStreamInterface $destination, array $options = array())
     {
-        // TODO: use stream_copy_to_stream
-        // it is 4x faster than this
-        // but can lose data under load with no way to recover it
+        $destination->trigger(StreamInterface::EVENT_PIPE, new PipeEvent([
+            'source' => $source
+        ]));
 
-        $dest->emit('pipe', array($source));
-
-        $source->on('data', function ($data) use ($source, $dest) {
-            $feedMore = $dest->write($data);
+        $source->on(StreamInterface::EVENT_CONTENT, function (ContentEvent $event) use ($source, $destination) {
+            $feedMore = $destination->write($event->content);
 
             if (false === $feedMore) {
                 $source->pause();
             }
         });
 
-        $dest->on('drain', function () use ($source) {
+        $destination->on(StreamInterface::EVENT_DRAIN, function () use ($source) {
             $source->resume();
         });
 
         $end = isset($options['end']) ? $options['end'] : true;
-        if ($end && $source !== $dest) {
-            $source->on('end', function () use ($dest) {
-                $dest->end();
+        if ($end && $source !== $destination) {
+            $source->on(StreamInterface::EVENT_END, function () use ($destination) {
+                $destination->end();
             });
         }
     }
@@ -39,11 +40,11 @@ class Util
      * @param $target
      * @param array $events
      */
-    public static function forwardEvents($source, $target, array $events)
+    public static function forwardEvents(ReadableStreamInterface $source, WritableStreamInterface $target, array $events)
     {
-        foreach ($events as $event) {
-            $source->on($event, function () use ($event, $target) {
-                $target->emit($event, func_get_args());
+        foreach ($events as $eventName) {
+            $source->on($eventName, function ($event) use ($eventName, $target) {
+                $target->trigger($eventName, $event);
             });
         }
     }

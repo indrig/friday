@@ -8,6 +8,7 @@ use Friday\Base\Exception\InvalidRouteException;
 use Friday\Di\ServiceLocator;
 use Friday\Promise\Deferred;
 use Throwable;
+use SplObjectStorage;
 
 /**
  * Class ConnectionContext
@@ -32,9 +33,8 @@ class ConnectionContext extends ServiceLocator
     const EVENT_CONNECTION_CONTENT_ERROR = 'error';
 
     const EVENT_CONNECTION_CONTENT_CLOSE = 'close';
+
     use EventTrait;
-
-
 
     /**
      * @var string|null
@@ -51,6 +51,17 @@ class ConnectionContext extends ServiceLocator
      */
     private $_controller;
 
+    /**
+     * @var SplObjectStorage
+     */
+    private $_timers;
+
+    public function init()
+    {
+        parent::init();
+
+        $this->_timers = new SplObjectStorage();
+    }
 
     /**
      * @return Request
@@ -149,11 +160,11 @@ class ConnectionContext extends ServiceLocator
 
     /**
      * @param callable $callback
+     * @return Friday\EventLoop\TimerInterface
      */
     public function post(callable $callback)
     {
-        $this->loop->addTimer(0.000001, function () use ($callback) {
-
+        $timer = $this->loop->addTimer(0.000001, function ($timer) use ($callback) {
             $application = Friday::$app;
 
             $oldContext = $application->currentContext;
@@ -167,7 +178,13 @@ class ConnectionContext extends ServiceLocator
             }
 
             $application->currentContext = $oldContext;
+
+            $this->_timers->detach($timer);
+
         });
+        $this->_timers->attach($timer);
+
+        return $timer;
     }
 
     /**
@@ -177,7 +194,7 @@ class ConnectionContext extends ServiceLocator
      */
     public function postDelayed(callable $callback, float $delay)
     {
-        $this->loop->addTimer($delay, function () use ($callback) {
+        $timer = $this->loop->addTimer($delay, function ($timer) use ($callback) {
             $application = Friday::$app;
 
             $oldContext = $application->currentContext;
@@ -189,7 +206,13 @@ class ConnectionContext extends ServiceLocator
                 $this->error($throwable);
             }
             $application->currentContext = $oldContext;
+
+            $this->_timers->detach($timer);
         });
+
+        $this->_timers->attach($timer);
+
+        return $timer;
     }
 
     /**
@@ -238,10 +261,38 @@ class ConnectionContext extends ServiceLocator
 
 
     public function finish(){
-        $this->response->end();
 
-        //TODO: unset all
-        Friday::$app->detachContext($this);
+        $this->response->end();
+try{
+
+    $this->response->close();
+    $this->request->close();
+    $this->clear();
+
+    unset($this->_controller);
+   // var_dump('finish');
+
+
+    $this->_loop = null;
+    /**
+     * @var Friday\EventLoop\TimerInterface $timer
+     */
+    foreach ($this->_timers as $timer){
+        $timer->cancel();
+        $this->_timers->detach($timer);
     }
 
+   // var_dump($this);
+    Friday::$app->detachContext($this);
+}catch (Throwable $e){
+    echo $e;
+}
+
+
+    }
+
+    public function __destruct()
+    {
+        Friday::trace(__CLASS__.'::__destruct');
+    }
 }
