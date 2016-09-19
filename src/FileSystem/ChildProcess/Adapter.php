@@ -6,7 +6,7 @@ use Friday\FileSystem\AdapterInterface;
 use Friday\FileSystem\CallInvokerInterface;
 use Friday\FileSystem\Node\NodeInterface;
 use Friday\FileSystem\Stream\StreamFactory;
-use Friday\FileSystem\FilesystemInterface;
+use Friday\FileSystem\FileSystemInterface;
 use Friday\FileSystem\MappedTypeDetector;
 use Friday\FileSystem\ModeTypeDetector;
 use Friday\FileSystem\ObjectStream;
