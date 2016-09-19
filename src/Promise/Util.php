@@ -24,7 +24,11 @@ class Util
         return new FulfilledPromise($promiseOrValue);
     }
 
-    public static function reject($promiseOrValue = null)
+    /**
+     * @param mixed $promiseOrValue
+     * @return ExtendedPromiseInterface
+     */
+    public static function reject($promiseOrValue = null) : ExtendedPromiseInterface
     {
         if ($promiseOrValue instanceof PromiseInterface) {
             return static::resolve($promiseOrValue)->then(function ($value) {

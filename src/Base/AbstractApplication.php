@@ -14,6 +14,8 @@ use Friday\EventLoop\LoopInterface;
  * @property LoopInterface $runLoop
  * @property Security $security
  * @property AbstractErrorHandler $errorHandler
+ * @property \Friday\Cache\AbstractCache $cache
+ *
  */
 class AbstractApplication extends Module {
     /**

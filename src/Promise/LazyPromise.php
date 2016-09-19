@@ -1,6 +1,6 @@
 <?php
 
-namespace React\Promise;
+namespace Friday\Promise;
 
 class LazyPromise implements ExtendedPromiseInterface, CancellablePromiseInterface
 {
@@ -41,7 +41,7 @@ class LazyPromise implements ExtendedPromiseInterface, CancellablePromiseInterfa
     {
         if (null === $this->promise) {
             try {
-                $this->promise = resolve(call_user_func($this->factory));
+                $this->promise = Util::resolve(call_user_func($this->factory));
             } catch (\Throwable $exception) {
                 $this->promise = new RejectedPromise($exception);
             } catch (\Exception $exception) {
