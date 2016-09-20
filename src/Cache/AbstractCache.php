@@ -74,14 +74,25 @@ abstract class AbstractCache extends Component
                     $value = call_user_func($this->serializer[1], $value);
                 }
 
-                if (is_array($value) && !($value[1] instanceof AbstractDependency && $value[1]->getHasChanged($this))) {
-                    $deferred->resolve($value[0]);
+                if (is_array($value)) {
+                    // && !($value[1] instanceof AbstractDependency && $value[1]->getHasChanged($this))
+                    if($value[1] instanceof AbstractDependency) {
+                        $value[1]->getHasChanged($this)->then(function ($isHashChanged) use (&$value, $deferred){
+                            if($isHashChanged){
+                                $deferred->resolve(false);
+                            } else {
+                                $deferred->resolve($value[0]);
+                            }
+                        });
+                    } else {
+                        $deferred->resolve($value[0]);
+                    }
                 } else {
-                    $deferred->reject();
+                    $deferred->resolve(false);
                 }
             },
             function () use ($deferred){
-                $deferred->reject();
+                $deferred->resolve(false);
             }
         );
         return $deferred->promise();
@@ -104,9 +115,9 @@ abstract class AbstractCache extends Component
 
         $key = $this->buildKey($key);
         $this->getValue($key)->then(function () use ($deferred){
-            $deferred->resolve();
+            $deferred->resolve(true);
         }, function () use ($deferred){
-            $deferred->reject();
+            $deferred->resolve(false);
         });
         return $deferred->promise();
     }
@@ -131,6 +142,7 @@ abstract class AbstractCache extends Component
         $this->getValues(array_values($keyMap))->then(
             function($values) use($deferred, $keyMap) {
                 $results = [];
+                $hashChanged = [];
 
                 foreach ($keyMap as $key => $newKey) {
                     $results[$key] = false;
@@ -140,14 +152,27 @@ abstract class AbstractCache extends Component
                         } else {
                             $value = $this->serializer === null ? unserialize($values[$newKey])
                                 : call_user_func($this->serializer[1], $values[$newKey]);
-                            if (is_array($value) && !($value[1] instanceof AbstractDependency && $value[1]->getHasChanged($this))) {
-                                $results[$key] = $value[0];
+                            if (is_array($value)) {
+                               $results[$key] = $value[0];
+                               if($value[1] instanceof AbstractDependency) {
+                                   $hashChanged[$key] = $value[1]->getHasChanged($this);
+                               }
                             }
                         }
                     }
                 }
-
-                $deferred->resolve($results);
+                if(count($hashChanged) === 0) {
+                    $deferred->resolve($results);
+                } else {
+                    PromiseUtil::all($hashChanged)->then(function($hashChanged) use (&$results, $deferred){
+                        foreach ($hashChanged as $key => $isHashChanged){
+                            if($isHashChanged === false) {
+                                $results[$key] = false;
+                            }
+                        }
+                        $deferred->resolve($results);
+                    });
+                }
             }
         );
 

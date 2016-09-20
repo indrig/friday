@@ -8,7 +8,7 @@ class FulfilledPromise implements ExtendedPromiseInterface, CancellablePromiseIn
     public function __construct($value = null)
     {
         if ($value instanceof PromiseInterface) {
-            throw new \InvalidArgumentException('You cannot create React\Promise\FulfilledPromise with a promise. Use React\Promise\resolve($promiseOrValue) instead.');
+            throw new \InvalidArgumentException('You cannot create Friday\Promise\FulfilledPromise with a promise. Use Friday\Promise\resolve($promiseOrValue) instead.');
         }
 
         $this->value = $value;

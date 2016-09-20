@@ -2,7 +2,9 @@
 namespace Friday\Cache;
 
 use Friday\Base\BaseObject;
-
+use Friday\Promise\Deferred;
+use Friday\Promise\PromiseInterface;
+use Friday\Promise\Util as PromiseUtil;
 /**
  * Dependency is the base class for cache dependency classes.
  *
@@ -47,20 +49,30 @@ abstract class AbstractDependency extends BaseObject
     /**
      * Returns a value indicating whether the dependency has changed.
      * @param AbstractCache $cache the cache component that is currently evaluating this dependency
-     * @return boolean whether the dependency has changed.
+     * @return PromiseInterface
      */
-    public function getHasChanged($cache)
+    public function getHasChanged($cache) : PromiseInterface
     {
+        $deferred = new Deferred();
+
         if ($this->reusable) {
             $hash = $this->generateReusableHash();
             if (!array_key_exists($hash, self::$_reusableData)) {
-                self::$_reusableData[$hash] = $this->generateDependencyData($cache);
+                $this->generateDependencyData($cache)->then(function($data) use ($deferred, $hash){
+                    self::$_reusableData[$hash] = $data;
+
+                    $deferred->resolve($data !== $this->data);
+                });
+            } else {
+                $deferred->resolve(self::$_reusableData[$hash] !== $this->data);
             }
-            $data = self::$_reusableData[$hash];
         } else {
-            $data = $this->generateDependencyData($cache);
+            $this->generateDependencyData($cache)->then(function($data) use($deferred) {
+                $deferred->resolve($data !== $this->data);
+            });
         }
-        return $data !== $this->data;
+
+        return $deferred->promise();
     }
     /**
      * Resets all cached data for reusable dependencies.
@@ -88,5 +100,5 @@ abstract class AbstractDependency extends BaseObject
      * @param AbstractCache $cache the cache component that is currently evaluating this dependency
      * @return mixed the data needed to determine if dependency has been changed.
      */
-    abstract protected function generateDependencyData($cache);
+    abstract protected function generateDependencyData($cache) : PromiseInterface;
 }
