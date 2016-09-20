@@ -13,6 +13,7 @@ use Friday\EventLoop\LoopInterface;
  *
  * @property LoopInterface $runLoop
  * @property Security $security
+ * @property Friday\Db\Adapter $db
  * @property AbstractErrorHandler $errorHandler
  * @property \Friday\Cache\AbstractCache $cache
  *
@@ -334,5 +335,11 @@ class AbstractApplication extends Module {
      */
     public function getSecurity(){
         return $this->get('security');
+    }
+    /**
+     * @return Friday\Db\Adapter
+     */
+    public function getDb(){
+        return $this->get('db');
     }
 }
