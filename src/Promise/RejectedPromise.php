@@ -1,14 +1,17 @@
 <?php
 namespace Friday\Promise;
 
-class RejectedPromise implements ExtendedPromiseInterface, CancellablePromiseInterface
+use Friday\Helper\PromiseHelper;
+use Friday\Promise\Exception\UnhandledRejectionException;
+
+class RejectedPromise implements PromiseInterface, CancellablePromiseInterface
 {
     private $reason;
 
     public function __construct($reason = null)
     {
         if ($reason instanceof PromiseInterface) {
-            throw new \InvalidArgumentException('You cannot create Friday\Promise\RejectedPromise with a promise. Use Friday\Promise\Util::reject($promiseOrValue) instead.');
+            throw new \InvalidArgumentException('You cannot create Friday\Promise\RejectedPromise with a promise. Use Friday\Helper\PromiseHelper::reject($promiseOrValue) instead.');
         }
 
         $this->reason = $reason;
@@ -21,7 +24,7 @@ class RejectedPromise implements ExtendedPromiseInterface, CancellablePromiseInt
         }
 
         return new Promise(function (callable $resolve, callable $reject) use ($onRejected) {
-            Util::queue()->enqueue(function () use ($resolve, $reject, $onRejected) {
+            PromiseHelper::queue()->enqueue(function () use ($resolve, $reject, $onRejected) {
                 try {
                     $resolve($onRejected($this->reason));
                 } catch (\Throwable $exception) {
@@ -35,7 +38,7 @@ class RejectedPromise implements ExtendedPromiseInterface, CancellablePromiseInt
 
     public function done(callable $onFulfilled = null, callable $onRejected = null)
     {
-        Util::queue()->enqueue(function () use ($onRejected) {
+        PromiseHelper::queue()->enqueue(function () use ($onRejected) {
             if (null === $onRejected) {
                 throw UnhandledRejectionException::resolve($this->reason);
             }
@@ -46,7 +49,7 @@ class RejectedPromise implements ExtendedPromiseInterface, CancellablePromiseInt
                 throw UnhandledRejectionException::resolve($result->reason);
             }
 
-            if ($result instanceof ExtendedPromiseInterface) {
+            if ($result instanceof PromiseInterface) {
                 $result->done();
             }
         });
@@ -54,7 +57,7 @@ class RejectedPromise implements ExtendedPromiseInterface, CancellablePromiseInt
 
     public function otherwise(callable $onRejected)
     {
-        if (!Util::_checkTypehint($onRejected, $this->reason)) {
+        if (!PromiseHelper::_checkTypehint($onRejected, $this->reason)) {
             return $this;
         }
 
@@ -64,7 +67,7 @@ class RejectedPromise implements ExtendedPromiseInterface, CancellablePromiseInt
     public function always(callable $onFulfilledOrRejected)
     {
         return $this->then(null, function ($reason) use ($onFulfilledOrRejected) {
-            return Util::resolve($onFulfilledOrRejected())->then(function () use ($reason) {
+            return PromiseHelper::resolve($onFulfilledOrRejected())->then(function () use ($reason) {
                 return new RejectedPromise($reason);
             });
         });

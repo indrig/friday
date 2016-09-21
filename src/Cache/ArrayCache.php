@@ -1,7 +1,8 @@
 <?php
 namespace Friday\Cache;
-use Friday\Promise\ExtendedPromiseInterface;
-use Friday\Promise\Util as PromiseUtil;
+use Friday\Helper\PromiseHelper;
+use Friday\Promise\PromiseInterface;
+
 /**
  * ArrayCache provides caching for the current request only by storing the values in an array.
  *
@@ -16,35 +17,35 @@ class ArrayCache extends AbstractCache
     /**
      * @inheritdoc
      */
-    public function exists($key) : ExtendedPromiseInterface
+    public function exists($key) : PromiseInterface
     {
         $key = $this->buildKey($key);
 
-        return PromiseUtil::resolve(isset($this->_cache[$key]) && ($this->_cache[$key][1] === 0 || $this->_cache[$key][1] > microtime(true)));
+        return PromiseHelper::resolve(isset($this->_cache[$key]) && ($this->_cache[$key][1] === 0 || $this->_cache[$key][1] > microtime(true)));
     }
     /**
      * @inheritdoc
      */
-    protected function getValue($key) : ExtendedPromiseInterface
+    protected function getValue($key) : PromiseInterface
     {
         if (isset($this->_cache[$key]) && ($this->_cache[$key][1] === 0 || $this->_cache[$key][1] > microtime(true))) {
-            return PromiseUtil::resolve($this->_cache[$key][0]);
+            return PromiseHelper::resolve($this->_cache[$key][0]);
         } else {
-            return PromiseUtil::resolve(false);
+            return PromiseHelper::resolve(false);
         }
     }
     /**
      * @inheritdoc
      */
-    protected function setValue($key, $value, $duration) : ExtendedPromiseInterface
+    protected function setValue($key, $value, $duration) : PromiseInterface
     {
         $this->_cache[$key] = [$value, $duration === 0 ? 0 : microtime(true) + $duration];
-        return PromiseUtil::resolve(true);
+        return PromiseHelper::resolve(true);
     }
     /**
      * @inheritdoc
      */
-    protected function addValue($key, $value, $duration) : ExtendedPromiseInterface
+    protected function addValue($key, $value, $duration) : PromiseInterface
     {
         if (isset($this->_cache[$key]) && ($this->_cache[$key][1] === 0 || $this->_cache[$key][1] > microtime(true))) {
             return PromiseUtil::resolve(true);
@@ -56,7 +57,7 @@ class ArrayCache extends AbstractCache
     /**
      * @inheritdoc
      */
-    protected function deleteValue($key) : ExtendedPromiseInterface
+    protected function deleteValue($key) : PromiseInterface
     {
         unset($this->_cache[$key]);
         return PromiseUtil::resolve(true);
@@ -64,7 +65,7 @@ class ArrayCache extends AbstractCache
     /**
      * @inheritdoc
      */
-    protected function flushValues() : ExtendedPromiseInterface
+    protected function flushValues() : PromiseInterface
     {
         $this->_cache = [];
         return PromiseUtil::resolve();

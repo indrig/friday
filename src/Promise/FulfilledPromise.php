@@ -1,14 +1,16 @@
 <?php
 namespace Friday\Promise;
 
-class FulfilledPromise implements ExtendedPromiseInterface, CancellablePromiseInterface
+use Friday\Helper\PromiseHelper;
+
+class FulfilledPromise implements PromiseInterface, CancellablePromiseInterface
 {
     private $value;
 
     public function __construct($value = null)
     {
         if ($value instanceof PromiseInterface) {
-            throw new \InvalidArgumentException('You cannot create Friday\Promise\FulfilledPromise with a promise. Use Friday\Promise\Util::resolve($promiseOrValue) instead.');
+            throw new \InvalidArgumentException('You cannot create Friday\Promise\FulfilledPromise with a promise. Use Friday\Helper\PromiseHelper::resolve($promiseOrValue) instead.');
         }
 
         $this->value = $value;
@@ -21,7 +23,7 @@ class FulfilledPromise implements ExtendedPromiseInterface, CancellablePromiseIn
         }
 
         return new Promise(function (callable $resolve, callable $reject) use ($onFulfilled) {
-            Util::queue()->enqueue(function () use ($resolve, $reject, $onFulfilled) {
+            PromiseHelper::queue()->enqueue(function () use ($resolve, $reject, $onFulfilled) {
                 try {
                     $resolve($onFulfilled($this->value));
                 } catch (\Throwable $exception) {
@@ -39,10 +41,10 @@ class FulfilledPromise implements ExtendedPromiseInterface, CancellablePromiseIn
             return;
         }
 
-        Util::queue()->enqueue(function () use ($onFulfilled) {
+        PromiseHelper::queue()->enqueue(function () use ($onFulfilled) {
             $result = $onFulfilled($this->value);
 
-            if ($result instanceof ExtendedPromiseInterface) {
+            if ($result instanceof PromiseInterface) {
                 $result->done();
             }
         });
@@ -56,7 +58,7 @@ class FulfilledPromise implements ExtendedPromiseInterface, CancellablePromiseIn
     public function always(callable $onFulfilledOrRejected)
     {
         return $this->then(function ($value) use ($onFulfilledOrRejected) {
-            return Util::resolve($onFulfilledOrRejected())->then(function () use ($value) {
+            return PromiseHelper::resolve($onFulfilledOrRejected())->then(function () use ($value) {
                 return $value;
             });
         });

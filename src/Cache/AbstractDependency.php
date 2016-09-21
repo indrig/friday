@@ -4,7 +4,6 @@ namespace Friday\Cache;
 use Friday\Base\BaseObject;
 use Friday\Promise\Deferred;
 use Friday\Promise\PromiseInterface;
-use Friday\Promise\Util as PromiseUtil;
 /**
  * Dependency is the base class for cache dependency classes.
  *

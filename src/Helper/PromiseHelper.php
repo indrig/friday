@@ -1,7 +1,16 @@
 <?php
-namespace Friday\Promise;
+namespace Friday\Helper;
 
-class Utilw
+use Friday\Promise\CancellationQueue;
+use Friday\Promise\Exception\LengthException;
+use Friday\Promise\FulfilledPromise;
+use Friday\Promise\Promise;
+use Friday\Promise\PromiseInterface;
+use Friday\Promise\Queue\QueueInterface;
+use Friday\Promise\Queue\SynchronousQueue;
+use Friday\Promise\RejectedPromise;
+
+class PromiseHelper
 {
     public static function resolve($promiseOrValue = null)
     {
@@ -17,6 +26,9 @@ class Utilw
             }
 
             return new Promise(function ($resolve, $reject) use ($promiseOrValue) {
+                /**
+                 * @var PromiseInterface $promiseOrValue
+                 */
                 $promiseOrValue->then($resolve, $reject);
             }, $canceller);
         }
@@ -92,7 +104,7 @@ class Utilw
 
         if ($len < $howMany) {
             return static::reject(
-                new Exception\LengthException(
+                new LengthException(
                     sprintf(
                         'Input array must contain at least %d item%s but contains only %s item%s.',
                         $howMany,
@@ -188,7 +200,9 @@ class Utilw
 
             $wrappedReduceFunc = function ($current, $val) use ($reduceFunc, $cancellationQueue, $total, &$i) {
                 $cancellationQueue->enqueue($val);
-
+                /**
+                 * @var PromiseInterface $current
+                 */
                 return $current
                     ->then(function ($c) use ($reduceFunc, $total, &$i, $val) {
                         return static::resolve($val)
@@ -205,7 +219,7 @@ class Utilw
         }, $cancellationQueue);
     }
 
-    public static function queue(Queue\QueueInterface $queue = null)
+    public static function queue(QueueInterface $queue = null)
     {
         static $globalQueue;
 
@@ -214,7 +228,7 @@ class Utilw
         }
 
         if (!$globalQueue) {
-            $globalQueue = new Queue\SynchronousQueue();
+            $globalQueue = new SynchronousQueue();
         }
 
         return $globalQueue;

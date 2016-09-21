@@ -2,7 +2,9 @@
 
 namespace Friday\Promise;
 
-class Promise implements ExtendedPromiseInterface, CancellablePromiseInterface
+use Friday\Helper\PromiseHelper;
+
+class Promise implements PromiseInterface, CancellablePromiseInterface
 {
     private $canceller;
     private $result;
@@ -50,7 +52,7 @@ class Promise implements ExtendedPromiseInterface, CancellablePromiseInterface
             return $this->result()->done($onFulfilled, $onRejected);
         }
 
-        $this->handlers[] = function (ExtendedPromiseInterface $promise) use ($onFulfilled, $onRejected) {
+        $this->handlers[] = function (PromiseInterface $promise) use ($onFulfilled, $onRejected) {
             $promise
                 ->done($onFulfilled, $onRejected);
         };
@@ -74,11 +76,11 @@ class Promise implements ExtendedPromiseInterface, CancellablePromiseInterface
     public function always(callable $onFulfilledOrRejected)
     {
         return $this->then(function ($value) use ($onFulfilledOrRejected) {
-            return Util::resolve($onFulfilledOrRejected())->then(function () use ($value) {
+            return PromiseHelper::resolve($onFulfilledOrRejected())->then(function () use ($value) {
                 return $value;
             });
         }, function ($reason) use ($onFulfilledOrRejected) {
-            return Util::resolve($onFulfilledOrRejected())->then(function () use ($reason) {
+            return PromiseHelper::resolve($onFulfilledOrRejected())->then(function () use ($reason) {
                 return new RejectedPromise($reason);
             });
         });
@@ -99,7 +101,7 @@ class Promise implements ExtendedPromiseInterface, CancellablePromiseInterface
     private function resolver(callable $onFulfilled = null, callable $onRejected = null)
     {
         return function ($resolve, $reject) use ($onFulfilled, $onRejected) {
-            $this->handlers[] = function (ExtendedPromiseInterface $promise) use ($onFulfilled, $onRejected, $resolve, $reject) {
+            $this->handlers[] = function (PromiseInterface $promise) use ($onFulfilled, $onRejected, $resolve, $reject) {
                 $promise
                     ->then($onFulfilled, $onRejected)
                     ->done($resolve, $reject);
@@ -113,7 +115,7 @@ class Promise implements ExtendedPromiseInterface, CancellablePromiseInterface
             return;
         }
 
-        $this->settle(Util::resolve($value));
+        $this->settle(PromiseHelper::resolve($value));
     }
 
     private function reject($reason = null)
@@ -122,10 +124,10 @@ class Promise implements ExtendedPromiseInterface, CancellablePromiseInterface
             return;
         }
 
-        $this->settle(Util::reject($reason));
+        $this->settle(PromiseHelper::reject($reason));
     }
 
-    private function settle(ExtendedPromiseInterface $result)
+    private function settle(PromiseInterface $result)
     {
         $handlers = $this->handlers;
 

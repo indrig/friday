@@ -4,8 +4,8 @@ namespace Friday\Cache;
 use Friday;
 use Friday\Helper\AliasHelper;
 use Friday\Helper\FileHelper;
-use Friday\Promise\ExtendedPromiseInterface;
-use Friday\Promise\Util as PromiseUtil;
+use Friday\Helper\PromiseHelper;
+use Friday\Promise\PromiseInterface;
 
 /**
  * FileCache implements a cache component using files.
@@ -69,16 +69,16 @@ class FileCache extends AbstractCache
     /**
      * @inheritdoc
      */
-    public function exists($key) : ExtendedPromiseInterface
+    public function exists($key) : PromiseInterface
     {
         $cacheFile = $this->getCacheFile($this->buildKey($key));
-        return PromiseUtil::resolve(@filemtime($cacheFile) > time());
+        return PromiseHelper::resolve(@filemtime($cacheFile) > time());
     }
 
     /**
      * @inheritdoc
      */
-    protected function getValue($key) : ExtendedPromiseInterface
+    protected function getValue($key) : PromiseInterface
     {
 
         $cacheFile = $this->getCacheFile($key);
@@ -91,16 +91,16 @@ class FileCache extends AbstractCache
                 $cacheValue = @stream_get_contents($fp);
                 @flock($fp, LOCK_UN);
                 @fclose($fp);
-                return PromiseUtil::resolve($cacheValue);
+                return PromiseHelper::resolve($cacheValue);
             }
         }
-        return PromiseUtil::resolve(false);
+        return PromiseHelper::resolve(false);
     }
 
     /**
      * @inheritdoc
      */
-    protected function setValue($key, $value, $duration) : ExtendedPromiseInterface
+    protected function setValue($key, $value, $duration) : PromiseInterface
     {
         $this->gc();
         $cacheFile = $this->getCacheFile($key);
@@ -115,22 +115,22 @@ class FileCache extends AbstractCache
             if ($duration <= 0) {
                 $duration = 31536000; // 1 year
             }
-            return PromiseUtil::resolve(@touch($cacheFile, $duration + time()));
+            return PromiseHelper::resolve(@touch($cacheFile, $duration + time()));
         } else {
             $error = error_get_last();
             Friday::warning("Unable to write cache file '{$cacheFile}': {$error['message']}", __METHOD__);
-            return PromiseUtil::resolve(false);
+            return PromiseHelper::resolve(false);
         }
     }
 
     /**
      * @inheritdoc
      */
-    protected function addValue($key, $value, $duration) : ExtendedPromiseInterface
+    protected function addValue($key, $value, $duration) : PromiseInterface
     {
         $cacheFile = $this->getCacheFile($key);
         if (@filemtime($cacheFile) > time()) {
-            return PromiseUtil::resolve(false);
+            return PromiseHelper::resolve(false);
         }
         return $this->setValue($key, $value, $duration);
     }
@@ -138,10 +138,10 @@ class FileCache extends AbstractCache
     /**
      * @inheritdoc
      */
-    protected function deleteValue($key) : ExtendedPromiseInterface
+    protected function deleteValue($key) : PromiseInterface
     {
         $cacheFile = $this->getCacheFile($key);
-        return PromiseUtil::resolve(@unlink($cacheFile));
+        return PromiseHelper::resolve(@unlink($cacheFile));
     }
 
     /**
@@ -164,7 +164,7 @@ class FileCache extends AbstractCache
     /**
      * @inheritdoc
      */
-    protected function flushValues() : ExtendedPromiseInterface
+    protected function flushValues() : PromiseInterface
     {
         return $this->gc(true, false);
     }
@@ -175,15 +175,15 @@ class FileCache extends AbstractCache
      * @param boolean $expiredOnly whether to removed expired cache files only.
      * If false, all cache files under [[cachePath]] will be removed.
      *
-     * @return ExtendedPromiseInterface
+     * @return PromiseInterface
      */
-    public function gc($force = false, $expiredOnly = true) : ExtendedPromiseInterface
+    public function gc($force = false, $expiredOnly = true) : PromiseInterface
     {
         if ($force || mt_rand(0, 1000000) < $this->gcProbability) {
             return $this->gcRecursive($this->cachePath, $expiredOnly);
         }
 
-        return PromiseUtil::resolve();
+        return PromiseHelper::resolve();
     }
     /**
      * Recursively removing expired cache files under a directory.
@@ -192,9 +192,9 @@ class FileCache extends AbstractCache
      * @param boolean $expiredOnly whether to only remove expired cache files. If false, all files
      * under `$path` will be removed.
      *
-     * @return ExtendedPromiseInterface
+     * @return PromiseInterface
      */
-    protected function gcRecursive($path, $expiredOnly) : ExtendedPromiseInterface
+    protected function gcRecursive($path, $expiredOnly) : PromiseInterface
     {
 
         if (($handle = opendir($path)) !== false) {
@@ -221,6 +221,6 @@ class FileCache extends AbstractCache
             closedir($handle);
         }
 
-        return PromiseUtil::resolve();
+        return PromiseHelper::resolve();
     }
 }

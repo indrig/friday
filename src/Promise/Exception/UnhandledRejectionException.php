@@ -1,7 +1,7 @@
 <?php
-namespace Friday\Promise;
+namespace Friday\Promise\Exception;
 
-class UnhandledRejectionException extends \RuntimeException
+class UnhandledRejectionException extends \RuntimeException implements ExceptionInterface
 {
     private $reason;
 

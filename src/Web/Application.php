@@ -3,7 +3,6 @@ namespace Friday\Web;
 
 use Friday;
 use Friday\Base\Exception\InvalidRouteException;
-use Friday\Promise\ExtendedPromiseInterface;
 use Friday\Promise\PromiseInterface;
 use Friday\Web\Event\ConnectionContextErrorEvent;
 use Friday\Web\Event\ConnectionContextEvent;
@@ -112,7 +111,7 @@ class Application extends AbstractApplication {
                             'connectionContent' => $connectionContent
                         ]));
 
-                        if($result instanceof ExtendedPromiseInterface) {
+                        if($result instanceof PromiseInterface) {
                             $result->always(function ($result) use ($connectionContent){
                                 if ($result instanceof Response) {
                                     $response = $result;

@@ -2,7 +2,7 @@
 
 namespace Friday\Promise;
 
-class LazyPromise implements ExtendedPromiseInterface, CancellablePromiseInterface
+class LazyPromise implements PromiseInterface, CancellablePromiseInterface
 {
     private $factory;
     private $promise;
@@ -41,7 +41,7 @@ class LazyPromise implements ExtendedPromiseInterface, CancellablePromiseInterfa
     {
         if (null === $this->promise) {
             try {
-                $this->promise = Util::resolve(call_user_func($this->factory));
+                $this->promise = PromiseHelper::resolve(call_user_func($this->factory));
             } catch (\Throwable $exception) {
                 $this->promise = new RejectedPromise($exception);
             } catch (\Exception $exception) {
