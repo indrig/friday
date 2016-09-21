@@ -301,7 +301,7 @@ class Response extends Component
     {
         $deferred = new Deferred();
 
-        $this->connectionContext->post(function () use ($deferred, $finishAfterSend) {
+        $this->connectionContext->task(function () use ($deferred, $finishAfterSend) {
             if ($this->_isSent) {
                 $deferred->reject();
             } else {
@@ -363,7 +363,7 @@ class Response extends Component
     {
         $deferred = new Deferred();
 
-        $this->connectionContext->post(function () use ($deferred) {
+        $this->connectionContext->task(function () use ($deferred) {
             if (isset($this->formatters[$this->format])) {
                 $formatter = $this->formatters[$this->format];
                 if (!is_object($formatter)) {
@@ -448,7 +448,7 @@ class Response extends Component
     protected function sendHeaders()
     {
         $deferred = new Deferred();
-        $this->connectionContext->post(function () use ($deferred) {
+        $this->connectionContext->task(function () use ($deferred) {
             if ($this->_isHeadersSent) {
                 $deferred->reject();
                 return;
@@ -519,7 +519,7 @@ class Response extends Component
     protected function sendContent()
     {
         $deferred = new Deferred();
-        $this->connectionContext->post(function () use ($deferred) {
+        $this->connectionContext->task(function () use ($deferred) {
             if ($this->stream === null) {
                 $this->write($this->content);
                 $deferred->resolve();

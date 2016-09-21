@@ -40,7 +40,7 @@ class Server extends Component
             throw new ConnectionException($message, $errNo);
         }
         stream_set_blocking($this->_socket, 0);
-        Friday::$app->runLoop->addReadStream($this->_socket, function ($socket) {
+        Friday::$app->getLooper()->addReadStream($this->_socket, function ($socket) {
             $newSocket = @stream_socket_accept($socket);
             if (false === $newSocket) {
                 $this->trigger(static::EVENT_ERROR, new ErrorEvent());
@@ -73,7 +73,7 @@ class Server extends Component
 
     public function shutdown()
     {
-        Friday::$app->runLoop->removeStream($this->_socket);
+        Friday::$app->getLooper()->removeStream($this->_socket);
         fclose($this->_socket);
     }
 

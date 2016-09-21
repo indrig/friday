@@ -1,10 +1,10 @@
 <?php
-namespace Friday\EventLoop;
+namespace Friday\Base;
 
 use SplObjectStorage;
 use SplPriorityQueue;
 
-class Timers
+class Tasks
 {
     /**
      * @var float
@@ -14,7 +14,7 @@ class Timers
     /**
      * @var SplObjectStorage
      */
-    private $timers;
+    private $tasks;
 
     /**
      * @var SplPriorityQueue
@@ -23,8 +23,8 @@ class Timers
 
     public function __construct()
     {
-        $this->timers   = new SplObjectStorage();
-        $this->scheduler = new SplPriorityQueue();
+        $this->tasks       = new SplObjectStorage();
+        $this->scheduler    = new SplPriorityQueue();
     }
 
     /**
@@ -44,42 +44,42 @@ class Timers
     }
 
     /**
-     * @param TimerInterface $timer
+     * @param Task $timer
      */
-    public function add(TimerInterface $timer)
+    public function add(Task $timer)
     {
         $interval = $timer->getInterval();
         $scheduledAt = $interval + $this->getTime();
-        $this->timers->attach($timer, $scheduledAt);
+        $this->tasks->attach($timer, $scheduledAt);
         $this->scheduler->insert($timer, -$scheduledAt);
     }
 
     /**
-     * @param TimerInterface $timer
+     * @param Task $timer
      * @return bool
      */
-    public function contains(TimerInterface $timer) : bool
+    public function contains(Task $timer) : bool
     {
-        return $this->timers->contains($timer);
+        return $this->tasks->contains($timer);
     }
 
     /**
-     * @param TimerInterface $timer
+     * @param Task $timer
      */
-    public function cancel(TimerInterface $timer)
+    public function cancel(Task $timer)
     {
-        $this->timers->detach($timer);
+        $this->tasks->detach($timer);
     }
 
     /**
-     * @return Timer
+     * @return Task
      */
     public function getFirst()
     {
         while ($this->scheduler->count()) {
             $timer = $this->scheduler->top();
-            if ($this->timers->contains($timer)) {
-                return $this->timers[$timer];
+            if ($this->tasks->contains($timer)) {
+                return $this->tasks[$timer];
             }
             $this->scheduler->extract();
         }
@@ -91,7 +91,7 @@ class Timers
      */
     public function isEmpty() : bool
     {
-        return count($this->timers) === 0;
+        return count($this->tasks) === 0;
     }
 
     /**
@@ -100,7 +100,7 @@ class Timers
     public function tick()
     {
         $time = $this->updateTime();
-        $timers = $this->timers;
+        $timers = $this->tasks;
         $scheduler = $this->scheduler;
         while (!$scheduler->isEmpty()) {
             $timer = $scheduler->top();

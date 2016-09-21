@@ -53,7 +53,7 @@ class Buffer extends Component implements WritableStreamInterface
         if (!$this->listening && $this->data !== '') {
             $this->listening = true;
 
-            Friday::$app->runLoop->addWriteStream($this->stream, array($this, 'handleWrite'));
+            Friday::$app->getLooper()->addWriteStream($this->stream, array($this, 'handleWrite'));
         }
 
         $belowSoftLimit = strlen($this->data) < $this->softLimit;
@@ -148,7 +148,7 @@ class Buffer extends Component implements WritableStreamInterface
         }
 
         if (0 === strlen($this->data)) {
-            Friday::$app->runLoop->removeWriteStream($this->stream);
+            Friday::$app->getLooper()->removeWriteStream($this->stream);
             $this->listening = false;
 
             $this->trigger(static::EVENT_FULL_DRAIN, new Event());

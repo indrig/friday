@@ -103,13 +103,13 @@ class Stream extends BaseObject implements DuplexStreamInterface
 
     public function pause()
     {
-        Friday::$app->runLoop->removeReadStream($this->stream);
+        Friday::$app->getLooper()->removeReadStream($this->stream);
     }
 
     public function resume()
     {
         if ($this->readable) {
-            Friday::$app->runLoop->addReadStream($this->stream, array($this, 'handleData'));
+            Friday::$app->getLooper()->addReadStream($this->stream, array($this, 'handleData'));
         }
     }
 
@@ -137,7 +137,7 @@ class Stream extends BaseObject implements DuplexStreamInterface
         $this->trigger(static::EVENT_END);
         $this->trigger(static::EVENT_CLOSE);
 
-        Friday::$app->runLoop->removeStream($this->stream);
+        Friday::$app->getLooper()->removeStream($this->stream);
 
         $this->buffer->clearEvents();
         $this->clearEvents();

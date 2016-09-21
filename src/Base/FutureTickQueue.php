@@ -1,18 +1,18 @@
 <?php
-namespace Friday\EventLoop;
+namespace Friday\Base;
 
 use SplQueue;
 
 class FutureTickQueue
 {
-    private $eventLoop;
+    private $looper;
     private $queue;
     /**
-     * @param LoopInterface $eventLoop The event loop passed as the first parameter to callbacks.
+     * @param Looper $eventLoop The event loop passed as the first parameter to callbacks.
      */
-    public function __construct(LoopInterface $eventLoop)
+    public function __construct(Looper $looper)
     {
-        $this->eventLoop = $eventLoop;
+        $this->looper = $looper;
         $this->queue = new SplQueue();
     }
     /**
@@ -36,7 +36,7 @@ class FutureTickQueue
         while ($count--) {
             call_user_func(
                 $this->queue->dequeue(),
-                $this->eventLoop
+                $this->looper
             );
         }
     }

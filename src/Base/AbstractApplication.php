@@ -60,6 +60,11 @@ class AbstractApplication extends Module {
      */
     private $_vendorPath;
 
+    /**
+     * @var Looper
+     */
+    private $_looper;
+
     public $controllerNamespace = 'Application\Controller';
 
     /**
@@ -239,7 +244,6 @@ class AbstractApplication extends Module {
     public function coreComponents()
     {
         return [
-            'runLoop' => ['class' => 'Friday\EventLoop\StreamSelectLoop'],
             'security' => ['class' => 'Friday\Base\Security'],
             'log' => ['class' => 'Friday\Log\Dispatcher'],
         ];
@@ -253,7 +257,7 @@ class AbstractApplication extends Module {
     }
 
     public function run(){
-        $this->runLoop->run();
+        //$this->getLooper()->loop();
     }
 
     /**
@@ -341,5 +345,15 @@ class AbstractApplication extends Module {
      */
     public function getDb(){
         return $this->get('db');
+    }
+
+    /**
+     * @return Looper
+     */
+    public function getLooper(){
+        if($this->_looper === null) {
+            $this->_looper = new Looper();
+        }
+        return $this->_looper;
     }
 }

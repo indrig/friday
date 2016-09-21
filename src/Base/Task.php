@@ -1,14 +1,12 @@
 <?php
-namespace Friday\EventLoop;
+namespace Friday\Base;
 
-
-class Timer implements TimerInterface
-{
+class Task{
     const MIN_INTERVAL = 0.000001;
     /**
-     * @var LoopInterface
+     * @var Looper
      */
-    protected $loop;
+    protected $looper;
 
     /**
      * @var float
@@ -32,29 +30,30 @@ class Timer implements TimerInterface
     /**
      * Constructor initializes the fields of the Timer
      *
-     * @param LoopInterface $loop     The loop with which this timer is associated
+     * @param Looper $loop  The loop with which this task is associated
      * @param float         $interval The interval after which this timer will execute, in seconds
      * @param callable      $callback The callback that will be executed when this timer elapses
      * @param bool          $periodic Whether the time is periodic
-     * @param mixed         $data     Arbitrary data associated with timer
+     * @param mixed         $data     Arbitrary data associated with task
      */
-    public function __construct(LoopInterface $loop, float $interval, callable $callback, bool $periodic = false, mixed $data = null)
+    public function __construct(Looper $loop, callable $callback, float $interval= Task::MIN_INTERVAL, bool $periodic = false, $data = null)
     {
         if ($interval < self::MIN_INTERVAL) {
             $interval = self::MIN_INTERVAL;
         }
-        $this->loop = $loop;
-        $this->interval = (float) $interval;
+
+        $this->looper   = $loop;
+        $this->interval = $interval;
         $this->callback = $callback;
-        $this->periodic = (bool) $periodic;
-        $this->data = null;
+        $this->periodic = $periodic;
+        $this->data     = $data;
     }
     /**
      * {@inheritdoc}
      */
-    public function getLoop() : LoopInterface
+    public function getLooper() : Looper
     {
-        return $this->loop;
+        return $this->looper;
     }
     /**
      * {@inheritdoc}
@@ -70,20 +69,24 @@ class Timer implements TimerInterface
     {
         return $this->callback;
     }
+
     /**
-     * {@inheritdoc}
+     * Set arbitrary data associated with task
+     *
+     * @param mixed $data
      */
     public function setData($data)
     {
         $this->data = $data;
     }
     /**
-     * {@inheritdoc}
+     * Get arbitrary data associated with task
      */
     public function getData()
     {
         return $this->data;
     }
+
     /**
      * {@inheritdoc}
      */
@@ -96,13 +99,13 @@ class Timer implements TimerInterface
      */
     public function isActive() : bool
     {
-        return $this->loop->isTimerActive($this);
+        return $this->looper->isTaskActive($this);
     }
     /**
      * {@inheritdoc}
      */
-    public function cancel()
+    public function remove()
     {
-        $this->loop->cancelTimer($this);
+        $this->looper->removeCallbacks($this);
     }
 }

@@ -63,15 +63,18 @@ class Application extends AbstractApplication {
      */
     public function run()
     {
+        $looper = $this->getLooper();
+
         $this->server
             ->on(Server::EVENT_REQUEST, [$this, 'handleRequest'])
             ->run();
 
 
-        $this->runLoop->addPeriodicTimer(2, function (){
+        $looper->taskPeriodic(function (){
             Friday\Helper\Console::stdout('memory_usage: '.number_format(memory_get_usage(true),0, '.', ' ') . "b\n");
-        });
-        $this->runLoop->run();
+        }, 2);
+
+        $this->looper->loop();
 
     }
 

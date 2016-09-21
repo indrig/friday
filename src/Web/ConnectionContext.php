@@ -19,7 +19,7 @@ use SplObjectStorage;
  * @property User $user
  * @property Session $session
  * @property string|null $requestedRoute
- * @property Friday\EventLoop\LoopInterface $loop
+ * @property Friday\Base\Looper $looper
  * @property Controller $controller
  * @property bool $isFinished
  */
@@ -43,9 +43,9 @@ class ConnectionContext extends ServiceLocator
     private $_requestedRoute;
 
     /**
-     * @var Friday\EventLoop\LoopInterface
+     * @var Friday\Base\Looper
      */
-    private $_loop;
+    private $_looper;
 
     /**
      * @var Controller
@@ -163,11 +163,11 @@ class ConnectionContext extends ServiceLocator
 
     /**
      * @param callable $callback
-     * @return Friday\EventLoop\TimerInterface
+     * @return Friday\Base\Task
      */
-    public function post(callable $callback)
+    public function task(callable $callback)
     {
-        $timer = $this->loop->addTimer(0.000001, function ($timer) use ($callback) {
+        $timer = $this->looper->task(function ($timer) use ($callback) {
             $application = Friday::$app;
 
             $oldContext = $application->currentContext;
@@ -193,11 +193,11 @@ class ConnectionContext extends ServiceLocator
     /**
      * @param callable $callback
      * @param float $delay
-     * @return Friday\EventLoop\TimerInterface
+     * @return Friday\Base\Task
      */
-    public function postDelayed(callable $callback, float $delay)
+    public function taskWithDelayed(callable $callback, float $delay)
     {
-        $timer = $this->loop->addTimer($delay, function ($timer) use ($callback) {
+        $timer = $this->looper->taskWithDelayed(function ($timer) use ($callback) {
             $application = Friday::$app;
 
             $oldContext = $application->currentContext;
@@ -211,7 +211,7 @@ class ConnectionContext extends ServiceLocator
             $application->currentContext = $oldContext;
 
             $this->_timers->detach($timer);
-        });
+        }, $delay);
 
         $this->_timers->attach($timer);
 
@@ -219,15 +219,15 @@ class ConnectionContext extends ServiceLocator
     }
 
     /**
-     * @return Friday\EventLoop\LoopInterface
+     * @return Friday\Base\Looper
      */
-    public function getLoop()
+    public function getLooper()
     {
-        if ($this->_loop === null) {
-            $this->_loop = Friday::$app->runLoop;
+        if ($this->_looper === null) {
+            $this->_looper = Friday::$app->getLooper();
         }
 
-        return $this->_loop;
+        return $this->_looper;
     }
 
     /**

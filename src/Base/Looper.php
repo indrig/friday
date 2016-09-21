@@ -1,16 +1,13 @@
 <?php
-namespace Friday\EventLoop;
-
-use Friday\Base\Component;
+namespace Friday\Base;
 
 /**
- * Class StreamSelectLoop
- * @package Friday\EventLoop
+ * Class Looper
+ *
+ * @package Friday\Base
  */
-class StreamSelectLoop extends Component implements LoopInterface
-{
+class Looper {
     const MICROSECONDS_PER_SECOND = 1000000;
-
     /**
      * @var NextTickQueue
      */
@@ -20,10 +17,11 @@ class StreamSelectLoop extends Component implements LoopInterface
      * @var FutureTickQueue
      */
     private $futureTickQueue;
+
     /**
-     * @var Timers
+     * @var Tasks
      */
-    private $timers;
+    private $tasks;
 
     /**
      * @var array
@@ -49,14 +47,17 @@ class StreamSelectLoop extends Component implements LoopInterface
      */
     private $running;
 
-    public function init()
+    public function __construct()
     {
+
         $this->nextTickQueue    = new NextTickQueue($this);
         $this->futureTickQueue  = new FutureTickQueue($this);
-        $this->timers           = new Timers();
+        $this->tasks           = new Tasks();
     }
+
     /**
-     * {@inheritdoc}
+     * @param $stream
+     * @param callable $listener
      */
     public function addReadStream($stream, callable $listener)
     {
@@ -66,8 +67,10 @@ class StreamSelectLoop extends Component implements LoopInterface
             $this->readListeners[$key] = $listener;
         }
     }
+
     /**
-     * {@inheritdoc}
+     * @param $stream
+     * @param callable $listener
      */
     public function addWriteStream($stream, callable $listener)
     {
@@ -77,8 +80,9 @@ class StreamSelectLoop extends Component implements LoopInterface
             $this->writeListeners[$key] = $listener;
         }
     }
+
     /**
-     * {@inheritdoc}
+     * @param $stream
      */
     public function removeReadStream($stream)
     {
@@ -99,46 +103,88 @@ class StreamSelectLoop extends Component implements LoopInterface
             $this->writeListeners[$key]
         );
     }
+
     /**
-     * {@inheritdoc}
+     * @param $stream
      */
     public function removeStream($stream)
     {
         $this->removeReadStream($stream);
         $this->removeWriteStream($stream);
     }
+
+    /**
+     * Causes the task r to be added to the message queue.
+     *
+     * @param callable $callback Callback function for calling
+     * @param mixed $data Arbitrary data associated with task
+     * @return Task
+     */
+    public function task(callable $callback, $data = null){
+        $task = new Task($this, $callback, Task::MIN_INTERVAL, false, $data);
+        $this->tasks->add($task);
+        return $task;
+    }
+
+    /**
+     * Causes the callback to be added to the message queue, to be run at a specific time given.
+     * @param callable $callback
+     * @param float $time
+     * @param mixed $data Arbitrary data associated with task
+     * @return Task
+     */
+    public function taskAtTime(callable $callback, float $time, $data = null){
+        $currentTime = microtime(true);
+
+        $task = new Task($this, $callback, $time - $currentTime, false, $data);
+        $this->tasks->add($task);
+        return $task;
+    }
+
+    /**
+     * Causes the callback to be added to the message queue, to be run after the specified amount of time elapses.
+     *
+     * @param callable $callback
+     * @param float $delay
+     * @param mixed $data Arbitrary data associated with task
+     * @return Task
+     */
+    public function taskWithDelayed(callable $callback, float $delay, $data = null){
+        $task = new Task($this, $callback, $delay, false, $data);
+        $this->tasks->add($task);
+        return $task;
+    }
+
+    /**
+     * @param callable $callback
+     * @param float $interval
+     * @param null $data
+     * @param mixed $data Arbitrary data associated with task
+     * @return Task
+     */
+    public function taskPeriodic(callable $callback, float $interval, $data = null){
+        $task = new Task($this, $callback, $interval, true, $data);
+        $this->tasks->add($task);
+        return $task;
+    }
+
+
     /**
      * {@inheritdoc}
      */
-    public function addTimer(float $interval, callable $callback)
+    public function taskCancel(Task $timer)
     {
-        $timer = new Timer($this, $interval, $callback, false);
-        $this->timers->add($timer);
-        return $timer;
+        $this->tasks->cancel($timer);
     }
+
     /**
      * {@inheritdoc}
      */
-    public function addPeriodicTimer(float $interval, callable $callback)
+    public function isTaskActive(Task $timer) : bool
     {
-        $timer = new Timer($this, $interval, $callback, true);
-        $this->timers->add($timer);
-        return $timer;
+        return $this->tasks->contains($timer);
     }
-    /**
-     * {@inheritdoc}
-     */
-    public function cancelTimer(TimerInterface $timer)
-    {
-        $this->timers->cancel($timer);
-    }
-    /**
-     * {@inheritdoc}
-     */
-    public function isTimerActive(TimerInterface $timer) : bool
-    {
-        return $this->timers->contains($timer);
-    }
+
     /**
      * {@inheritdoc}
      */
@@ -146,6 +192,7 @@ class StreamSelectLoop extends Component implements LoopInterface
     {
         $this->nextTickQueue->add($listener);
     }
+
     /**
      * {@inheritdoc}
      */
@@ -153,6 +200,7 @@ class StreamSelectLoop extends Component implements LoopInterface
     {
         $this->futureTickQueue->add($listener);
     }
+
     /**
      * {@inheritdoc}
      */
@@ -160,25 +208,25 @@ class StreamSelectLoop extends Component implements LoopInterface
     {
         $this->nextTickQueue->tick();
         $this->futureTickQueue->tick();
-        $this->timers->tick();
+        $this->tasks->tick();
         $this->waitForStreamActivity(0);
     }
     /**
-     * {@inheritdoc}
+     * Run the message queue in this thread.
      */
-    public function run()
+    public function loop()
     {
         $this->running = true;
         while ($this->running) {
             $this->nextTickQueue->tick();
             $this->futureTickQueue->tick();
-            $this->timers->tick();
+            $this->tasks->tick();
             // Next-tick or future-tick queues have pending callbacks ...
             if (!$this->running || !$this->nextTickQueue->isEmpty() || !$this->futureTickQueue->isEmpty()) {
                 $timeout = 0;
                 // There is a pending timer, only block until it is due ...
-            } elseif ($scheduledAt = $this->timers->getFirst()) {
-                $timeout = $scheduledAt - $this->timers->getTime();
+            } elseif ($scheduledAt = $this->tasks->getFirst()) {
+                $timeout = $scheduledAt - $this->tasks->getTime();
                 if ($timeout < 0) {
                     $timeout = 0;
                 } else {
@@ -194,10 +242,11 @@ class StreamSelectLoop extends Component implements LoopInterface
             $this->waitForStreamActivity($timeout);
         }
     }
+
     /**
-     * {@inheritdoc}
+     * Quits the looper.
      */
-    public function stop()
+    public function quit()
     {
         $this->running = false;
     }
