@@ -2,7 +2,9 @@
 namespace Friday\Web;
 
 use Friday;
+use Friday\Base\Awaitable;
 use Friday\Base\Exception\InvalidRouteException;
+use Friday\Base\ResultOrExceptionWrapperInterface;
 use Friday\Promise\PromiseInterface;
 use Friday\Web\Event\ConnectionContextErrorEvent;
 use Friday\Web\Event\ConnectionContextEvent;
@@ -26,7 +28,8 @@ use Throwable;
  * @property Controller $controller
  * @property ConnectionContext|null $currentContext
  */
-class Application extends AbstractApplication {
+class Application extends AbstractApplication
+{
 
     /**
      * @var SplObjectStorage
@@ -54,9 +57,11 @@ class Application extends AbstractApplication {
     /**
      * @param ConnectionContext $context
      */
-    public function detachContext(ConnectionContext $context){
+    public function detachContext(ConnectionContext $context)
+    {
         $this->_contexts->detach($context);
     }
+
     /**
      *
      */
@@ -69,8 +74,8 @@ class Application extends AbstractApplication {
             ->run();
 
 
-        $looper->taskPeriodic(function (){
-            Friday\Helper\Console::stdout('memory_usage: '.number_format(memory_get_usage(true),0, '.', ' ') . "b\n");
+        $looper->taskPeriodic(function () {
+            Friday\Helper\Console::stdout('memory_usage: ' . number_format(memory_get_usage(true), 0, '.', ' ') . "b\n");
         }, 2);
 
         $this->looper->loop();
@@ -80,7 +85,8 @@ class Application extends AbstractApplication {
     /**
      * @param RequestEvent $event
      */
-    public function handleRequest(RequestEvent $event){
+    public function handleRequest(RequestEvent $event)
+    {
 
         $connectionContent = ConnectionContext::create($event->request, $event->response);
 
@@ -91,29 +97,38 @@ class Application extends AbstractApplication {
             'connectionContent' => $connectionContent
         ]));
 
-        $event->request->resolve()->then(
-            //Success
-            function (array $params) use(&$connectionContent) {
-                $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_AFTER_ROUTING, new ConnectionContextEvent([
-                    'connectionContent' => $connectionContent
-                ]));
-
-                //Select controller and action
-                list ($route, $params) = $params;
-                Friday::trace("Route requested: '{$route}'", __METHOD__);
-                try {
-                    $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_BEFORE_RUN_ACTION,new ConnectionContextEvent([
-                        'connectionContent' => $connectionContent
-                    ]));
-
-                    $connectionContent->runAction($route, $params)->then(function ($result) use($connectionContent){
-                        $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_AFTER_RUN_ACTION, new ConnectionContextEvent([
+        $event->request->resolve()->await(
+        //Success
+            function (ResultOrExceptionWrapperInterface $result) use ($connectionContent) {
+                if ($result->isSucceeded()) {
+                    //Select controller and action
+                    list ($route, $params) = $result->getResult();
+                    Friday::trace("Route requested: '{$route}'", __METHOD__);
+                    try {
+                        $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_BEFORE_RUN_ACTION, new ConnectionContextEvent([
                             'connectionContent' => $connectionContent
                         ]));
+                        $connectionContent->runAction($route, $params)->await(function (ResultOrExceptionWrapperInterface $result) use ($connectionContent) {
+                            if ($result->isSucceeded()) {
+                                $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_AFTER_RUN_ACTION, new ConnectionContextEvent([
+                                    'connectionContent' => $connectionContent
+                                ]));
 
-                        if($result instanceof PromiseInterface) {
-                            $result->always(function ($result) use ($connectionContent){
-                                if ($result instanceof Response) {
+                                $result = $result->getResult();
+                                if ($result instanceof Awaitable) {
+                                    $result->await(function ($result) use ($connectionContent) {
+                                        if ($result instanceof Response) {
+                                            $response = $result;
+                                            $response->send();
+                                        } else {
+                                            $response = $connectionContent->response;
+                                            if ($result !== null) {
+                                                $response->data = $result;
+                                            }
+                                            $response->send();
+                                        }
+                                    });
+                                } elseif ($result instanceof Response) {
                                     $response = $result;
                                     $response->send();
                                 } else {
@@ -123,54 +138,40 @@ class Application extends AbstractApplication {
                                     }
                                     $response->send();
                                 }
-                            });
-                        }elseif ($result instanceof Response) {
-                            $response = $result;
-                            $response->send();
-                        } else {
-                            $response = $connectionContent->response;
-                            if ($result !== null) {
-                                $response->data = $result;
-                            }
-                            $response->send();
-                        }
-                        
-                    }, function ($throwable = null) use ($connectionContent) {
-                        if($throwable !== null) {
-                            if($throwable instanceof InvalidRouteException) {
-                                $throwable = new NotFoundHttpException('Page not found.');
-                            }
-                        }
+                            } else {
+                                $throwable = $result->getException();
 
+                                if ($throwable !== null) {
+                                    if ($throwable instanceof InvalidRouteException) {
+                                        $throwable = new NotFoundHttpException('Page not found.');
+                                    }
+                                }
+
+                                $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_ERROR, new ConnectionContextErrorEvent([
+                                    'connectionContent' => $connectionContent,
+                                    'error' => $throwable
+                                ]));
+
+                                Friday::$app->errorHandler->handleException($throwable);
+                            }
+
+                        });
+
+                    } catch (Throwable $throwable) {
                         $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_ERROR, new ConnectionContextErrorEvent([
                             'connectionContent' => $connectionContent,
                             'error' => $throwable
                         ]));
 
                         Friday::$app->errorHandler->handleException($throwable);
-                    });
-                }catch (Throwable $throwable) {
-                    $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_ERROR,new ConnectionContextErrorEvent([
-                        'connectionContent' => $connectionContent,
-                        'error' => $throwable
-                    ]));
-
-                    Friday::$app->errorHandler->handleException($throwable);
-                }
-            },
-            //Error
-            function (Throwable $throwable) use($connectionContent) {
-                if($throwable !== null) {
-                    if($throwable instanceof InvalidRouteException) {
-                        $throwable = new NotFoundHttpException('Page not found.');
                     }
+
+                    $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_AFTER_ROUTING, new ConnectionContextEvent([
+                        'connectionContent' => $connectionContent
+                    ]));
+                } else {
+                    Friday::$app->errorHandler->handleException($result->getException());
                 }
-                /*$this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_ERROR,new ConnectionContextErrorEvent([
-                    'connectionContent' => $connectionContent,
-                    'error' => $throwable
-                ]));
-*/
-                Friday::$app->errorHandler->handleException($throwable);
             }
         );
     }
@@ -193,7 +194,8 @@ class Application extends AbstractApplication {
      * @param $connectionContext
      * @return $this
      */
-    public function setCurrentContext($connectionContext){
+    public function setCurrentContext($connectionContext)
+    {
         $this->_currentContext = $connectionContext;
         return $this;
     }
@@ -201,15 +203,17 @@ class Application extends AbstractApplication {
     /**
      * @return ConnectionContext
      */
-    public function getCurrentContext(){
+    public function getCurrentContext()
+    {
         return $this->_currentContext;
     }
 
     /**
      * @return Request|null
      */
-    public function getRequest(){
-        if($this->_currentContext !== null) {
+    public function getRequest()
+    {
+        if ($this->_currentContext !== null) {
             return $this->currentContext->getRequest();
         }
         return null;
@@ -218,8 +222,9 @@ class Application extends AbstractApplication {
     /**
      * @return Response|null
      */
-    public function getResponse(){
-        if($this->_currentContext !== null) {
+    public function getResponse()
+    {
+        if ($this->_currentContext !== null) {
             return $this->currentContext->getResponse();
         }
         return null;
@@ -228,8 +233,9 @@ class Application extends AbstractApplication {
     /**
      * @return Controller|null
      */
-    public function getController(){
-        if($this->_currentContext !== null) {
+    public function getController()
+    {
+        if ($this->_currentContext !== null) {
             return $this->currentContext->controller;
         }
         return null;
@@ -238,8 +244,9 @@ class Application extends AbstractApplication {
     /**
      * @return User|null
      */
-    public function getUser(){
-        if($this->_currentContext !== null) {
+    public function getUser()
+    {
+        if ($this->_currentContext !== null) {
             return $this->currentContext->user;
         }
         return null;
@@ -248,8 +255,9 @@ class Application extends AbstractApplication {
     /**
      * @return Session|null
      */
-    public function getSession(){
-        if($this->_currentContext !== null) {
+    public function getSession()
+    {
+        if ($this->_currentContext !== null) {
             return $this->currentContext->session;
         }
         return null;

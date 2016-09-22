@@ -2,11 +2,12 @@
 namespace Friday\Web;
 
 use Friday;
+use Friday\Base\Awaitable;
+use Friday\Base\Deferred;
 use Friday\Base\EventTrait;
 use Friday\Base\Exception\RuntimeException;
 use Friday\Base\Exception\InvalidRouteException;
 use Friday\Di\ServiceLocator;
-use Friday\Promise\Deferred;
 use Throwable;
 use SplObjectStorage;
 
@@ -127,9 +128,9 @@ class ConnectionContext extends ServiceLocator
      * If the route is empty, the method will use [[defaultRoute]].
      * @param string $route the route that specifies the action.
      * @param array $params the parameters to be passed to the action
-     * @return Friday\Promise\PromiseInterface
+     * @return Awaitable
      */
-    public function runAction($route, $params = [])
+    public function runAction($route, $params = []) : Awaitable
     {
         $deferred = new Deferred();
         $parts = Friday::$app->createController($route);
@@ -141,16 +142,16 @@ class ConnectionContext extends ServiceLocator
             $this->setController($controller);
 
 
-            $this->post(function () use ($deferred, $controller, $actionID, $params) {
-                $deferred->resolve($controller->runAction($actionID, $params));
+            $this->task(function () use ($deferred, $controller, $actionID, $params) {
+                $deferred->result($controller->runAction($actionID, $params));
             });
         } else {
-            $this->post(function () use ($deferred, $route) {
-                $deferred->reject(new InvalidRouteException("Unable to resolve the request '{$route}'."));
+            $this->task(function () use ($deferred, $route) {
+                $deferred->result(new InvalidRouteException("Unable to resolve the request '{$route}'."));
             });
         }
 
-        return $deferred->promise();
+        return $deferred->awaitable();
     }
 
     /**

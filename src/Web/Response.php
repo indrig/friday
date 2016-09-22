@@ -3,10 +3,14 @@ namespace Friday\Web;
 
 use Friday;
 use Friday\Base\Component;
+use Friday\Base\Awaitable;
+use Friday\Base\Deferred;
+use Friday\Base\Exception\BadMethodCallException;
 use Friday\Base\Exception\InvalidArgumentException;
 use Friday\Base\Exception\InvalidConfigException;
+use Friday\Base\Exception\RuntimeException;
+use Friday\Base\ResultOrExceptionWrapperInterface;
 use Friday\Helper\Url;
-use Friday\Promise\Deferred;
 use Friday\Promise\PromiseInterface;
 use Friday\SocketServer\Connection;
 use Friday\Stream\Stream;
@@ -295,71 +299,79 @@ class Response extends Component
 
     /**
      * @param bool $finishAfterSend
-     * @return PromiseInterface
+     * @return Awaitable
      */
-    public function send(bool $finishAfterSend = true) : PromiseInterface
+    public function send(bool $finishAfterSend = true) : Awaitable
     {
         $deferred = new Deferred();
 
         $this->connectionContext->task(function () use ($deferred, $finishAfterSend) {
             if ($this->_isSent) {
-                $deferred->reject();
+                $deferred->exception(new RuntimeException('Response already sended.'));
             } else {
                 $this->_isSent = true;
 
                 try {
-
                     $this->trigger(self::EVENT_BEFORE_SEND);
-                    $this->prepare()->then(function () use ($deferred, $finishAfterSend) {
-                        $this->trigger(self::EVENT_AFTER_PREPARE);
-                        $this->sendHeaders()->then(function () use ($deferred, $finishAfterSend) {
-                            $this->sendContent()->then(function () use ($deferred, $finishAfterSend) {
-                                $this->trigger(self::EVENT_AFTER_SEND);
-                                if ($finishAfterSend) {
-                                    $this->connectionContext->finish();
-                                }
+                    $this->prepare()
+                        ->await(function (ResultOrExceptionWrapperInterface $result) use ($deferred, $finishAfterSend){
+                        if($result->isSucceeded()) {
+                            $this->trigger(self::EVENT_AFTER_PREPARE);
 
-                                $deferred->resolve();
-                            }, function ($throwable = null) use ($deferred, $finishAfterSend) {
-                                if ($finishAfterSend) {
-                                    $this->connectionContext->finish();
-                                }
+                            $this->sendHeaders()->await(function (ResultOrExceptionWrapperInterface $result) use ($deferred, $finishAfterSend) {
+                                if($result->isSucceeded()) {
+                                    $this->sendContent()->await(function (ResultOrExceptionWrapperInterface $result) use ($deferred, $finishAfterSend) {
+                                        if($result->isSucceeded()) {
+                                            if ($finishAfterSend) {
+                                                $this->connectionContext->finish();
+                                            }
+                                            $deferred->result();
+                                        } else {
+                                            if ($finishAfterSend) {
+                                                $this->connectionContext->finish();
+                                            }
 
-                                $deferred->reject($throwable);
+                                            $deferred->exception($result->getException());
+                                        }
+                                    }) ;
+                                } else {
+                                    if ($finishAfterSend) {
+                                        $this->connectionContext->finish();
+                                    }
+
+                                    $deferred->exception($result->getException());
+                                }
                             });
-                        }, function ($throwable = null) use ($deferred, $finishAfterSend) {
+                        } else {
                             if ($finishAfterSend) {
                                 $this->connectionContext->finish();
                             }
-                            $deferred->reject($throwable);
-                        });
-                    }, function ($throwable = null) use ($deferred, $finishAfterSend) {
-                        if ($finishAfterSend) {
-                            $this->connectionContext->finish();
+
+                            $deferred->exception($result->getException());
                         }
-
-                        $deferred->reject($throwable);
-
                     });
                 } catch (Throwable $throwable) {
                     if ($finishAfterSend) {
                         $this->connectionContext->finish();
                     }
 
-                    $deferred->reject($throwable);
+                    $deferred->exception($throwable);
                 }
             }
         });
 
-        return $deferred->promise();
+        return $deferred->awaitable();
     }
 
+    protected function afterPrepare(){
+
+    }
     /**
      * Prepares for sending the response.
      * The default implementation will convert [[data]] into [[content]] and set headers accordingly.
-     * @return Friday\Promise\PromiseInterface
+     * @return Awaitable
      */
-    protected function prepare()
+    protected function prepare() : Awaitable
     {
         $deferred = new Deferred();
 
@@ -372,7 +384,7 @@ class Response extends Component
                 if ($formatter instanceof ResponseFormatterInterface) {
                     $formatter->format($this);
                 } else {
-                    $deferred->reject(new InvalidConfigException("The '{$this->format}' response formatter is invalid. It must implement the ResponseFormatterInterface."));
+                    $deferred->exception(new InvalidConfigException("The '{$this->format}' response formatter is invalid. It must implement the ResponseFormatterInterface."));
                     return;
                 }
             } elseif ($this->format === self::FORMAT_RAW) {
@@ -380,24 +392,24 @@ class Response extends Component
                     $this->content = $this->data;
                 }
             } else {
-                $deferred->reject(new InvalidConfigException("Unsupported response format: {$this->format}"));
+                $deferred->exception(new InvalidConfigException("Unsupported response format: {$this->format}"));
                 return;
             }
 
             if (is_array($this->content)) {
-                $deferred->reject(new InvalidArgumentException('Response content must not be an array.'));
+                $deferred->exception(new InvalidArgumentException('Response content must not be an array.'));
             } elseif (is_object($this->content)) {
                 if (method_exists($this->content, '__toString')) {
                     $this->content = $this->content->__toString();
                 } else {
-                    $deferred->reject(new InvalidArgumentException('Response content must be a string or an object implementing __toString().'));
+                    $deferred->exception(new InvalidArgumentException('Response content must be a string or an object implementing __toString().'));
                     return;
                 }
             }
-            $deferred->resolve();
+            $deferred->result();
         });
 
-        return $deferred->promise();
+        return $deferred->awaitable();
     }
 
     /**
@@ -443,14 +455,14 @@ class Response extends Component
     /**
      * Sends the response headers to the client
      *
-     * @return Friday\Promise\PromiseInterface
+     * @return Awaitable
      */
-    protected function sendHeaders()
+    protected function sendHeaders() : Awaitable
     {
         $deferred = new Deferred();
         $this->connectionContext->task(function () use ($deferred) {
             if ($this->_isHeadersSent) {
-                $deferred->reject();
+                $deferred->exception(new RuntimeException("Headers already sended."));
                 return;
             }
 
@@ -481,7 +493,7 @@ class Response extends Component
 
                 if ($request->enableCookieValidation) {
                     if ($request->cookieValidationKey == '') {
-                        $deferred->reject(new InvalidConfigException(get_class($this) . '::cookieValidationKey must be configured with a secret key.'));
+                        $deferred->exception(new InvalidConfigException(get_class($this) . '::cookieValidationKey must be configured with a secret key.'));
                         return;
                     }
                     $validationKey = $request->cookieValidationKey;
@@ -493,7 +505,7 @@ class Response extends Component
                             $value = Friday::$app->security->hashData(serialize([$cookie->name, $value]), $validationKey);
 
                         } catch (Throwable $e) {
-                            $deferred->reject();
+                            $deferred->exception($e);
                             return;
                         }
                     }
@@ -506,23 +518,22 @@ class Response extends Component
 
             $this->_isHeadersSent = true;
 
-            $deferred->resolve();
+            $deferred->result();
         });
 
-        return $deferred->promise();
-
+        return $deferred->awaitable();
     }
 
     /**
      * Sends the response content to the client
      */
-    protected function sendContent()
+    protected function sendContent() : Awaitable
     {
         $deferred = new Deferred();
         $this->connectionContext->task(function () use ($deferred) {
             if ($this->stream === null) {
                 $this->write($this->content);
-                $deferred->resolve();
+                $deferred->result();
                 return;
             }
 
@@ -538,33 +549,33 @@ class Response extends Component
                     flush(); // Free up memory. Otherwise large files will trigger PHP's memory limit.
                 }
                 fclose($handle);
-                $deferred->resolve();
+                $deferred->result();
             } elseif (is_resource($this->stream)) {
                 while (!feof($this->stream)) {
                     $this->write(fread($this->stream, $chunkSize));
                 }
                 fclose($this->stream);
 
-                $deferred->resolve();
+                $deferred->result();
             } elseif (is_object($this->stream)) {
                 if ($this->stream instanceof Stream) {
                     $this->stream->on(Stream::EVENT_CONTENT, function (Friday\Stream\Event\ContentEvent $event) {
                         $this->write($event->content);
                     });
 
-                    $this->stream->on(Stream::EVENT_END, function (Friday\Stream\Event\Event $event) use ($deferred) {
-                        $deferred->resolve();
+                    $this->stream->on(Stream::EVENT_END, function () use ($deferred) {
+                        $deferred->result();
                     });
 
-                    $this->stream->on(Stream::EVENT_ERROR, function (Friday\Stream\Event\ErrorEvent $event) use ($deferred) {
-                        $deferred->reject();
+                    $this->stream->on(Stream::EVENT_ERROR, function () use ($deferred) {
+                        $deferred->exception(new RuntimeException('Stream error'));
                     });
                 }
             } else {
-                $deferred->reject();
+                $deferred->exception(new BadMethodCallException('I do not understand the answer configuration.'));
             }
         });
-        return $deferred->promise();
+        return $deferred->awaitable();
     }
 
     /**

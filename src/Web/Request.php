@@ -2,11 +2,12 @@
 namespace Friday\Web;
 
 use Friday;
+use Friday\Base\Awaitable;
 use Friday\Base\Component;
+use Friday\Base\Deferred;
 use Friday\Base\Exception\InvalidConfigException;
 use Friday\Base\Exception\RuntimeException;
 use Friday\Helper\StringHelper;
-use Friday\Promise\Deferred;
 use Friday\Stream\ReadableStreamInterface;
 use Friday\Stream\WritableStreamInterface;
 use Friday\Stream\Util;
@@ -510,9 +511,9 @@ class Request extends Component implements ReadableStreamInterface
     /**
      * Resolves the current request into a route and the associated parameters.
      *
-     * @return Friday\Promise\Promise
+     * @return Awaitable
      */
-    public function resolve()
+    public function resolve() : Awaitable
     {
         $deferred = new Deferred();
 
@@ -524,17 +525,17 @@ class Request extends Component implements ReadableStreamInterface
 
                     $this->_get = $params + $this->_get;
 
-                    $deferred->resolve([$route, $this->_get]);
+                    $deferred->result([$route, $this->_get]);
                 } else {
-                    $deferred->reject(new NotFoundHttpException(Friday::t('Page not found.')));
+                    $deferred->exception(new NotFoundHttpException(Friday::t('Page not found.')));
                 }
             }catch (Throwable $e) {
-                $deferred->reject($e);
+                $deferred->exception($e);
             }
 
         });
 
-        return $deferred->promise();
+        return $deferred->awaitable();
     }
 
     public function getIsAjax(){
