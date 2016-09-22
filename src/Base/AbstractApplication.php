@@ -250,9 +250,9 @@ class AbstractApplication extends Module {
     }
 
     /**
-     * @return LoopInterface
+     * @return Looper
      */
-    public function getRunLoop() : LoopInterface{
+    public function getRunLoop() : Looper{
         return $this->get('runLoop');
     }
 
@@ -347,6 +347,12 @@ class AbstractApplication extends Module {
         return $this->get('db');
     }
 
+    /**
+     * @return Friday\Cache\AbstractCache
+     */
+    public function getCache(){
+        return $this->get('cache');
+    }
     /**
      * @return Looper
      */

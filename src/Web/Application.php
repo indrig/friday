@@ -155,7 +155,7 @@ class Application extends AbstractApplication
                                 Friday::$app->errorHandler->handleException($throwable);
                             }
 
-                        });
+                        }, true);
 
                     } catch (Throwable $throwable) {
                         $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_ERROR, new ConnectionContextErrorEvent([
@@ -172,7 +172,7 @@ class Application extends AbstractApplication
                 } else {
                     Friday::$app->errorHandler->handleException($result->getException());
                 }
-            }
+            }, true
         );
     }
 

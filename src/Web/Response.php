@@ -333,7 +333,7 @@ class Response extends Component
 
                                             $deferred->exception($result->getException());
                                         }
-                                    }) ;
+                                    }, true) ;
                                 } else {
                                     if ($finishAfterSend) {
                                         $this->connectionContext->finish();
@@ -341,7 +341,7 @@ class Response extends Component
 
                                     $deferred->exception($result->getException());
                                 }
-                            });
+                            }, true);
                         } else {
                             if ($finishAfterSend) {
                                 $this->connectionContext->finish();
@@ -349,7 +349,7 @@ class Response extends Component
 
                             $deferred->exception($result->getException());
                         }
-                    });
+                    }, true);
                 } catch (Throwable $throwable) {
                     if ($finishAfterSend) {
                         $this->connectionContext->finish();

@@ -37,29 +37,40 @@ class Adapter extends Component
     public $commandClass = 'Friday\Db\Command';
 
     /**
-     * @var string the Data Source Name, or DSN, contains the information required to connect to the database.
-     * Please refer to the [PHP manual](http://www.php.net/manual/en/function.PDO-construct.php) on
-     * the format of the DSN string.
      *
-     * For [SQLite](http://php.net/manual/en/ref.pdo-sqlite.connection.php) you may use a path alias
-     * for specifying the database path, e.g. `sqlite:@app/data/db.sql`.
-     *
-     * @see charset
      */
-    public $dsn;
+    public $host;
+
     /**
      * @var string the username for establishing DB connection. Defaults to `null` meaning no username to use.
      */
     public $username;
+
     /**
      * @var string the password for establishing DB connection. Defaults to `null` meaning no password to use.
      */
     public $password;
 
     /**
-     * @var ConnectionPool
+     * @var string the password for establishing DB connection. Defaults to `null` meaning no password to use.
      */
-    public $pool;
+    public $database;
+
+    /**
+     * @var string
+     */
+    public $_driverName = 'mysqli';
+    /**
+     * @var ConnectionPool|null
+     */
+    private $_connectionPool;
+
+    protected $_factory;
+
+    protected $driverFactoryMap = [
+        'mysqli' => 'Friday\Db\Mysqli\Factory'
+    ];
+
     /**
      * Creates a command for execution.
      * @param string $sql the SQL statement to be executed
@@ -78,6 +89,51 @@ class Adapter extends Component
     }
 
     /**
+     * @param string $driverName
+     *
+     * @return $this
+     */
+    public function setDriverName(string $driverName){
+        $this->_driverName = strtolower($driverName);
+
+        return $this;
+    }
+
+    /**
+     * @return string
+     */
+    public function getDriverName(){
+        return $this->_driverName;
+    }
+
+    public function getFactory(){
+        if($this->_factory === null) {
+            $driver = $this->getDriverName();
+            if (isset($this->driverFactoryMap[$driver])) {
+                $class = $this->driverFactoryMap[$driver];
+
+                if (class_exists($class)) {
+                    if(is_string($this->driverFactoryMap[$driver])) {
+                        $this->_factory = Friday::createObject(['class' => $this->driverFactoryMap[$driver]]);
+                    } elseif(is_array($class)) {
+                            $this->_factory = Friday::createObject([$this->driverFactoryMap[$driver]]);
+                    } elseif (is_callable($this->driverFactoryMap[$driver])) {
+                        $this->_factory = call_user_func($this->driverFactoryMap[$driver]);
+                    } else {
+                        throw new NotSupportedException("Connection does not support reading driver information for '$driver'.");
+
+                    }
+                } else {
+                    throw new NotSupportedException("Connection does not support reading driver information for '$driver'.");
+                }
+            }
+        }
+
+
+        return $this->_factory;
+    }
+
+    /**
      * Returns the schema information for the database opened by this connection.
      * @return Schema the schema information for the database opened by this connection.
      * @throws NotSupportedException if there is no support for the current driver type
@@ -88,11 +144,15 @@ class Adapter extends Component
             return $this->_schema;
         } else {
             $driver = $this->getDriverName();
-            if (isset($this->schemaMap[$driver])) {
-                $config = !is_array($this->schemaMap[$driver]) ? ['class' => $this->schemaMap[$driver]] : $this->schemaMap[$driver];
-                $config['db'] = $this;
+            if (isset($this->driverFactoryMap[$driver])) {
+                $class = $this->driverFactoryMap[$driver];
 
-                return $this->_schema = Friday::createObject($config);
+                if(class_exists($class)){
+
+                } else {
+                    throw new NotSupportedException("Connection does not support reading schema information for '$driver' DBMS.");
+                }
+                //return $this->_schema = Friday::createObject($config);
             } else {
                 throw new NotSupportedException("Connection does not support reading schema information for '$driver' DBMS.");
             }
@@ -138,10 +198,10 @@ class Adapter extends Component
     }
 
     public function getConnectionPool(){
-        if ($this->_schema !== null) {
-            return $this->_schema;
+        if ($this->_connectionPool !== null) {
+            return $this->_connectionPool;
         } else {
-            return $this->_schema = Friday::createObject([
+            return $this->_connectionPool = Friday::createObject([
                 'class' => 'Friday\Db\ConnectionPool',
                 'adapter' => $this
             ]);

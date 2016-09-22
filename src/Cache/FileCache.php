@@ -4,8 +4,9 @@ namespace Friday\Cache;
 use Friday;
 use Friday\Helper\AliasHelper;
 use Friday\Helper\FileHelper;
-use Friday\Helper\PromiseHelper;
-use Friday\Promise\PromiseInterface;
+use Friday\Base\Deferred;
+use Friday\Base\Awaitable;
+
 
 /**
  * FileCache implements a cache component using files.
@@ -69,18 +70,23 @@ class FileCache extends AbstractCache
     /**
      * @inheritdoc
      */
-    public function exists($key) : PromiseInterface
+    public function exists($key) : Awaitable
     {
         $cacheFile = $this->getCacheFile($this->buildKey($key));
-        return PromiseHelper::resolve(@filemtime($cacheFile) > time());
+
+        $deferred = new Deferred();
+
+        $deferred->result(@filemtime($cacheFile) > time());
+
+        return $deferred->awaitable();
     }
 
     /**
      * @inheritdoc
      */
-    protected function getValue($key) : PromiseInterface
+    protected function getValue($key) : Awaitable
     {
-
+        $deferred = new Deferred();
         $cacheFile = $this->getCacheFile($key);
 
         if (@filemtime($cacheFile) > time()) {
@@ -91,17 +97,22 @@ class FileCache extends AbstractCache
                 $cacheValue = @stream_get_contents($fp);
                 @flock($fp, LOCK_UN);
                 @fclose($fp);
-                return PromiseHelper::resolve($cacheValue);
+                $deferred->result($cacheValue);
+            } else {
+                $deferred->result(false);
             }
+        } else {
+            $deferred->result(false);
         }
-        return PromiseHelper::resolve(false);
+        return $deferred->awaitable();
     }
 
     /**
      * @inheritdoc
      */
-    protected function setValue($key, $value, $duration) : PromiseInterface
+    protected function setValue($key, $value, $duration) : Awaitable
     {
+        $deferred = new Deferred();
         $this->gc();
         $cacheFile = $this->getCacheFile($key);
         if ($this->directoryLevel > 0) {
@@ -115,22 +126,27 @@ class FileCache extends AbstractCache
             if ($duration <= 0) {
                 $duration = 31536000; // 1 year
             }
-            return PromiseHelper::resolve(@touch($cacheFile, $duration + time()));
+            $deferred->result(@touch($cacheFile, $duration + time()));
         } else {
             $error = error_get_last();
             Friday::warning("Unable to write cache file '{$cacheFile}': {$error['message']}", __METHOD__);
-            return PromiseHelper::resolve(false);
+            $deferred->result(false);
         }
+
+        return $deferred->awaitable();
+
     }
 
     /**
      * @inheritdoc
      */
-    protected function addValue($key, $value, $duration) : PromiseInterface
+    protected function addValue($key, $value, $duration) : Awaitable
     {
         $cacheFile = $this->getCacheFile($key);
         if (@filemtime($cacheFile) > time()) {
-            return PromiseHelper::resolve(false);
+            $deferred = new Deferred();
+            $deferred->result(false);
+            return $deferred->awaitable();
         }
         return $this->setValue($key, $value, $duration);
     }
@@ -138,10 +154,13 @@ class FileCache extends AbstractCache
     /**
      * @inheritdoc
      */
-    protected function deleteValue($key) : PromiseInterface
+    protected function deleteValue($key) : Awaitable
     {
         $cacheFile = $this->getCacheFile($key);
-        return PromiseHelper::resolve(@unlink($cacheFile));
+
+        $deferred = new Deferred();
+        $deferred->result(@unlink($cacheFile));
+        return $deferred->awaitable();
     }
 
     /**
@@ -164,7 +183,7 @@ class FileCache extends AbstractCache
     /**
      * @inheritdoc
      */
-    protected function flushValues() : PromiseInterface
+    protected function flushValues() : Awaitable
     {
         return $this->gc(true, false);
     }
@@ -175,15 +194,17 @@ class FileCache extends AbstractCache
      * @param boolean $expiredOnly whether to removed expired cache files only.
      * If false, all cache files under [[cachePath]] will be removed.
      *
-     * @return PromiseInterface
+     * @return Awaitable
      */
-    public function gc($force = false, $expiredOnly = true) : PromiseInterface
+    public function gc($force = false, $expiredOnly = true) : Awaitable
     {
         if ($force || mt_rand(0, 1000000) < $this->gcProbability) {
             return $this->gcRecursive($this->cachePath, $expiredOnly);
         }
 
-        return PromiseHelper::resolve();
+        $deferred = new Deferred();
+        $deferred->result();
+        return $deferred->awaitable();
     }
     /**
      * Recursively removing expired cache files under a directory.
@@ -192,9 +213,9 @@ class FileCache extends AbstractCache
      * @param boolean $expiredOnly whether to only remove expired cache files. If false, all files
      * under `$path` will be removed.
      *
-     * @return PromiseInterface
+     * @return Awaitable
      */
-    protected function gcRecursive($path, $expiredOnly) : PromiseInterface
+    protected function gcRecursive($path, $expiredOnly) : Awaitable
     {
 
         if (($handle = opendir($path)) !== false) {
@@ -221,6 +242,8 @@ class FileCache extends AbstractCache
             closedir($handle);
         }
 
-        return PromiseHelper::resolve();
+        $deferred = new Deferred();
+        $deferred->result();
+        return $deferred->awaitable();
     }
 }

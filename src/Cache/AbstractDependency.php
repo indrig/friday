@@ -1,9 +1,10 @@
 <?php
 namespace Friday\Cache;
 
+use Friday\Base\Awaitable;
 use Friday\Base\BaseObject;
-use Friday\Promise\Deferred;
-use Friday\Promise\PromiseInterface;
+use Friday\Base\Deferred;
+
 /**
  * Dependency is the base class for cache dependency classes.
  *
@@ -48,9 +49,9 @@ abstract class AbstractDependency extends BaseObject
     /**
      * Returns a value indicating whether the dependency has changed.
      * @param AbstractCache $cache the cache component that is currently evaluating this dependency
-     * @return PromiseInterface
+     * @return Awaitable
      */
-    public function getHasChanged($cache) : PromiseInterface
+    public function getHasChanged($cache) : Awaitable
     {
         $deferred = new Deferred();
 
@@ -60,18 +61,18 @@ abstract class AbstractDependency extends BaseObject
                 $this->generateDependencyData($cache)->then(function($data) use ($deferred, $hash){
                     self::$_reusableData[$hash] = $data;
 
-                    $deferred->resolve($data !== $this->data);
+                    $deferred->result($data !== $this->data);
                 });
             } else {
-                $deferred->resolve(self::$_reusableData[$hash] !== $this->data);
+                $deferred->result(self::$_reusableData[$hash] !== $this->data);
             }
         } else {
             $this->generateDependencyData($cache)->then(function($data) use($deferred) {
-                $deferred->resolve($data !== $this->data);
+                $deferred->result($data !== $this->data);
             });
         }
 
-        return $deferred->promise();
+        return $deferred->awaitable();
     }
     /**
      * Resets all cached data for reusable dependencies.
@@ -99,5 +100,5 @@ abstract class AbstractDependency extends BaseObject
      * @param AbstractCache $cache the cache component that is currently evaluating this dependency
      * @return mixed the data needed to determine if dependency has been changed.
      */
-    abstract protected function generateDependencyData($cache) : PromiseInterface;
+    abstract protected function generateDependencyData($cache) : Awaitable;
 }

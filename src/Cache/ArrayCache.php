@@ -1,7 +1,8 @@
 <?php
 namespace Friday\Cache;
-use Friday\Helper\PromiseHelper;
-use Friday\Promise\PromiseInterface;
+
+use Friday\Base\Awaitable;
+use Friday\Base\Deferred;
 
 /**
  * ArrayCache provides caching for the current request only by storing the values in an array.
@@ -17,57 +18,80 @@ class ArrayCache extends AbstractCache
     /**
      * @inheritdoc
      */
-    public function exists($key) : PromiseInterface
+    public function exists($key) : Awaitable
     {
+        $deferred = new Deferred();
         $key = $this->buildKey($key);
 
-        return PromiseHelper::resolve(isset($this->_cache[$key]) && ($this->_cache[$key][1] === 0 || $this->_cache[$key][1] > microtime(true)));
+        $deferred->result(isset($this->_cache[$key]) && ($this->_cache[$key][1] === 0 || $this->_cache[$key][1] > microtime(true)));
+
+        return $deferred->awaitable();
     }
     /**
      * @inheritdoc
      */
-    protected function getValue($key) : PromiseInterface
+    protected function getValue($key) : Awaitable
     {
+        $deferred = new Deferred();;
+        $deferred->result(true);
         if (isset($this->_cache[$key]) && ($this->_cache[$key][1] === 0 || $this->_cache[$key][1] > microtime(true))) {
-            return PromiseHelper::resolve($this->_cache[$key][0]);
+            $deferred->result($this->_cache[$key][0]);
         } else {
-            return PromiseHelper::resolve(false);
+            $deferred->result(false);
         }
+
+
+
+        return $deferred->awaitable();
     }
     /**
      * @inheritdoc
      */
-    protected function setValue($key, $value, $duration) : PromiseInterface
+    protected function setValue($key, $value, $duration) : Awaitable
     {
         $this->_cache[$key] = [$value, $duration === 0 ? 0 : microtime(true) + $duration];
-        return PromiseHelper::resolve(true);
+        $deferred = new Deferred();;
+        $deferred->result(true);
+
+        return $deferred->awaitable();
     }
     /**
      * @inheritdoc
      */
-    protected function addValue($key, $value, $duration) : PromiseInterface
+    protected function addValue($key, $value, $duration) : Awaitable
     {
+        $deferred = new Deferred();;
+        $deferred->result();
+
         if (isset($this->_cache[$key]) && ($this->_cache[$key][1] === 0 || $this->_cache[$key][1] > microtime(true))) {
-            return PromiseUtil::resolve(true);
+            $deferred->result(false);
         } else {
             $this->_cache[$key] = [$value, $duration === 0 ? 0 : microtime(true) + $duration];
-            return PromiseUtil::resolve(true);
+            $deferred->result(true);
         }
+        return $deferred->awaitable();
     }
     /**
      * @inheritdoc
      */
-    protected function deleteValue($key) : PromiseInterface
+    protected function deleteValue($key) : Awaitable
     {
         unset($this->_cache[$key]);
-        return PromiseUtil::resolve(true);
+
+        $deferred = new Deferred();;
+        $deferred->result(true);
+
+        return $deferred->awaitable();
     }
     /**
      * @inheritdoc
      */
-    protected function flushValues() : PromiseInterface
+    protected function flushValues() : Awaitable
     {
         $this->_cache = [];
-        return PromiseUtil::resolve();
+        $deferred = new Deferred();;
+        $deferred->result();
+
+        return $deferred->awaitable();
     }
 }

@@ -17,7 +17,7 @@ class Awaitable {
     /**
      * @var bool
      */
-    protected $withoutWrapper = false;
+    protected $withWrapper = false;
 
     public function __construct(callable $callback)
     {
@@ -37,11 +37,11 @@ class Awaitable {
 
     /**
      * @param callable $onResolved
-     * @param bool $withoutWrapper
+     * @param bool $withWrapper
      * @return void
      */
-    public function await(callable $onResolved, $withoutWrapper = false){
-        $this->withoutWrapper   = $withoutWrapper;
+    public function await(callable $onResolved, $withWrapper = false){
+        $this->withWrapper   = $withWrapper;
         $this->callback         = $onResolved;
 
         $this->resolve();
@@ -71,15 +71,15 @@ class Awaitable {
      */
     protected function resolve(){
         if ($this->result !== null && $this->callback !== null) {
-            if($this->withoutWrapper) {
+            if($this->withWrapper) {
+
+                call_user_func($this->callback, $this->result);
+            } else {
                 if($this->result->isSucceeded()){
                     call_user_func($this->callback, $this->result->getResult());
                 } else {
                     call_user_func($this->callback, $this->result->getException());
                 }
-
-            } else {
-                call_user_func($this->callback, $this->result);
             }
         }
     }

@@ -1,7 +1,8 @@
 <?php
 namespace Friday\Cache;
-use Friday\Promise\Deferred;
-use Friday\Promise\PromiseInterface;
+use Friday\Base\Awaitable;
+use Friday\Base\Deferred;
+
 
 /**
  * TagDependency associates a cached data item with one or multiple [[tags]].
@@ -31,11 +32,11 @@ class TagDependency extends AbstractDependency {
      * @param AbstractCache $cache the cache component that is currently evaluating this dependency
      * @return mixed the data needed to determine if dependency has been changed.
      */
-    protected function generateDependencyData($cache) : PromiseInterface
+    protected function generateDependencyData($cache) : Awaitable
     {
         $deferred = new Deferred();
 
-        $this->getTimestamps($cache, (array) $this->tags)->then(function ($timestamps) use($cache, $deferred) {
+        $this->getTimestamps($cache, (array) $this->tags)->await(function ($timestamps) use($cache, $deferred) {
             $newKeys = [];
             foreach ($timestamps as $key => $timestamp) {
                 if ($timestamp === false) {
@@ -46,25 +47,25 @@ class TagDependency extends AbstractDependency {
                 $timestamps = array_merge($timestamps, static::touchKeys($cache, $newKeys));
             }
 
-            $deferred->resolve($timestamps);
+            $deferred->result($timestamps);
         });
 
-        return $deferred->promise();
+        return $deferred->awaitable();
     }
 
     /**
      * Performs the actual dependency checking.
      * @param AbstractCache $cache the cache component that is currently evaluating this dependency
-     * @return PromiseInterface
+     * @return Awaitable
      */
-    public function getHasChanged($cache) : PromiseInterface
+    public function getHasChanged($cache) : Awaitable
     {
         $deferred = new Deferred();
 
-        $this->getTimestamps($cache, (array) $this->tags)->then(function ($timestamps) use ($deferred) {
-            $deferred->resolve($timestamps !== $this->data);
+        $this->getTimestamps($cache, (array) $this->tags)->await(function ($timestamps) use ($deferred) {
+            $deferred->result($timestamps !== $this->data);
         });
-        return $deferred->promise();
+        return $deferred->awaitable();
     }
 
     /**
@@ -102,13 +103,14 @@ class TagDependency extends AbstractDependency {
      * Returns the timestamps for the specified tags.
      * @param AbstractCache $cache
      * @param string[] $tags
-     * @return PromiseInterface
+     * @return Awaitable
      */
-    protected function getTimestamps($cache, $tags) : PromiseInterface
+    protected function getTimestamps($cache, $tags) : Awaitable
     {
         $deferred = new Deferred();
         if (empty($tags)) {
-            return $deferred->resolve([]);
+            $deferred->result([]);
+            return $deferred->awaitable();
         }
 
         $keys = [];
@@ -116,10 +118,10 @@ class TagDependency extends AbstractDependency {
             $keys[] = $cache->buildKey([__CLASS__, $tag]);
         }
 
-        $cache->multiGet($keys)->then(function($data) use ($deferred){
-            $deferred->resolve([$data]);
+        $cache->multiGet($keys)->await(function($data) use ($deferred){
+            $deferred->result([$data]);
         });
 
-        return $deferred->promise();
+        return $deferred->awaitable();
     }
 }

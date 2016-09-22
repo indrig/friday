@@ -2,10 +2,10 @@
 namespace Friday\Cache;
 
 use Friday\Base\Component;
-use Friday\Helper\PromiseHelper;
 use Friday\Helper\StringHelper;
-use Friday\Promise\Deferred;
-use Friday\Promise\PromiseInterface;
+use Friday\Helper\AwaitableHelper;
+use Friday\Base\Deferred;
+use Friday\Base\Awaitable;
 
 /**
  * Class Cache
@@ -59,15 +59,15 @@ abstract class AbstractCache extends Component
      * @return mixed the value stored in cache, false if the value is not in the cache, expired,
      * or the dependency associated with the cached data has changed.
      */
-    public function get($key) : PromiseInterface
+    public function get($key) : Awaitable
     {
         $deferred = new Deferred();
 
         $key = $this->buildKey($key);
-        $this->getValue($key)->then(
+        $this->getValue($key)->await(
             function ($value) use ($deferred){
                 if ($value === false || $this->serializer === false) {
-                    $deferred->resolve($value);
+                    $deferred->result($value);
                 } elseif ($this->serializer === null) {
                     $value = unserialize($value);
                 } else {
@@ -75,27 +75,23 @@ abstract class AbstractCache extends Component
                 }
 
                 if (is_array($value)) {
-                    // && !($value[1] instanceof AbstractDependency && $value[1]->getHasChanged($this))
                     if($value[1] instanceof AbstractDependency) {
-                        $value[1]->getHasChanged($this)->then(function ($isHashChanged) use (&$value, $deferred){
+                        $value[1]->getHasChanged($this)->await(function ($isHashChanged) use (&$value, $deferred){
                             if($isHashChanged){
-                                $deferred->resolve(false);
+                                $deferred->result(false);
                             } else {
-                                $deferred->resolve($value[0]);
+                                $deferred->result($value[0]);
                             }
-                        });
+                        }, true);
                     } else {
-                        $deferred->resolve($value[0]);
+                        $deferred->result($value[0]);
                     }
                 } else {
-                    $deferred->resolve(false);
+                    $deferred->result(false);
                 }
-            },
-            function () use ($deferred){
-                $deferred->resolve(false);
             }
         );
-        return $deferred->promise();
+        return $deferred->awaitable();
     }
     /**
      * Checks whether a specified key exists in the cache.
@@ -107,19 +103,17 @@ abstract class AbstractCache extends Component
      * may return false while exists returns true.
      * @param mixed $key a key identifying the cached value. This can be a simple string or
      * a complex data structure consisting of factors representing the key.
-     * @return PromiseInterface
+     * @return Awaitable
      */
-    public function exists($key) : PromiseInterface
+    public function exists($key) : Awaitable
     {
         $deferred = new Deferred();
 
         $key = $this->buildKey($key);
-        $this->getValue($key)->then(function () use ($deferred){
-            $deferred->resolve(true);
-        }, function () use ($deferred){
-            $deferred->resolve(false);
+        $this->getValue($key)->await(function ($value) use ($deferred){
+            $deferred->result($value !== false);
         });
-        return $deferred->promise();
+        return $deferred->awaitable();
     }
 
     /**
@@ -128,9 +122,9 @@ abstract class AbstractCache extends Component
      * which may improve the performance. In case a cache does not support this feature natively,
      * this method will try to simulate it.
      * @param string[] $keys list of string keys identifying the cached values
-     * @return PromiseInterface
+     * @return Awaitable
      */
-    public function multiGet($keys) : PromiseInterface
+    public function multiGet($keys) : Awaitable
     {
         $deferred = new Deferred();
 
@@ -139,7 +133,7 @@ abstract class AbstractCache extends Component
             $keyMap[$key] = $this->buildKey($key);
         }
 
-        $this->getValues(array_values($keyMap))->then(
+        $this->getValues(array_values($keyMap))->await(
             function($values) use($deferred, $keyMap) {
                 $results = [];
                 $hashChanged = [];
@@ -162,21 +156,21 @@ abstract class AbstractCache extends Component
                     }
                 }
                 if(count($hashChanged) === 0) {
-                    $deferred->resolve($results);
+                    $deferred->result($results);
                 } else {
-                    PromiseHelper::all($hashChanged)->then(function($hashChanged) use (&$results, $deferred){
+                    AwaitableHelper::all($hashChanged, true)->await(function($hashChanged) use (&$results, $deferred){
                         foreach ($hashChanged as $key => $isHashChanged){
                             if($isHashChanged === false) {
                                 $results[$key] = false;
                             }
                         }
-                        $deferred->resolve($results);
+                        $deferred->result($results);
                     });
                 }
             }
         );
 
-        return $deferred->promise();
+        return $deferred->awaitable();
     }
     /**
      * Stores a value identified by a key into cache.
@@ -190,9 +184,9 @@ abstract class AbstractCache extends Component
      * @param AbstractDependency $dependency dependency of the cached item. If the dependency changes,
      * the corresponding value in the cache will be invalidated when it is fetched via [[get()]].
      * This parameter is ignored if [[serializer]] is false.
-     * @return PromiseInterface
+     * @return Awaitable
      */
-    public function set($key, $value, $duration = 0, $dependency = null) : PromiseInterface
+    public function set($key, $value, $duration = 0, $dependency = null) : Awaitable
     {
         if ($dependency !== null && $this->serializer !== false) {
             $dependency->evaluateDependency($this);
@@ -216,9 +210,9 @@ abstract class AbstractCache extends Component
      * @param AbstractDependency $dependency dependency of the cached items. If the dependency changes,
      * the corresponding values in the cache will be invalidated when it is fetched via [[get()]].
      * This parameter is ignored if [[serializer]] is false.
-     * @return PromiseInterface
+     * @return Awaitable
      */
-    public function multiSet($items, $duration = 0, $dependency = null) : PromiseInterface
+    public function multiSet($items, $duration = 0, $dependency = null) : Awaitable
     {
         if ($dependency !== null && $this->serializer !== false) {
             $dependency->evaluateDependency($this);
@@ -245,9 +239,9 @@ abstract class AbstractCache extends Component
      * @param AbstractDependency $dependency dependency of the cached items. If the dependency changes,
      * the corresponding values in the cache will be invalidated when it is fetched via [[get()]].
      * This parameter is ignored if [[serializer]] is false.
-     * @return PromiseInterface
+     * @return Awaitable
      */
-    public function multiAdd($items, $duration = 0, $dependency = null) : PromiseInterface
+    public function multiAdd($items, $duration = 0, $dependency = null) : Awaitable
     {
         if ($dependency !== null && $this->serializer !== false) {
             $dependency->evaluateDependency($this);
@@ -274,9 +268,9 @@ abstract class AbstractCache extends Component
      * @param AbstractDependency $dependency dependency of the cached item. If the dependency changes,
      * the corresponding value in the cache will be invalidated when it is fetched via [[get()]].
      * This parameter is ignored if [[serializer]] is false.
-     * @return PromiseInterface
+     * @return Awaitable
      */
-    public function add($key, $value, $duration = 0, $dependency = null) : PromiseInterface
+    public function add($key, $value, $duration = 0, $dependency = null) : Awaitable
     {
         if ($dependency !== null && $this->serializer !== false) {
             $dependency->evaluateDependency($this);
@@ -293,9 +287,9 @@ abstract class AbstractCache extends Component
      * Deletes a value with the specified key from cache
      * @param mixed $key a key identifying the value to be deleted from cache. This can be a simple string or
      * a complex data structure consisting of factors representing the key.
-     * @return PromiseInterface
+     * @return Awaitable
      */
-    public function delete($key) : PromiseInterface
+    public function delete($key) : Awaitable
     {
         $key = $this->buildKey($key);
         return $this->deleteValue($key);
@@ -303,9 +297,9 @@ abstract class AbstractCache extends Component
     /**
      * Deletes all values from cache.
      * Be careful of performing this operation if the cache is shared among multiple applications.
-     * @return PromiseInterface
+     * @return Awaitable
      */
-    public function flush() : PromiseInterface
+    public function flush() : Awaitable
     {
         return $this->flushValues();
     }
@@ -314,9 +308,9 @@ abstract class AbstractCache extends Component
      * This method should be implemented by child classes to retrieve the data
      * from specific cache storage.
      * @param string $key a unique key identifying the cached value
-     * @return PromiseInterface
+     * @return Awaitable
      */
-    abstract protected function getValue($key) : PromiseInterface;
+    abstract protected function getValue($key) : Awaitable;
     /**
      * Stores a value identified by a key in cache.
      * This method should be implemented by child classes to store the data
@@ -325,9 +319,9 @@ abstract class AbstractCache extends Component
      * @param mixed $value the value to be cached. Most often it's a string. If you have disabled [[serializer]],
      * it could be something else.
      * @param integer $duration the number of seconds in which the cached value will expire. 0 means never expire.
-     * @return PromiseInterface
+     * @return Awaitable
      */
-    abstract protected function setValue($key, $value, $duration) : PromiseInterface;
+    abstract protected function setValue($key, $value, $duration) : Awaitable;
     /**
      * Stores a value identified by a key into cache if the cache does not contain this key.
      * This method should be implemented by child classes to store the data
@@ -336,37 +330,39 @@ abstract class AbstractCache extends Component
      * @param mixed $value the value to be cached. Most often it's a string. If you have disabled [[serializer]],
      * it could be something else.
      * @param integer $duration the number of seconds in which the cached value will expire. 0 means never expire.
-     * @return PromiseInterface
+     * @return Awaitable
      */
-    abstract protected function addValue($key, $value, $duration) : PromiseInterface;
+    abstract protected function addValue($key, $value, $duration) : Awaitable;
     /**
      * Deletes a value with the specified key from cache
      * This method should be implemented by child classes to delete the data from actual cache storage.
      * @param string $key the key of the value to be deleted
-     * @return PromiseInterface
+     * @return Awaitable
      */
-    abstract protected function deleteValue($key) : PromiseInterface;
+    abstract protected function deleteValue($key) : Awaitable;
     /**
      * Deletes all values from cache.
      * Child classes may implement this method to realize the flush operation.
-     * @return PromiseInterface
+     * @return Awaitable
      */
-    abstract protected function flushValues() : PromiseInterface;
+    abstract protected function flushValues() : Awaitable;
     /**
      * Retrieves multiple values from cache with the specified keys.
      * The default implementation calls [[getValue()]] multiple times to retrieve
      * the cached values one by one. If the underlying cache storage supports multiget,
      * this method should be overridden to exploit that feature.
      * @param array $keys a list of keys identifying the cached values
-     * @return PromiseInterface
+     * @return Awaitable
      */
-    protected function getValues($keys) : PromiseInterface
+    protected function getValues($keys) : Awaitable
     {
         $results = [];
         foreach ($keys as $key) {
             $results[$key] = $this->getValue($key);
         }
-        return PromiseHelper::all($results);
+
+
+        return AwaitableHelper::all($results);
     }
     /**
      * Stores multiple key-value pairs in cache.
@@ -374,9 +370,9 @@ abstract class AbstractCache extends Component
      * storage supports multi-set, this method should be overridden to exploit that feature.
      * @param array $data array where key corresponds to cache key while value is the value stored
      * @param integer $duration the number of seconds in which the cached values will expire. 0 means never expire.
-     * @return PromiseInterface
+     * @return Awaitable
      */
-    protected function setValues($data, $duration) : PromiseInterface
+    protected function setValues($data, $duration) : Awaitable
     {
         $deferred = new Deferred();
 
@@ -385,17 +381,17 @@ abstract class AbstractCache extends Component
         foreach ($data as $key => $value) {
             $results[$key] = $this->setValue($key, $value, $duration);
         }
-        PromiseHelper::all($results)->then(function($results) use ($deferred){
+        AwaitableHelper::all($results, true)->await(function($results) use ($deferred){
             $failedKeys = [];
             foreach ($results as $name => $result){
                 if($result === false) {
                     $failedKeys[] = $name;
                 }
             }
-            $deferred->resolve($failedKeys);
+            $deferred->result($failedKeys);
         });
 
-        return $deferred->promise();
+        return $deferred->awaitable();
     }
     /**
      * Adds multiple key-value pairs to cache.
@@ -403,9 +399,9 @@ abstract class AbstractCache extends Component
      * storage supports multi-add, this method should be overridden to exploit that feature.
      * @param array $data array where key corresponds to cache key while value is the value stored.
      * @param integer $duration the number of seconds in which the cached values will expire. 0 means never expire.
-     * @return PromiseInterface
+     * @return Awaitable
      */
-    protected function addValues($data, $duration) : PromiseInterface
+    protected function addValues($data, $duration) : Awaitable
     {
         $deferred = new Deferred();
 
@@ -413,16 +409,17 @@ abstract class AbstractCache extends Component
         foreach ($data as $key => $value) {
             $results[$key] = $this->addValue($key, $value, $duration);
         }
-        PromiseHelper::all($results)->then(function($results) use ($deferred){
+        AwaitableHelper::all($results, true)->await(function($results) use ($deferred){
             $failedKeys = [];
+            var_dump($results);
             foreach ($results as $name => $result){
                 if($result === false) {
                     $failedKeys[] = $name;
                 }
             }
-            $deferred->resolve($failedKeys);
+            $deferred->result($failedKeys);
         });
 
-        return $deferred->promise();
+        return $deferred->awaitable();
     }
 }
