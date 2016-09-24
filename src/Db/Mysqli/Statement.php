@@ -138,7 +138,7 @@ class Statement extends BaseObject implements StatementInterface {
 
         return 0;
     }
-    public function bindParam($name, $value, $dataType, $length){
+    public function bindParam($name, $value, $dataType, $length = null){
         //();
     }
 

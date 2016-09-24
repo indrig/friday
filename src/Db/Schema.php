@@ -2,7 +2,9 @@
 namespace Friday\Db;
 
 use Friday;
+use Friday\Base\Awaitable;
 use Friday\Base\BaseObject;
+use Friday\Base\Deferred;
 use Friday\Base\Exception\NotSupportedException;
 use Friday\Base\Exception\BadMethodCallException;
 use Friday\Cache\AbstractCache;
@@ -57,7 +59,7 @@ abstract class Schema extends BaseObject
     /**
      * @var Adapter the database connection
      */
-    public $db;
+    public $adapter;
     /**
      * @var string the default schema name used for the current session.
      */
@@ -146,7 +148,7 @@ abstract class Schema extends BaseObject
             return $this->_tables[$name];
         }
 
-        $db = $this->db;
+        $db = $this->adapter;
         $realName = $this->getRawTableName($name);
 
         if ($db->enableSchemaCache && !in_array($name, $db->schemaCacheExclude, true)) {
@@ -181,8 +183,9 @@ abstract class Schema extends BaseObject
     {
         return [
             __CLASS__,
-            $this->db->dsn,
-            $this->db->username,
+            $this->adapter->host,
+            $this->adapter->username,
+            $this->adapter->database,
             $name,
         ];
     }
@@ -196,8 +199,9 @@ abstract class Schema extends BaseObject
     {
         return md5(serialize([
             __CLASS__,
-            $this->db->dsn,
-            $this->db->username,
+            $this->adapter->host,
+            $this->adapter->username,
+            $this->adapter->database,
         ]));
     }
 
@@ -294,16 +298,27 @@ abstract class Schema extends BaseObject
      * Refreshes the schema.
      * This method cleans up all cached table schemas so that they can be re-created later
      * to reflect the database schema change.
+     *
+     * @return Awaitable
      */
-    public function refresh()
+    public function refresh() : Awaitable
     {
+        $deferred = new Deferred();
         /* @var $cache AbstractCache */
-        $cache = is_string($this->db->schemaCache) ? Friday::$app->get($this->db->schemaCache, false) : $this->db->schemaCache;
-        if ($this->db->enableSchemaCache && $cache instanceof AbstractCache) {
-            TagDependency::invalidate($cache, $this->getCacheTag());
+        $cache = is_string($this->adapter->schemaCache) ? Friday::$app->get($this->adapter->schemaCache, false) : $this->adapter->schemaCache;
+        if ($this->adapter->enableSchemaCache && $cache instanceof AbstractCache) {
+            TagDependency::invalidate($cache, $this->getCacheTag())->await(function ($result) use ($deferred){
+                if($result instanceof Throwable) {
+                    $deferred->exception($result);
+                } else {
+                    $this->_tableNames = [];
+                    $this->_tables = [];
+
+                    $deferred->result();
+                }
+            });
         }
-        $this->_tableNames = [];
-        $this->_tables = [];
+        return $deferred->awaitable();
     }
 
     /**
@@ -318,8 +333,8 @@ abstract class Schema extends BaseObject
         unset($this->_tables[$name]);
         $this->_tableNames = [];
         /* @var $cache AbstractCache */
-        $cache = is_string($this->db->schemaCache) ? Friday::$app->get($this->db->schemaCache, false) : $this->db->schemaCache;
-        if ($this->db->enableSchemaCache && $cache instanceof AbstractCache) {
+        $cache = is_string($this->adapter->schemaCache) ? Friday::$app->get($this->adapter->schemaCache, false) : $this->adapter->schemaCache;
+        if ($this->adapter->enableSchemaCache && $cache instanceof AbstractCache) {
             $cache->delete($this->getCacheKey($name));
         }
     }
@@ -331,7 +346,7 @@ abstract class Schema extends BaseObject
      */
     public function createQueryBuilder()
     {
-        return new QueryBuilder($this->db);
+        return new QueryBuilder($this->adapter);
     }
 
     /**
@@ -405,11 +420,11 @@ abstract class Schema extends BaseObject
      */
     public function getLastInsertID($sequenceName = '')
     {
-        if ($this->db->isActive) {
-            return $this->db->pdo->lastInsertId($sequenceName === '' ? null : $this->quoteTableName($sequenceName));
-        } else {
+       /* if ($this->adapter->isActive) {
+            return $this->adapter->pdo->lastInsertId($sequenceName === '' ? null : $this->quoteTableName($sequenceName));
+        } else {*/
             throw new BadMethodCallException('DB Connection is not active.');
-        }
+        //}
     }
 
     /**
@@ -417,7 +432,7 @@ abstract class Schema extends BaseObject
      */
     public function supportsSavepoint()
     {
-        return $this->db->enableSavepoint;
+        return $this->adapter->enableSavepoint;
     }
 
     /**
@@ -426,7 +441,7 @@ abstract class Schema extends BaseObject
      */
     public function createSavepoint($name)
     {
-        $this->db->createCommand("SAVEPOINT $name")->execute();
+        $this->adapter->createCommand("SAVEPOINT $name")->execute();
     }
 
     /**
@@ -435,7 +450,7 @@ abstract class Schema extends BaseObject
      */
     public function releaseSavepoint($name)
     {
-        $this->db->createCommand("RELEASE SAVEPOINT $name")->execute();
+        $this->adapter->createCommand("RELEASE SAVEPOINT $name")->execute();
     }
 
     /**
@@ -444,7 +459,7 @@ abstract class Schema extends BaseObject
      */
     public function rollBackSavepoint($name)
     {
-        $this->db->createCommand("ROLLBACK TO SAVEPOINT $name")->execute();
+        $this->adapter->createCommand("ROLLBACK TO SAVEPOINT $name")->execute();
     }
 
     /**
@@ -457,7 +472,7 @@ abstract class Schema extends BaseObject
      */
     public function setTransactionIsolationLevel($level)
     {
-        $this->db->createCommand("SET TRANSACTION ISOLATION LEVEL $level;")->execute();
+        $this->adapter->createCommand("SET TRANSACTION ISOLATION LEVEL $level;")->execute();
     }
 
     /**
@@ -467,9 +482,9 @@ abstract class Schema extends BaseObject
      * @return array primary key values or false if the command fails
      * @since 2.0.4
      */
-    public function insert($table, $columns)
+    public function insert($table, $columns) : Awaitable
     {
-        $command = $this->db->createCommand()->insert($table, $columns);
+        $command = $this->adapter->createCommand()->insert($table, $columns);
         if (!$command->execute()) {
             return false;
         }
@@ -499,12 +514,12 @@ abstract class Schema extends BaseObject
             return $str;
         }
 
-        if (($value = $this->db->getSlavePdo()->quote($str)) !== false) {
-            return $value;
-        } else {
+  //      if (($value = $this->adapter->getSlaveConnection()->quote($str)) !== false) {
+    //        return $value;
+  //      } else {
             // the driver doesn't support quote (e.g. oci)
             return "'" . addcslashes(str_replace("'", "''", $str), "\000\n\r\\\032") . "'";
-        }
+      //  }
     }
 
     /**
@@ -595,7 +610,7 @@ abstract class Schema extends BaseObject
         if (strpos($name, '{{') !== false) {
             $name = preg_replace('/\\{\\{(.*?)\\}\\}/', '\1', $name);
 
-            return str_replace('%', $this->db->tablePrefix, $name);
+            return str_replace('%', $this->adapter->tablePrefix, $name);
         } else {
             return $name;
         }

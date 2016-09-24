@@ -48,8 +48,8 @@ class QueryBuilder extends BaseQueryBuilder
      */
     public function renameColumn($table, $oldName, $newName)
     {
-        $quotedTable = $this->db->quoteTableName($table);
-        $row = $this->db->createCommand('SHOW CREATE TABLE ' . $quotedTable)->queryOne();
+        $quotedTable = $this->adapter->quoteTableName($table);
+        $row = $this->adapter->createCommand('SHOW CREATE TABLE ' . $quotedTable)->queryOne();
         if ($row === false) {
             throw new Exception("Unable to find column '$oldName' in table '$table'.");
         }
@@ -63,16 +63,16 @@ class QueryBuilder extends BaseQueryBuilder
             foreach ($matches[1] as $i => $c) {
                 if ($c === $oldName) {
                     return "ALTER TABLE $quotedTable CHANGE "
-                        . $this->db->quoteColumnName($oldName) . ' '
-                        . $this->db->quoteColumnName($newName) . ' '
+                        . $this->adapter->quoteColumnName($oldName) . ' '
+                        . $this->adapter->quoteColumnName($newName) . ' '
                         . $matches[2][$i];
                 }
             }
         }
         // try to give back a SQL anyway
         return "ALTER TABLE $quotedTable CHANGE "
-            . $this->db->quoteColumnName($oldName) . ' '
-            . $this->db->quoteColumnName($newName);
+            . $this->adapter->quoteColumnName($oldName) . ' '
+            . $this->adapter->quoteColumnName($newName);
     }
 
     /**
@@ -82,9 +82,9 @@ class QueryBuilder extends BaseQueryBuilder
     public function createIndex($name, $table, $columns, $unique = false)
     {
         return 'ALTER TABLE '
-        . $this->db->quoteTableName($table)
+        . $this->adapter->quoteTableName($table)
         . ($unique ? ' ADD UNIQUE INDEX ' : ' ADD INDEX ')
-        . $this->db->quoteTableName($name)
+        . $this->adapter->quoteTableName($name)
         . ' (' . $this->buildColumns($columns) . ')';
     }
 
@@ -96,8 +96,8 @@ class QueryBuilder extends BaseQueryBuilder
      */
     public function dropForeignKey($name, $table)
     {
-        return 'ALTER TABLE ' . $this->db->quoteTableName($table)
-            . ' DROP FOREIGN KEY ' . $this->db->quoteColumnName($name);
+        return 'ALTER TABLE ' . $this->adapter->quoteTableName($table)
+            . ' DROP FOREIGN KEY ' . $this->adapter->quoteColumnName($name);
     }
 
     /**
@@ -108,7 +108,7 @@ class QueryBuilder extends BaseQueryBuilder
      */
     public function dropPrimaryKey($name, $table)
     {
-        return 'ALTER TABLE ' . $this->db->quoteTableName($table) . ' DROP PRIMARY KEY';
+        return 'ALTER TABLE ' . $this->adapter->quoteTableName($table) . ' DROP PRIMARY KEY';
     }
 
     /**
@@ -123,12 +123,12 @@ class QueryBuilder extends BaseQueryBuilder
      */
     public function resetSequence($tableName, $value = null)
     {
-        $table = $this->db->getTableSchema($tableName);
+        $table = $this->adapter->getTableSchema($tableName);
         if ($table !== null && $table->sequenceName !== null) {
-            $tableName = $this->db->quoteTableName($tableName);
+            $tableName = $this->adapter->quoteTableName($tableName);
             if ($value === null) {
                 $key = reset($table->primaryKey);
-                $value = $this->db->createCommand("SELECT MAX(`$key`) FROM $tableName")->queryScalar() + 1;
+                $value = $this->adapter->createCommand("SELECT MAX(`$key`) FROM $tableName")->queryScalar() + 1;
             } else {
                 $value = (int) $value;
             }
@@ -179,7 +179,7 @@ class QueryBuilder extends BaseQueryBuilder
      */
     public function insert($table, $columns, &$params)
     {
-        $schema = $this->db->getSchema();
+        $schema = $this->adapter->getSchema();
         if (($tableSchema = $schema->getTableSchema($table)) !== null) {
             $columnSchemas = $tableSchema->columns;
         } else {
@@ -222,11 +222,11 @@ class QueryBuilder extends BaseQueryBuilder
         $definition = $this->getColumnDefinition($table, $column);
         $definition = trim(preg_replace("/COMMENT '(.*?)'/i", '', $definition));
 
-        return 'ALTER TABLE ' . $this->db->quoteTableName($table)
-            . ' CHANGE ' . $this->db->quoteColumnName($column)
-            . ' ' . $this->db->quoteColumnName($column)
+        return 'ALTER TABLE ' . $this->adapter->quoteTableName($table)
+            . ' CHANGE ' . $this->adapter->quoteColumnName($column)
+            . ' ' . $this->adapter->quoteColumnName($column)
             . (empty($definition) ? '' : ' ' . $definition)
-            . ' COMMENT ' . $this->db->quoteValue($comment);
+            . ' COMMENT ' . $this->adapter->quoteValue($comment);
     }
 
     /**
@@ -235,7 +235,7 @@ class QueryBuilder extends BaseQueryBuilder
      */
     public function addCommentOnTable($table, $comment)
     {
-        return 'ALTER TABLE ' . $this->db->quoteTableName($table) . ' COMMENT ' . $this->db->quoteValue($comment);
+        return 'ALTER TABLE ' . $this->adapter->quoteTableName($table) . ' COMMENT ' . $this->adapter->quoteValue($comment);
     }
 
     /**
@@ -267,8 +267,8 @@ class QueryBuilder extends BaseQueryBuilder
      */
     private function getColumnDefinition($table, $column)
     {
-        $quotedTable = $this->db->quoteTableName($table);
-        $row = $this->db->createCommand('SHOW CREATE TABLE ' . $quotedTable)->queryOne();
+        $quotedTable = $this->adapter->quoteTableName($table);
+        $row = $this->adapter->createCommand('SHOW CREATE TABLE ' . $quotedTable)->queryOne();
         if ($row === false) {
             throw new Exception("Unable to find column '$column' in table '$table'.");
         }

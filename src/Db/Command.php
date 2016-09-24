@@ -92,9 +92,10 @@ class Command extends Component
     public $queryCacheDependency;
 
     /**
-     * @var array pending parameters to be bound to the current PDO statement.
+     * @var array pending parameters to be bound to the current Statement.
      */
     private $_pendingParams = [];
+
     /**
      * @var string the SQL statement that this command represents
      */
@@ -175,7 +176,7 @@ class Command extends Component
                 $name = ':' . $name;
             }
             if (is_string($value)) {
-                $params[$name] = $this->db->quoteValue($value);
+                $params[$name] = $this->adapter->quoteValue($value);
             } elseif (is_bool($value)) {
                 $params[$name] = ($value ? 'TRUE' : 'FALSE');
             } elseif ($value === null) {
@@ -258,14 +259,13 @@ class Command extends Component
      * @param mixed $value the PHP variable to bind to the SQL statement parameter (passed by reference)
      * @param integer $dataType SQL data type of the parameter. If null, the type is determined by the PHP type of the value.
      * @param integer $length length of the data type
-     * @param mixed $driverOptions the driver-specific options
      * @return Awaitable
      * @see http://www.php.net/manual/en/function.PDOStatement-bindParam.php
      */
-    public function bindParam($name, &$value, $dataType = null, $length = null, $driverOptions = null) : Awaitable
+    /*public function bindParam($name, &$value, $dataType = null, $length = null) : Awaitable
     {
         $deferred = new Deferred();
-        $this->prepare()->await(function ($result) use ($deferred, &$name, &$value, &$dataType, &$length, &$driverOptions) {
+        $this->prepare()->await(function ($result) use ($deferred, &$name, &$value, &$dataType, &$length) {
             if ($result instanceof Throwable) {
                 $deferred->exception($result);
             } else {
@@ -274,23 +274,21 @@ class Command extends Component
                 }
                 if ($length === null) {
                     $this->statement->bindParam($name, $value, $dataType);
-                } elseif ($driverOptions === null) {
-                    $this->statement->bindParam($name, $value, $dataType, $length);
                 } else {
-                    $this->statement->bindParam($name, $value, $dataType, $length, $driverOptions);
+                    $this->statement->bindParam($name, $value, $dataType, $length);
                 }
-                $this->params[$name] =& $value;
+                $this->params[$name] = &$value;
 
-                $deferred->exception($result);
+                $deferred->result($result);
             }
         });
 
         return $deferred->awaitable();
-    }
+    }*/
 
     /**
      * Binds pending parameters that were registered via [[bindValue()]] and [[bindValues()]].
-     * Note that this method requires an active [[pdoStatement]].
+     * Note that this method requires an active [[Statement]].
      */
     protected function bindPendingParams()
     {
@@ -314,7 +312,7 @@ class Command extends Component
     public function bindValue($name, $value, $dataType = null)
     {
         if ($dataType === null) {
-            $dataType = $this->db->getSchema()->getPdoType($value);
+            $dataType = $this->adapter->getSchema()->getType($value);
         }
         $this->_pendingParams[$name] = [$value, $dataType];
         $this->params[$name] = $value;
@@ -339,13 +337,13 @@ class Command extends Component
             return $this;
         }
 
-        $schema = $this->db->getSchema();
+        $schema = $this->adapter->getSchema();
         foreach ($values as $name => $value) {
             if (is_array($value)) {
                 $this->_pendingParams[$name] = $value;
                 $this->params[$name] = $value[0];
             } else {
-                $type = $schema->getPdoType($value);
+                $type = $schema->getType($value);
                 $this->_pendingParams[$name] = [$value, $type];
                 $this->params[$name] = $value;
             }
@@ -473,7 +471,7 @@ class Command extends Component
      */
     public function batchInsert($table, $columns, $rows)
     {
-        $sql = $this->db->getQueryBuilder()->batchInsert($table, $columns, $rows);
+        $sql = $this->adapter->getQueryBuilder()->batchInsert($table, $columns, $rows);
 
         return $this->setSql($sql);
     }
@@ -499,7 +497,7 @@ class Command extends Component
      */
     public function update($table, $columns, $condition = '', $params = [])
     {
-        $sql = $this->db->getQueryBuilder()->update($table, $columns, $condition, $params);
+        $sql = $this->adapter->getQueryBuilder()->update($table, $columns, $condition, $params);
 
         return $this->setSql($sql)->bindValues($params);
     }
@@ -524,7 +522,7 @@ class Command extends Component
      */
     public function delete($table, $condition = '', $params = [])
     {
-        $sql = $this->db->getQueryBuilder()->delete($table, $condition, $params);
+        $sql = $this->adapter->getQueryBuilder()->delete($table, $condition, $params);
 
         return $this->setSql($sql)->bindValues($params);
     }
@@ -549,7 +547,7 @@ class Command extends Component
      */
     public function createTable($table, $columns, $options = null)
     {
-        $sql = $this->db->getQueryBuilder()->createTable($table, $columns, $options);
+        $sql = $this->adapter->getQueryBuilder()->createTable($table, $columns, $options);
 
         return $this->setSql($sql);
     }
@@ -562,7 +560,7 @@ class Command extends Component
      */
     public function renameTable($table, $newName)
     {
-        $sql = $this->db->getQueryBuilder()->renameTable($table, $newName);
+        $sql = $this->adapter->getQueryBuilder()->renameTable($table, $newName);
 
         return $this->setSql($sql)->requireTableSchemaRefresh($table);
     }
@@ -574,7 +572,7 @@ class Command extends Component
      */
     public function dropTable($table)
     {
-        $sql = $this->db->getQueryBuilder()->dropTable($table);
+        $sql = $this->adapter->getQueryBuilder()->dropTable($table);
 
         return $this->setSql($sql)->requireTableSchemaRefresh($table);
     }
@@ -586,7 +584,7 @@ class Command extends Component
      */
     public function truncateTable($table)
     {
-        $sql = $this->db->getQueryBuilder()->truncateTable($table);
+        $sql = $this->adapter->getQueryBuilder()->truncateTable($table);
 
         return $this->setSql($sql);
     }
@@ -602,7 +600,7 @@ class Command extends Component
      */
     public function addColumn($table, $column, $type)
     {
-        $sql = $this->db->getQueryBuilder()->addColumn($table, $column, $type);
+        $sql = $this->adapter->getQueryBuilder()->addColumn($table, $column, $type);
 
         return $this->setSql($sql)->requireTableSchemaRefresh($table);
     }
@@ -615,7 +613,7 @@ class Command extends Component
      */
     public function dropColumn($table, $column)
     {
-        $sql = $this->db->getQueryBuilder()->dropColumn($table, $column);
+        $sql = $this->adapter->getQueryBuilder()->dropColumn($table, $column);
 
         return $this->setSql($sql)->requireTableSchemaRefresh($table);
     }
@@ -629,7 +627,7 @@ class Command extends Component
      */
     public function renameColumn($table, $oldName, $newName)
     {
-        $sql = $this->db->getQueryBuilder()->renameColumn($table, $oldName, $newName);
+        $sql = $this->adapter->getQueryBuilder()->renameColumn($table, $oldName, $newName);
 
         return $this->setSql($sql)->requireTableSchemaRefresh($table);
     }
@@ -645,7 +643,7 @@ class Command extends Component
      */
     public function alterColumn($table, $column, $type)
     {
-        $sql = $this->db->getQueryBuilder()->alterColumn($table, $column, $type);
+        $sql = $this->adapter->getQueryBuilder()->alterColumn($table, $column, $type);
 
         return $this->setSql($sql)->requireTableSchemaRefresh($table);
     }
@@ -660,7 +658,7 @@ class Command extends Component
      */
     public function addPrimaryKey($name, $table, $columns)
     {
-        $sql = $this->db->getQueryBuilder()->addPrimaryKey($name, $table, $columns);
+        $sql = $this->adapter->getQueryBuilder()->addPrimaryKey($name, $table, $columns);
 
         return $this->setSql($sql)->requireTableSchemaRefresh($table);
     }
@@ -673,7 +671,7 @@ class Command extends Component
      */
     public function dropPrimaryKey($name, $table)
     {
-        $sql = $this->db->getQueryBuilder()->dropPrimaryKey($name, $table);
+        $sql = $this->adapter->getQueryBuilder()->dropPrimaryKey($name, $table);
 
         return $this->setSql($sql)->requireTableSchemaRefresh($table);
     }
@@ -692,7 +690,7 @@ class Command extends Component
      */
     public function addForeignKey($name, $table, $columns, $refTable, $refColumns, $delete = null, $update = null)
     {
-        $sql = $this->db->getQueryBuilder()->addForeignKey($name, $table, $columns, $refTable, $refColumns, $delete, $update);
+        $sql = $this->adapter->getQueryBuilder()->addForeignKey($name, $table, $columns, $refTable, $refColumns, $delete, $update);
 
         return $this->setSql($sql);
     }
@@ -705,7 +703,7 @@ class Command extends Component
      */
     public function dropForeignKey($name, $table)
     {
-        $sql = $this->db->getQueryBuilder()->dropForeignKey($name, $table);
+        $sql = $this->adapter->getQueryBuilder()->dropForeignKey($name, $table);
 
         return $this->setSql($sql);
     }
@@ -721,7 +719,7 @@ class Command extends Component
      */
     public function createIndex($name, $table, $columns, $unique = false)
     {
-        $sql = $this->db->getQueryBuilder()->createIndex($name, $table, $columns, $unique);
+        $sql = $this->adapter->getQueryBuilder()->createIndex($name, $table, $columns, $unique);
 
         return $this->setSql($sql);
     }
@@ -734,7 +732,7 @@ class Command extends Component
      */
     public function dropIndex($name, $table)
     {
-        $sql = $this->db->getQueryBuilder()->dropIndex($name, $table);
+        $sql = $this->adapter->getQueryBuilder()->dropIndex($name, $table);
 
         return $this->setSql($sql);
     }
@@ -751,7 +749,7 @@ class Command extends Component
      */
     public function resetSequence($table, $value = null)
     {
-        $sql = $this->db->getQueryBuilder()->resetSequence($table, $value);
+        $sql = $this->adapter->getQueryBuilder()->resetSequence($table, $value);
 
         return $this->setSql($sql);
     }
@@ -767,7 +765,7 @@ class Command extends Component
      */
     public function checkIntegrity($check = true, $schema = '', $table = '')
     {
-        $sql = $this->db->getQueryBuilder()->checkIntegrity($check, $schema, $table);
+        $sql = $this->adapter->getQueryBuilder()->checkIntegrity($check, $schema, $table);
 
         return $this->setSql($sql);
     }
@@ -783,7 +781,7 @@ class Command extends Component
      */
     public function addCommentOnColumn($table, $column, $comment)
     {
-        $sql = $this->db->getQueryBuilder()->addCommentOnColumn($table, $column, $comment);
+        $sql = $this->adapter->getQueryBuilder()->addCommentOnColumn($table, $column, $comment);
 
         return $this->setSql($sql);
     }
@@ -798,7 +796,7 @@ class Command extends Component
      */
     public function addCommentOnTable($table, $comment)
     {
-        $sql = $this->db->getQueryBuilder()->addCommentOnTable($table, $comment);
+        $sql = $this->adapter->getQueryBuilder()->addCommentOnTable($table, $comment);
 
         return $this->setSql($sql);
     }
@@ -813,7 +811,7 @@ class Command extends Component
      */
     public function dropCommentFromColumn($table, $column)
     {
-        $sql = $this->db->getQueryBuilder()->dropCommentFromColumn($table, $column);
+        $sql = $this->adapter->getQueryBuilder()->dropCommentFromColumn($table, $column);
 
         return $this->setSql($sql);
     }
@@ -827,7 +825,7 @@ class Command extends Component
      */
     public function dropCommentFromTable($table)
     {
-        $sql = $this->db->getQueryBuilder()->dropCommentFromTable($table);
+        $sql = $this->adapter->getQueryBuilder()->dropCommentFromTable($table);
 
         return $this->setSql($sql);
     }
@@ -858,7 +856,6 @@ class Command extends Component
                 $deferred->exception($result);
             } else {
                 $token = $rawSql;
-                exit('asdf');
                 Friday::beginProfile($token, __METHOD__);
 
                 $this->statement->execute()->await(function ($result) use ($deferred, &$token) {
@@ -893,7 +890,7 @@ class Command extends Component
     {
         $rawSql = $this->getRawSql();
 
-        Yii::info($rawSql, 'yii\db\Command::query');
+        Friday::info($rawSql, 'Friday\Db\Command::query');
 
         if ($method !== '') {
             $info = $this->db->getQueryCacheInfo($this->queryCacheDuration, $this->queryCacheDependency);
@@ -967,7 +964,7 @@ class Command extends Component
     protected function refreshTableSchema()
     {
         if ($this->_refreshTableName !== null) {
-            $this->db->getSchema()->refreshTableSchema($this->_refreshTableName);
+            $this->adapter->getSchema()->refreshTableSchema($this->_refreshTableName);
         }
     }
 }

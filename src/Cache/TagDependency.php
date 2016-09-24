@@ -71,32 +71,31 @@ class TagDependency extends AbstractDependency {
     /**
      * Invalidates all of the cached data items that are associated with any of the specified [[tags]].
      * @param AbstractCache $cache the cache component that caches the data items
-     * @param string|array $tags
+     * @param Awaitable string|array $tags
      */
-    public static function invalidate($cache, $tags)
+    public static function invalidate($cache, $tags) : Awaitable
     {
         $keys = [];
         foreach ((array) $tags as $tag) {
             $keys[] = $cache->buildKey([__CLASS__, $tag]);
         }
-        static::touchKeys($cache, $keys);
+        return static::touchKeys($cache, $keys);
     }
 
     /**
      * Generates the timestamp for the specified cache keys.
      * @param AbstractCache $cache
      * @param string[] $keys
-     * @return array the timestamp indexed by cache keys
+     * @return Awaitable array the timestamp indexed by cache keys
      */
-    protected static function touchKeys($cache, $keys)
+    protected static function touchKeys($cache, $keys) : Awaitable
     {
         $items = [];
         $time = microtime();
         foreach ($keys as $key) {
             $items[$key] = $time;
         }
-        $cache->multiSet($items);
-        return $items;
+        return $cache->multiSet($items);
     }
 
     /**

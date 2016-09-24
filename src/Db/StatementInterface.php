@@ -28,5 +28,5 @@ interface StatementInterface
 
     public function rowCount() : int ;
 
-    public function bindParam($name, $value, $dataType, $length);
+    public function bindParam($name, $value, $dataType, $length = null);
 }

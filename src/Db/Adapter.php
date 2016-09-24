@@ -80,6 +80,33 @@ class Adapter extends Component
 
     protected $_factory;
 
+    /**
+     * @var boolean whether to enable schema caching.
+     * Note that in order to enable truly schema caching, a valid cache component as specified
+     * by [[schemaCache]] must be enabled and [[enableSchemaCache]] must be set true.
+     * @see schemaCacheDuration
+     * @see schemaCacheExclude
+     * @see schemaCache
+     */
+    public $enableSchemaCache = false;
+    /**
+     * @var integer number of seconds that table metadata can remain valid in cache.
+     * Use 0 to indicate that the cached data will never expire.
+     * @see enableSchemaCache
+     */
+    public $schemaCacheDuration = 3600;
+    /**
+     * @var array list of tables whose metadata should NOT be cached. Defaults to empty array.
+     * The table names may contain schema prefix, if any. Do not quote the table names.
+     * @see enableSchemaCache
+     */
+    public $schemaCacheExclude = [];
+    /**
+     * @var Friday\Cache\AbstractCache|string the cache object or the ID of the cache application component that
+     * is used to cache the table metadata.
+     * @see enableSchemaCache
+     */
+    public $schemaCache = 'cache';
 
     protected $driverFactoryMap = [
         'mysqli' => 'Friday\Db\Mysqli\Factory'
@@ -160,15 +187,33 @@ class Adapter extends Component
     public function getSchema()
     {
         if ($this->_schema === null) {
-            $driver = $this->getDriverName();
-
-            $factory = $this->getFactory();
+                $factory = $this->getFactory();
 
             $this->_schema = $factory->createSchema();
         }
 
 
         return $this->_schema;
+    }
+
+    /**
+     * Returns the query builder for the current DB connection.
+     * @return QueryBuilder the query builder for the current DB connection.
+     */
+    public function getQueryBuilder()
+    {
+        return $this->getSchema()->getQueryBuilder();
+    }
+
+    /**
+     * Obtains the schema information for the named table.
+     * @param string $name table name.
+     * @param boolean $refresh whether to reload the table schema even if it is found in the cache.
+     * @return TableSchema table schema information. Null if the named table does not exist.
+     */
+    public function getTableSchema($name, $refresh = false)
+    {
+        return $this->getSchema()->getTableSchema($name, $refresh);
     }
 
     /**
