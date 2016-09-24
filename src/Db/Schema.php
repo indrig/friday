@@ -7,6 +7,7 @@ use Friday\Base\Exception\NotSupportedException;
 use Friday\Base\Exception\BadMethodCallException;
 use Friday\Cache\AbstractCache;
 use Friday\Cache\TagDependency;
+use Throwable;
 
 /**
  * Schema is the base class for concrete DBMS-specific schema classes.
@@ -52,6 +53,7 @@ abstract class Schema extends BaseObject
     const TYPE_BOOLEAN = 'boolean';
     const TYPE_MONEY = 'money';
 
+
     /**
      * @var Adapter the database connection
      */
@@ -84,6 +86,36 @@ abstract class Schema extends BaseObject
      * @var QueryBuilder the query builder for this database
      */
     private $_builder;
+
+    /**
+     * Represents a boolean data type.
+     * @link http://php.net/manual/en/pdo.constants.php
+     */
+    const PARAM_BOOL = 5;
+
+    /**
+     * Represents the SQL NULL data type.
+     * @link http://php.net/manual/en/pdo.constants.php
+     */
+    const PARAM_NULL = 0;
+
+    /**
+     * Represents the SQL INTEGER data type.
+     * @link http://php.net/manual/en/pdo.constants.php
+     */
+    const PARAM_INT = 1;
+
+    /**
+     * Represents the SQL CHAR, VARCHAR, or other string data type.
+     * @link http://php.net/manual/en/pdo.constants.php
+     */
+    const PARAM_STR = 2;
+
+    /**
+     * Represents the SQL large object data type.
+     * @link http://php.net/manual/en/pdo.constants.php
+     */
+    const PARAM_LOB = 3;
 
 
     /**
@@ -243,19 +275,19 @@ abstract class Schema extends BaseObject
      * @return integer the PDO type
      * @see http://www.php.net/manual/en/pdo.constants.php
      */
-    public function getPdoType($data)
+    public function getType($data)
     {
         static $typeMap = [
             // php type => PDO type
-            'boolean' => \PDO::PARAM_BOOL,
-            'integer' => \PDO::PARAM_INT,
-            'string' => \PDO::PARAM_STR,
-            'resource' => \PDO::PARAM_LOB,
-            'NULL' => \PDO::PARAM_NULL,
+            'boolean' => static::PARAM_BOOL,
+            'integer' => static::PARAM_INT,
+            'string' => static::PARAM_STR,
+            'resource' => static::PARAM_LOB,
+            'NULL' => static::PARAM_NULL,
         ];
         $type = gettype($data);
 
-        return isset($typeMap[$type]) ? $typeMap[$type] : \PDO::PARAM_STR;
+        return isset($typeMap[$type]) ? $typeMap[$type] : static::PARAM_STR;
     }
 
     /**
@@ -604,11 +636,11 @@ abstract class Schema extends BaseObject
      *
      * @param \Exception $e
      * @param string $rawSql SQL that produced exception
-     * @return Exception
+     * @return Throwable
      */
-    public function convertException(\Exception $e, $rawSql)
+    public function convertException(Throwable $e, $rawSql)
     {
-        if ($e instanceof Exception) {
+        if ($e instanceof Throwable) {
             return $e;
         }
 

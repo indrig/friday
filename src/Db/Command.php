@@ -2,8 +2,15 @@
 namespace Friday\Db;
 
 use Friday;
+use Friday\Base\Awaitable;
 use Friday\Base\Component;
+use Friday\Base\Deferred;
 use Friday\Base\Exception\NotSupportedException;
+use Friday\Db\Exception\Exception;
+use Friday\Helper\AwaitableHelper;
+
+
+use Throwable;
 
 /**
  * Command represents a SQL statement to be executed against a database.
@@ -44,18 +51,22 @@ use Friday\Base\Exception\NotSupportedException;
  * @property string $rawSql The raw SQL with parameter values inserted into the corresponding placeholders in
  * [[sql]]. This property is read-only.
  * @property string $sql The SQL statement to be executed.
-
  */
 class Command extends Component
 {
     /**
      * @var Adapter the DB connection that this command is associated with
      */
-    public $db;
+    public $adapter;
+
     /**
-     * @var \PDOStatement the PDOStatement object that this command is associated with
+     * @var AbstractConnection
      */
-    public $pdoStatement;
+    public $connection;
+    /**
+     * @var StatementInterface the Statement object that this command is associated with
+     */
+    public $statement;
     /**
      * @var integer the default fetch mode for this command.
      * @see http://www.php.net/manual/en/function.PDOStatement-setFetchMode.php
@@ -138,7 +149,7 @@ class Command extends Component
     {
         if ($sql !== $this->_sql) {
             $this->cancel();
-            $this->_sql = $this->db->quoteSql($sql);
+            $this->_sql = $this->adapter->quoteSql($sql);
             $this->_pendingParams = [];
             $this->params = [];
             $this->_refreshTableName = null;
@@ -192,35 +203,41 @@ class Command extends Component
      * automatically.
      * @param boolean $forRead whether this method is called for a read query. If null, it means
      * the SQL statement should be used to determine whether it is for read or write.
-     * @throws Exception if there is any DB error
+     * @return Awaitable
      */
-    public function prepare($forRead = null)
+    public function prepare($forRead = null) : Awaitable
     {
-        if ($this->pdoStatement) {
+        if ($this->statement) {
             $this->bindPendingParams();
-            return;
+            return AwaitableHelper::result();
         }
 
+        $deferred = new Deferred();
         $sql = $this->getSql();
 
-        if ($this->db->getTransaction()) {
-            // master is in a transaction. use the same connection.
-            $forRead = false;
-        }
-        if ($forRead || $forRead === null && $this->db->getSchema()->isReadQuery($sql)) {
-            $pdo = $this->db->getSlavePdo();
-        } else {
-            $pdo = $this->db->getMasterPdo();
-        }
+        //  if ($this->db->getTransaction()) {
+        // master is in a transaction. use the same connection.
+        //    $forRead = false;
+        //  }
 
-        try {
-            $this->pdoStatement = $pdo->prepare($sql);
-            $this->bindPendingParams();
-        } catch (\Exception $e) {
-            $message = $e->getMessage() . "\nFailed to prepare SQL: $sql";
-            $errorInfo = $e instanceof \PDOException ? $e->errorInfo : null;
-            throw new Exception($message, $errorInfo, (int) $e->getCode(), $e);
-        }
+        (($forRead || $forRead === null && $this->adapter->getSchema()->isReadQuery($sql)) ? $this->adapter->getSlaveConnection() : $this->adapter->getMasterConnection())
+            ->await(function ($result) use ($sql, $deferred) {
+                if ($result instanceof Throwable) {
+                    $deferred->result($result);
+                } else {
+                    $this->connection = $result;
+                    try {
+                        $this->statement = $this->connection->prepare($sql);
+                        $this->bindPendingParams();
+                    } catch (Throwable $e) {
+                        $message = $e->getMessage() . "\nFailed to prepare SQL: $sql";
+                        $deferred->exception(new Exception($message, null, (int)$e->getCode(), $e));
+                    }
+                }
+            });
+
+
+        return $deferred->awaitable();
     }
 
     /**
@@ -229,7 +246,7 @@ class Command extends Component
      */
     public function cancel()
     {
-        $this->pdoStatement = null;
+        $this->statement = null;
     }
 
     /**
@@ -242,26 +259,33 @@ class Command extends Component
      * @param integer $dataType SQL data type of the parameter. If null, the type is determined by the PHP type of the value.
      * @param integer $length length of the data type
      * @param mixed $driverOptions the driver-specific options
-     * @return $this the current command being executed
+     * @return Awaitable
      * @see http://www.php.net/manual/en/function.PDOStatement-bindParam.php
      */
-    public function bindParam($name, &$value, $dataType = null, $length = null, $driverOptions = null)
+    public function bindParam($name, &$value, $dataType = null, $length = null, $driverOptions = null) : Awaitable
     {
-        $this->prepare();
+        $deferred = new Deferred();
+        $this->prepare()->await(function ($result) use ($deferred, &$name, &$value, &$dataType, &$length, &$driverOptions) {
+            if ($result instanceof Throwable) {
+                $deferred->exception($result);
+            } else {
+                if ($dataType === null) {
+                    $dataType = $this->adapter->getSchema()->getType($value);
+                }
+                if ($length === null) {
+                    $this->statement->bindParam($name, $value, $dataType);
+                } elseif ($driverOptions === null) {
+                    $this->statement->bindParam($name, $value, $dataType, $length);
+                } else {
+                    $this->statement->bindParam($name, $value, $dataType, $length, $driverOptions);
+                }
+                $this->params[$name] =& $value;
 
-        if ($dataType === null) {
-            $dataType = $this->db->getSchema()->getPdoType($value);
-        }
-        if ($length === null) {
-            $this->pdoStatement->bindParam($name, $value, $dataType);
-        } elseif ($driverOptions === null) {
-            $this->pdoStatement->bindParam($name, $value, $dataType, $length);
-        } else {
-            $this->pdoStatement->bindParam($name, $value, $dataType, $length, $driverOptions);
-        }
-        $this->params[$name] =& $value;
+                $deferred->exception($result);
+            }
+        });
 
-        return $this;
+        return $deferred->awaitable();
     }
 
     /**
@@ -271,7 +295,7 @@ class Command extends Component
     protected function bindPendingParams()
     {
         foreach ($this->_pendingParams as $name => $value) {
-            $this->pdoStatement->bindValue($name, $value[0], $value[1]);
+            $this->statement->bindValue($name, $value[0], $value[1]);
         }
         $this->_pendingParams = [];
     }
@@ -812,39 +836,48 @@ class Command extends Component
      * Executes the SQL statement.
      * This method should only be used for executing non-query SQL statement, such as `INSERT`, `DELETE`, `UPDATE` SQLs.
      * No result set will be returned.
-     * @return integer number of rows affected by the execution.
-     * @throws Exception execution failed
+     * @return Awaitable integer number of rows affected by the execution.
      */
-    public function execute()
+    public function execute() : Awaitable
     {
         $sql = $this->getSql();
 
         $rawSql = $this->getRawSql();
 
-        Yii::info($rawSql, __METHOD__);
+        Friday::info($rawSql, __METHOD__);
 
         if ($sql == '') {
-            return 0;
+            return AwaitableHelper::result(0);
         }
 
-        $this->prepare(false);
+        $deferred = new Deferred();
 
-        $token = $rawSql;
-        try {
-            Yii::beginProfile($token, __METHOD__);
+        $this->prepare(false)->await(function ($result) use ($deferred, &$rawSql) {
+            if ($result instanceof Throwable) {
+                echo ($result);
+                $deferred->exception($result);
+            } else {
+                $token = $rawSql;
+                exit('asdf');
+                Friday::beginProfile($token, __METHOD__);
 
-            $this->pdoStatement->execute();
-            $n = $this->pdoStatement->rowCount();
+                $this->statement->execute()->await(function ($result) use ($deferred, &$token) {
+                    if ($result instanceof Throwable) {
+                        Friday::endProfile($token, __METHOD__);
+                        $deferred->exception($this->adapter->getSchema()->convertException($result, $token));
+                    } else {
+                        $n = $this->statement->rowCount();
+                        Friday::endProfile($token, __METHOD__);
 
-            Yii::endProfile($token, __METHOD__);
+                        $this->refreshTableSchema();
 
-            $this->refreshTableSchema();
+                        $deferred->result($n);
+                    }
+                });
+            }
+        });
 
-            return $n;
-        } catch (\Exception $e) {
-            Yii::endProfile($token, __METHOD__);
-            throw $this->db->getSchema()->convertException($e, $rawSql);
-        }
+        return $deferred->awaitable();
     }
 
     /**
@@ -897,7 +930,7 @@ class Command extends Component
                 if ($fetchMode === null) {
                     $fetchMode = $this->fetchMode;
                 }
-                $result = call_user_func_array([$this->pdoStatement, $method], (array) $fetchMode);
+                $result = call_user_func_array([$this->pdoStatement, $method], (array)$fetchMode);
                 $this->pdoStatement->closeCursor();
             }
 

@@ -2,6 +2,7 @@
 namespace Friday\Helper;
 
 use Friday\Base\Awaitable;
+use Friday\Base\Deferred;
 
 class AwaitableHelper{
 
@@ -26,5 +27,11 @@ class AwaitableHelper{
                 }, false);
             }
         });
+    }
+
+    public static function result($result = null){
+        $deferred = new Deferred();
+        $deferred->result($result);
+        return $deferred->awaitable();
     }
 }

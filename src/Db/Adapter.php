@@ -2,6 +2,7 @@
 namespace Friday\Db;
 
 use Friday;
+use Friday\Base\Awaitable;
 use Friday\Base\Component;
 use Friday\Base\Exception\NotSupportedException;
 
@@ -39,22 +40,34 @@ class Adapter extends Component
     /**
      *
      */
-    public $host;
+    public $host = 'localhost';
 
     /**
      * @var string the username for establishing DB connection. Defaults to `null` meaning no username to use.
      */
-    public $username;
+    public $username = 'root';
 
     /**
      * @var string the password for establishing DB connection. Defaults to `null` meaning no password to use.
      */
-    public $password;
+    public $password = '';
 
     /**
      * @var string the password for establishing DB connection. Defaults to `null` meaning no password to use.
      */
     public $database;
+
+    /**
+     * @var string the common prefix or suffix for table names. If a table name is given
+     * as `{{%TableName}}`, then the percentage character `%` will be replaced with this
+     * property value. For example, `{{%post}}` becomes `{{tbl_post}}`.
+     */
+    public $tablePrefix = '';
+
+    /**
+     * @var string
+     */
+    public $charset = 'utf-8';
 
     /**
      * @var string
@@ -66,6 +79,7 @@ class Adapter extends Component
     private $_connectionPool;
 
     protected $_factory;
+
 
     protected $driverFactoryMap = [
         'mysqli' => 'Friday\Db\Mysqli\Factory'
@@ -81,8 +95,8 @@ class Adapter extends Component
     {
         /** @var Command $command */
         $command = new $this->commandClass([
-            'db' => $this,
-            'sql' => $sql,
+            'adapter'   => $this,
+            'sql'       => $sql,
         ]);
 
         return $command->bindValues($params);
@@ -106,12 +120,17 @@ class Adapter extends Component
         return $this->_driverName;
     }
 
+    /**
+     * @return FactoryInterface
+     * @throws NotSupportedException
+     */
     public function getFactory(){
         if($this->_factory === null) {
             $driver = $this->getDriverName();
             if (isset($this->driverFactoryMap[$driver])) {
                 $class = $this->driverFactoryMap[$driver];
 
+                var_dump($class);
                 if (class_exists($class)) {
                     if(is_string($this->driverFactoryMap[$driver])) {
                         $this->_factory = Friday::createObject(['class' => $this->driverFactoryMap[$driver]]);
@@ -140,23 +159,16 @@ class Adapter extends Component
      */
     public function getSchema()
     {
-        if ($this->_schema !== null) {
-            return $this->_schema;
-        } else {
+        if ($this->_schema === null) {
             $driver = $this->getDriverName();
-            if (isset($this->driverFactoryMap[$driver])) {
-                $class = $this->driverFactoryMap[$driver];
 
-                if(class_exists($class)){
+            $factory = $this->getFactory();
 
-                } else {
-                    throw new NotSupportedException("Connection does not support reading schema information for '$driver' DBMS.");
-                }
-                //return $this->_schema = Friday::createObject($config);
-            } else {
-                throw new NotSupportedException("Connection does not support reading schema information for '$driver' DBMS.");
-            }
+            $this->_schema = $factory->createSchema();
         }
+
+
+        return $this->_schema;
     }
 
     /**
@@ -206,5 +218,62 @@ class Adapter extends Component
                 'adapter' => $this
             ]);
         }
+    }
+
+    /**
+     * Processes a SQL statement by quoting table and column names that are enclosed within double brackets.
+     * Tokens enclosed within double curly brackets are treated as table names, while
+     * tokens enclosed within double square brackets are column names. They will be quoted accordingly.
+     * Also, the percentage character "%" at the beginning or ending of a table name will be replaced
+     * with [[tablePrefix]].
+     * @param string $sql the SQL to be quoted
+     * @return string the quoted SQL
+     */
+    public function quoteSql($sql)
+    {
+        return preg_replace_callback(
+            '/(\\{\\{(%?[\w\-\. ]+%?)\\}\\}|\\[\\[([\w\-\. ]+)\\]\\])/',
+            function ($matches) {
+                if (isset($matches[3])) {
+                    return $this->quoteColumnName($matches[3]);
+                } else {
+                    return str_replace('%', $this->tablePrefix, $this->quoteTableName($matches[2]));
+                }
+            },
+            $sql
+        );
+    }
+
+
+
+    /**
+     * Returns the PDO instance for the currently active slave connection.
+     * When [[enableSlaves]] is true, one of the slaves will be used for read queries, and its PDO instance
+     * will be returned by this method.
+     * @param boolean $fallbackToMaster whether to return a master PDO in case none of the slave connections is available.
+     * @return AbstractConnection the Connection instance for the currently active slave connection. Null is returned if no slave connection
+     * is available and `$fallbackToMaster` is false.
+     */
+    public function getSlaveConnection(bool $fallbackToMaster = true) : Awaitable
+    {
+        /*$db = $this->getSlave(false);
+        if ($db === null) {
+            return $fallbackToMaster ? $this->getMasterConnection() : null;
+        } else {
+            return $db->pdo;
+        }*/
+        return $this->getMasterConnection();
+    }
+
+    /**
+     * Returns the PDO instance for the currently active master connection.
+     * This method will open the master DB connection and then return [[pdo]].
+     * @return AbstractConnection the PDO instance for the currently active master connection.
+     */
+    public function getMasterConnection() : Awaitable
+    {
+        return $this->getConnectionPool()->getConnection();
+        //$this->open();
+        //return $this->pdo;
     }
 }

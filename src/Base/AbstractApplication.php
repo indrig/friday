@@ -11,7 +11,6 @@ use Friday\EventLoop\LoopInterface;
  * Class AbstractApplication
  * @package Friday\Base
  *
- * @property LoopInterface $runLoop
  * @property Security $security
  * @property Friday\Db\Adapter $db
  * @property AbstractErrorHandler $errorHandler
@@ -249,16 +248,6 @@ class AbstractApplication extends Module {
         ];
     }
 
-    /**
-     * @return Looper
-     */
-    public function getRunLoop() : Looper{
-        return $this->get('runLoop');
-    }
-
-    public function run(){
-        //$this->getLooper()->loop();
-    }
 
     /**
      * Returns the error handler component.
