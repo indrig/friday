@@ -1,20 +1,39 @@
 <?php
 namespace Friday\Db\Mysqli;
 
+use Friday;
 use Friday\Base\BaseObject;
+use Friday\Base\Exception\InvalidArgumentException;
+use Friday\Base\Task;
 use Friday\Db\AbstractConnection;
 use Friday\Db\Adapter;
 use Friday\Db\Exception\Exception;
 use mysqli;
 
 class Connection extends AbstractConnection  {
-
-
     /**
      * @var mysqli
      */
-    private $resource;
+    private $_resource;
 
+    /**
+     * @return mysqli
+     */
+    public function getResource(){
+        return $this->_resource;
+    }
+
+    /**
+     * @param $resource
+     * @return $this
+     */
+    public function setResource($resource){
+        if(!$resource instanceof mysqli) {
+            throw  new InvalidArgumentException('$resource is not mysqli.');
+        }
+        $this->_resource = $resource;
+        return $this;
+    }
     /**
      * @return $this
      * @throws Exception
@@ -25,7 +44,7 @@ class Connection extends AbstractConnection  {
         }
         $adapter = $this->adapter;
 
-        $resource = $this->resource = new mysqli();
+        $resource = $this->_resource = new mysqli();
         $resource->init();
 
         $resource->real_connect($adapter->host, $adapter->username, $adapter->password, $adapter->database);
@@ -35,7 +54,7 @@ class Connection extends AbstractConnection  {
         }
 
         if (!empty($adapter->charset)) {
-            $this->resource->set_charset(empty($adapter->charset));
+            $this->_resource->set_charset(empty($adapter->charset));
         }
 
         return $this;
@@ -45,10 +64,10 @@ class Connection extends AbstractConnection  {
      *
      */
     public function disconnect(){
-        if ($this->resource instanceof \mysqli) {
-            $this->resource->close();
+        if ($this->_resource instanceof \mysqli) {
+            $this->_resource->close();
         }
-        $this->resource = null;
+        $this->_resource = null;
     }
 
     /**
@@ -56,7 +75,7 @@ class Connection extends AbstractConnection  {
      */
     public function isConnected() : bool
     {
-        return ($this->resource instanceof \mysqli);
+        return ($this->_resource instanceof mysqli);
     }
 
 
@@ -64,7 +83,7 @@ class Connection extends AbstractConnection  {
         $this->connect();
 
         $statement = new Statement();
-        $statement->initialize($this->resource);
+        $statement->initialize($this);
         $statement->setSql($sql);
         $statement->prepare();
 
@@ -73,10 +92,11 @@ class Connection extends AbstractConnection  {
 
     public function free() {
         $remove = false;
-        if ($this->resource->errno == 2006) {
+        if ($this->_resource->errno == 2006) {
             $remove = true;
         }
 
         $this->adapter->getConnectionPool()->free($this, $remove);
     }
+
 }

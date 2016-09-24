@@ -1,7 +1,7 @@
 <?php
 namespace Friday\Db;
 
-interface FactoryInterface{
+interface ClientInterface{
 
     public function createSchema(array $config = []);
 

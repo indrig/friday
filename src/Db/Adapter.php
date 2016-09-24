@@ -78,7 +78,10 @@ class Adapter extends Component
      */
     private $_connectionPool;
 
-    protected $_factory;
+    /**
+     * @var ClientInterface
+     */
+    protected $_client;
 
     /**
      * @var boolean whether to enable schema caching.
@@ -108,8 +111,8 @@ class Adapter extends Component
      */
     public $schemaCache = 'cache';
 
-    protected $driverFactoryMap = [
-        'mysqli' => 'Friday\Db\Mysqli\Factory'
+    protected $clientMap = [
+        'mysqli' => 'Friday\Db\Mysqli\Client'
     ];
 
     /**
@@ -148,35 +151,34 @@ class Adapter extends Component
     }
 
     /**
-     * @return FactoryInterface
+     * @return ClientInterface
      * @throws NotSupportedException
      */
-    public function getFactory(){
-        if($this->_factory === null) {
+    public function getClient(){
+        if($this->_client === null) {
             $driver = $this->getDriverName();
-            if (isset($this->driverFactoryMap[$driver])) {
-                $class = $this->driverFactoryMap[$driver];
+            if (isset($this->clientMap[$driver])) {
+                $class = $this->clientMap[$driver];
 
-                var_dump($class);
                 if (class_exists($class)) {
-                    if(is_string($this->driverFactoryMap[$driver])) {
-                        $this->_factory = Friday::createObject(['class' => $this->driverFactoryMap[$driver]]);
+                    if(is_string($this->clientMap[$driver])) {
+                        $this->_client = Friday::createObject(['class' => $this->clientMap[$driver]]);
                     } elseif(is_array($class)) {
-                            $this->_factory = Friday::createObject([$this->driverFactoryMap[$driver]]);
-                    } elseif (is_callable($this->driverFactoryMap[$driver])) {
-                        $this->_factory = call_user_func($this->driverFactoryMap[$driver]);
+                            $this->_client = Friday::createObject([$this->clientMap[$driver]]);
+                    } elseif (is_callable($this->clientMap[$driver])) {
+                        $this->_client = call_user_func($this->clientMap[$driver]);
                     } else {
-                        throw new NotSupportedException("Connection does not support reading driver information for '$driver'.");
+                        throw new NotSupportedException("Connection does not support reading client information for '$driver'.");
 
                     }
                 } else {
-                    throw new NotSupportedException("Connection does not support reading driver information for '$driver'.");
+                    throw new NotSupportedException("Connection does not support reading client information for '$driver'.");
                 }
             }
         }
 
 
-        return $this->_factory;
+        return $this->_client;
     }
 
     /**
@@ -187,9 +189,9 @@ class Adapter extends Component
     public function getSchema()
     {
         if ($this->_schema === null) {
-                $factory = $this->getFactory();
+                $client = $this->getClient();
 
-            $this->_schema = $factory->createSchema();
+            $this->_schema = $client->createSchema();
         }
 
 

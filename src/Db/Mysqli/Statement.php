@@ -6,27 +6,15 @@ use Friday\Base\Awaitable;
 use Friday\Base\BaseObject;
 use Friday\Base\Deferred;
 use Friday\Db\Exception\Exception;
-use Friday\Db\ResultInterface;
+use Friday\Db\ParameterContainer;
 use Friday\Db\StatementInterface;
 
 class Statement extends BaseObject implements StatementInterface {
 
     /**
-     * @var \mysqli
+     * @var Connection
      */
-    private $mysqli;
-
-    /**
-     * @var \mysqli_stmt
-     */
-    private $resource;
-
-    /**
-     * Is prepared
-     *
-     * @var bool
-     */
-    protected $isPrepared = false;
+    private $connection;
 
     /**
      * @var string
@@ -34,18 +22,26 @@ class Statement extends BaseObject implements StatementInterface {
     protected $_sql = '';
 
     /**
+     * @var string
+     */
+    protected $_preparedSql;
+
+    /**
+     * @var ParameterContainer|null
+     */
+    protected $_parameterContainer;
+
+    /**
      * Initialize
      *
-     * @param  \mysqli $mysqli
+     * @param  Connection $connection
      * @return Statement
      */
-    public function initialize(\mysqli $mysqli)
+    public function initialize(Connection $connection)
     {
-        $this->mysqli = $mysqli;
+        $this->connection = $connection;
         return $this;
     }
-
-
 
     /**
      * Is prepared
@@ -54,32 +50,68 @@ class Statement extends BaseObject implements StatementInterface {
      */
     public function isPrepared()
     {
-        return $this->isPrepared;
+        return $this->_preparedSql !== null;
     }
     /**
      * Prepare
      *
      * @param string $sql
      * @throws Exception
-     * @return Statement
+     * @return $this
      */
-    public function prepare($sql = null) : Awaitable
+    public function prepare($sql = null)
     {
-        if ($this->isPrepared) {
+        if ($this->_preparedSql !== null) {
             throw new Exception('This statement has already been prepared');
         }
         $sql = ($sql) ?: $this->_sql;
-        $this->resource = $this->mysqli->prepare($sql);
-        if (!$this->resource instanceof \mysqli_stmt) {
-            throw new Exception(
-                'Statement couldn\'t be produced with sql: ' . $sql . ', '.$this->mysqli->error
-            );
+
+        $parameterContainer = $this->getParameterContainer();
+        if($parameterContainer->count() > 0){
+            $params = [];
+
+            $parameters = $parameterContainer->getNamedArray();
+            $adapter = $this->connection->adapter;
+
+            foreach ($parameters as $name => &$value) {
+                if (is_string($name) && strncmp(':', $name, 1)) {
+                    $name = ':' . $name;
+                }
+                if ($parameterContainer->offsetHasType($name)) {
+                    switch ($parameterContainer->offsetHasType($name)) {
+                        case ParameterContainer::TYPE_DOUBLE:
+                            $params[$name] = floatval($value);
+                            break;
+                        case ParameterContainer::TYPE_NULL:
+                            $params[$name] = 'NULL';
+                            break;
+                        case ParameterContainer::TYPE_INTEGER:
+                            $params[$name] = intval($value);
+                            break;
+                        case ParameterContainer::TYPE_STRING:
+                        default:
+                            $params[$name] = $adapter->quoteValue($value);
+                            break;
+                    }
+                } else {
+                    $params[$name] = $adapter->quoteValue($value);
+                }
+            }
+            if (!isset($params[1])) {
+                return strtr($this->_sql, $params);
+            }
+            $sql = '';
+            foreach (explode('?', $this->_sql) as $i => $part) {
+                $sql .= (isset($params[$i]) ? $params[$i] : '') . $part;
+            }
+
+            $this->_preparedSql = $sql;
+        } else {
+            $this->_preparedSql = $sql;
         }
 
-        $this->isPrepared = true;
         return $this;
     }
-
 
     /**
      * Execute
@@ -89,16 +121,20 @@ class Statement extends BaseObject implements StatementInterface {
      */
     public function execute($parameters = null) : Awaitable
     {
+        $id       = spl_object_hash($this);
         $deferred = new Deferred();
+        $resource = $this->connection->getResource();
 
-
-        if(false === $status = $this->mysqli->query($this->getSql(), MYSQLI_ASYNC)){
-            $deferred->exception(new Exception($this->mysqli->error));
+        if(false === $status = $this->connection->getResource()->query($resource, MYSQLI_ASYNC)){
+            $deferred->exception(new Exception($resource->error));
         } else {
 
-           Friday::$app->getLooper()->taskPeriodic(function (){
+           Friday::$app->getLooper()->taskPeriodic(function () use ($resource){
+               $links[] = $errors[] = $reject[] = $resource;
+               mysqli_poll($links, $errors, $reject, 0);
 
-               $this->mysqli->poll();
+               $each = array('links' => $links, 'errors' => $errors, 'reject' => $reject) ;
+
               // $links = $errors = $reject = $this->mysqli;
               // mysqli_poll($links, $errors, $reject, 0); // don't wait, just check
            }, 0.01);
@@ -132,14 +168,43 @@ class Statement extends BaseObject implements StatementInterface {
 
     public function rowCount() : int
     {
-        if($this->resource !== null) {
-            return $this->resource->affected_rows;
-        }
+       // if($this->resource !== null) {
+       //     return $this->resource->affected_rows;
+      //  }
 
         return 0;
     }
-    public function bindParam($name, $value, $dataType, $length = null){
-        //();
+
+
+    /**
+     * @param $name
+     * @param $value
+     * @param $dataType
+     * @param null $length
+     * @return $this
+     */
+    public function bindParam($name, $value, $dataType, $length = null) {
+        $this->getParameterContainer()->bindParam($name, $value, $dataType, $length);
+
+        return $this;
     }
 
+    /**
+     * @param $name
+     * @param $value
+     * @param $dataType
+     */
+    public function bindValue($name, &$value, $dataType) {
+        $this->getParameterContainer()->bindValue($name, $value, $dataType);
+    }
+
+    /**
+     * @return ParameterContainer|null
+     */
+    protected function getParameterContainer(){
+        if($this->_parameterContainer === null) {
+            $this->_parameterContainer = new ParameterContainer();
+        }
+        return $this->_parameterContainer;
+    }
 }

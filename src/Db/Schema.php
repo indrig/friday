@@ -89,36 +89,6 @@ abstract class Schema extends BaseObject
      */
     private $_builder;
 
-    /**
-     * Represents a boolean data type.
-     * @link http://php.net/manual/en/pdo.constants.php
-     */
-    const PARAM_BOOL = 5;
-
-    /**
-     * Represents the SQL NULL data type.
-     * @link http://php.net/manual/en/pdo.constants.php
-     */
-    const PARAM_NULL = 0;
-
-    /**
-     * Represents the SQL INTEGER data type.
-     * @link http://php.net/manual/en/pdo.constants.php
-     */
-    const PARAM_INT = 1;
-
-    /**
-     * Represents the SQL CHAR, VARCHAR, or other string data type.
-     * @link http://php.net/manual/en/pdo.constants.php
-     */
-    const PARAM_STR = 2;
-
-    /**
-     * Represents the SQL large object data type.
-     * @link http://php.net/manual/en/pdo.constants.php
-     */
-    const PARAM_LOB = 3;
-
 
     /**
      * @return \Friday\Db\ColumnSchema
@@ -283,15 +253,16 @@ abstract class Schema extends BaseObject
     {
         static $typeMap = [
             // php type => PDO type
-            'boolean' => static::PARAM_BOOL,
-            'integer' => static::PARAM_INT,
-            'string' => static::PARAM_STR,
-            'resource' => static::PARAM_LOB,
-            'NULL' => static::PARAM_NULL,
+            'boolean'   => ParameterContainer::TYPE_INTEGER,
+            'integer'   => ParameterContainer::TYPE_INTEGER,
+            'string'    => ParameterContainer::TYPE_STRING,
+            'resource'  => ParameterContainer::TYPE_LOB,
+            'NULL'      => ParameterContainer::TYPE_NULL,
         ];
+
         $type = gettype($data);
 
-        return isset($typeMap[$type]) ? $typeMap[$type] : static::PARAM_STR;
+        return isset($typeMap[$type]) ? $typeMap[$type] : ParameterContainer::TYPE_AUTO;
     }
 
     /**
@@ -649,7 +620,6 @@ abstract class Schema extends BaseObject
     /**
      * Converts a DB exception to a more concrete one if possible.
      *
-     * @param \Exception $e
      * @param string $rawSql SQL that produced exception
      * @return Throwable
      */
@@ -659,7 +629,7 @@ abstract class Schema extends BaseObject
             return $e;
         }
 
-        $exceptionClass = '\yii\db\Exception';
+        $exceptionClass = '\Friday\Db\Exception\Exception';
         foreach ($this->exceptionMap as $error => $class) {
             if (strpos($e->getMessage(), $error) !== false) {
                 $exceptionClass = $class;

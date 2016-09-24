@@ -76,7 +76,7 @@ class ConnectionPool extends BaseObject implements Countable, IteratorAggregate 
                 /**
                  * @var AbstractConnection $connection
                  */
-                $connection = $this->adapter->getFactory()->createConnection([
+                $connection = $this->adapter->getClient()->createConnection([
                     'adapter' => $this->adapter
                 ]);
 
