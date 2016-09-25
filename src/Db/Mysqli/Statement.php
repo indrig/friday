@@ -25,7 +25,8 @@ class Statement extends AbstractStatement {
         $connection = $this->getConnection();
         $resource   = $connection->getResource();
 
-        if(false === $status = $resource->query($resource, MYSQLI_ASYNC)){
+        if(false === $status = $resource->query($this->_preparedSql, MYSQLI_ASYNC)){
+
             $deferred->exception(new Exception($resource->error));
             $connection->free();
         } else {

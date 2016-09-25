@@ -54,6 +54,7 @@ class Client implements ClientInterface{
 
         if(static::$poolTask === null) {
             static::$poolTask = Friday::$app->getLooper()->taskPeriodic(function (Task $task){
+                var_dump('test');
                 $links = $errors = $reject = static::$poolResource;
                 mysqli_poll($links, $errors, $reject, 0); // don't wait, just check
                 $each = array('links' => $links, 'errors' => $errors, 'reject' => $reject) ;

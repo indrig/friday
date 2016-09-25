@@ -229,6 +229,7 @@ class Command extends Component
                     try {
                         $this->statement = $this->connection->prepare($sql);
                         $this->bindPendingParams();
+                        $deferred->result();
                     } catch (Throwable $e) {
                         $message = $e->getMessage() . "\nFailed to prepare SQL: $sql";
                         $deferred->exception(new Exception($message, null, (int)$e->getCode(), $e));

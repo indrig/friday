@@ -106,6 +106,6 @@ class Task{
      */
     public function remove()
     {
-        $this->looper->removeCallbacks($this);
+        $this->looper->taskCancel($this);
     }
 }
