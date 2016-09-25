@@ -12,10 +12,30 @@ abstract class AbstractConnection extends BaseObject {
 
     use EventTrait;
 
+    /**
+     * @return mixed
+     */
     abstract public function connect();
+
+    /**
+     * @return mixed
+     */
     abstract public function disconnect();
+
+    /**
+     * @return bool
+     */
     abstract public function isConnected() : bool ;
 
+    /**
+     * Free connection on pool
+     * @return void
+     */
     abstract public function free();
+
+    /**
+     * @param $sql
+     * @return AbstractStatement
+     */
     abstract public function prepare($sql);
 }

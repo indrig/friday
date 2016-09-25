@@ -79,12 +79,17 @@ class Connection extends AbstractConnection  {
     }
 
 
+    /**
+     * @inheritdoc
+     */
     public function prepare($sql){
         $this->connect();
 
-        $statement = new Statement();
-        $statement->initialize($this);
-        $statement->setSql($sql);
+        $statement = Friday::createObject([
+            'class' => 'Friday\Db\Mysqli\Statement',
+            'connection' => $this,
+            'sql' => $sql,
+        ]);
         $statement->prepare();
 
         return $statement;

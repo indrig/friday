@@ -229,4 +229,11 @@ class BaseObject implements ConfigurableInterface
             $this->$name = $value;
         }
     }
+
+    /**
+     * @return string
+     */
+    public function hashCode(){
+        return spl_object_hash($this);
+    }
 }

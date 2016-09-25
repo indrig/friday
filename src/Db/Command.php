@@ -64,7 +64,7 @@ class Command extends Component
      */
     public $connection;
     /**
-     * @var StatementInterface the Statement object that this command is associated with
+     * @var AbstractStatement the Statement object that this command is associated with
      */
     public $statement;
     /**
@@ -882,32 +882,33 @@ class Command extends Component
      * @param string $method method of PDOStatement to be called
      * @param integer $fetchMode the result fetch mode. Please refer to [PHP manual](http://www.php.net/manual/en/function.PDOStatement-setFetchMode.php)
      * for valid fetch modes. If this parameter is null, the value set in [[fetchMode]] will be used.
-     * @return mixed the method execution result
+     * @return Awaitable the method execution result
      * @throws Exception if the query causes any problem
      * @since 2.0.1 this method is protected (was private before).
      */
-    protected function queryInternal($method, $fetchMode = null)
+    protected function queryInternal($method, $fetchMode = null) : Awaitable
     {
         $rawSql = $this->getRawSql();
 
         Friday::info($rawSql, 'Friday\Db\Command::query');
 
         if ($method !== '') {
-            $info = $this->db->getQueryCacheInfo($this->queryCacheDuration, $this->queryCacheDependency);
+            $info = $this->adapter->getQueryCacheInfo($this->queryCacheDuration, $this->queryCacheDependency);
             if (is_array($info)) {
-                /* @var $cache \yii\caching\Cache */
+                /* @var $cache \Friday\Cache\AbstractCache */
                 $cache = $info[0];
                 $cacheKey = [
                     __CLASS__,
                     $method,
                     $fetchMode,
-                    $this->db->dsn,
-                    $this->db->username,
+                    $this->adapter->host,
+                    $this->adapter->database,
+                    $this->adapter->username,
                     $rawSql,
                 ];
                 $result = $cache->get($cacheKey);
                 if (is_array($result) && isset($result[0])) {
-                    Yii::trace('Query result served from cache', 'yii\db\Command::query');
+                    Friday::trace('Query result served from cache', 'Friday\Db\Command::query');
                     return $result[0];
                 }
             }
@@ -917,9 +918,9 @@ class Command extends Component
 
         $token = $rawSql;
         try {
-            Yii::beginProfile($token, 'yii\db\Command::query');
+            Friday::beginProfile($token, 'Friday\Db\Command::query');
 
-            $this->pdoStatement->execute();
+            $this->statement->execute();
 
             if ($method === '') {
                 $result = new DataReader($this);
@@ -927,19 +928,19 @@ class Command extends Component
                 if ($fetchMode === null) {
                     $fetchMode = $this->fetchMode;
                 }
-                $result = call_user_func_array([$this->pdoStatement, $method], (array)$fetchMode);
-                $this->pdoStatement->closeCursor();
+                $result = call_user_func_array([$this->statement, $method], (array)$fetchMode);
+                $this->statement->closeCursor();
             }
 
-            Yii::endProfile($token, 'yii\db\Command::query');
+            Friday::endProfile($token, 'Friday\Db\Command::query');
         } catch (\Exception $e) {
-            Yii::endProfile($token, 'yii\db\Command::query');
-            throw $this->db->getSchema()->convertException($e, $rawSql);
+            Friday::endProfile($token, 'Friday\Db\Command::query');
+            throw $this->adapter->getSchema()->convertException($e, $rawSql);
         }
 
         if (isset($cache, $cacheKey, $info)) {
             $cache->set($cacheKey, [$result], $info[1], $info[2]);
-            Yii::trace('Saved query result in cache', 'yii\db\Command::query');
+            Friday::trace('Saved query result in cache', 'yii\db\Command::query');
         }
 
         return $result;
