@@ -69,9 +69,8 @@ class Command extends Component
     public $statement;
     /**
      * @var integer the default fetch mode for this command.
-     * @see http://www.php.net/manual/en/function.PDOStatement-setFetchMode.php
      */
-    public $fetchMode = \PDO::FETCH_ASSOC;
+    public $fetchMode = AbstractStatement::FETCH_ASSOC;
     /**
      * @var array the parameters (name => value) that are bound to the current PDO statement.
      * This property is maintained by methods such as [[bindValue()]]. It is mainly provided for logging purpose
@@ -852,7 +851,7 @@ class Command extends Component
 
         $this->prepare(false)->await(function ($result) use ($deferred, &$rawSql) {
             if ($result instanceof Throwable) {
-                echo ($result);
+                echo($result);
                 $deferred->exception($result);
             } else {
                 $token = $rawSql;
@@ -880,14 +879,14 @@ class Command extends Component
     /**
      * Performs the actual DB query of a SQL statement.
      * @param string $method method of PDOStatement to be called
-     * @param integer $fetchMode the result fetch mode. Please refer to [PHP manual](http://www.php.net/manual/en/function.PDOStatement-setFetchMode.php)
+     * @param integer $fetchMode the result fetch mode.
      * for valid fetch modes. If this parameter is null, the value set in [[fetchMode]] will be used.
      * @return Awaitable the method execution result
      * @throws Exception if the query causes any problem
-     * @since 2.0.1 this method is protected (was private before).
      */
     protected function queryInternal($method, $fetchMode = null) : Awaitable
     {
+        $deferred = new Deferred();
         $rawSql = $this->getRawSql();
 
         Friday::info($rawSql, 'Friday\Db\Command::query');
@@ -906,51 +905,88 @@ class Command extends Component
                     $this->adapter->username,
                     $rawSql,
                 ];
-                $result = $cache->get($cacheKey);
-                if (is_array($result) && isset($result[0])) {
-                    Friday::trace('Query result served from cache', 'Friday\Db\Command::query');
-                    return $result[0];
-                }
-            }
-        }
+                $cache->get($cacheKey)->await(function ($result) use ($deferred, &$rawSql, &$rawSql, &$method, &$fetchMode, &$info, &$cacheKey, &$cache) {
+                    if (is_array($result) && isset($result[0])) {
+                        Friday::trace('Query result served from cache', 'Friday\Db\Command::query');
+                        $deferred->result($result[0]);
+                    } else {
+                        $this->prepare(true);
 
-        $this->prepare(true);
+                        Friday::beginProfile($rawSql, 'Friday\Db\Command::query');
 
-        $token = $rawSql;
-        try {
-            Friday::beginProfile($token, 'Friday\Db\Command::query');
+                        $this->statement->execute()->await(function ($result) use ($deferred, &$rawSql, &$method, &$fetchMode, &$info, &$cacheKey, &$cache) {
 
-            $this->statement->execute();
+                            if($result instanceof Throwable) {
+                                $deferred->exception($result);
+                            } else {
+                                try {
+                                    if ($method === '') {
+                                        $data = new DataReader($this);
+                                    } else {
+                                        if ($fetchMode === null) {
+                                            $fetchMode = $this->fetchMode;
+                                        }
+                                        $data = call_user_func_array([$this->statement, $method], (array)$fetchMode);
+                                        $this->statement->closeCursor();
+                                    }
+                                    Friday::endProfile($rawSql, 'Friday\Db\Command::query');
+                                } catch (Throwable $e) {
+                                    Friday::endProfile($rawSql, 'Friday\Db\Command::query');
+                                    $deferred->exception($this->adapter->getSchema()->convertException($e, $rawSql));
+                                    return;
+                                }
 
-            if ($method === '') {
-                $result = new DataReader($this);
+
+                                $cache->set($cacheKey, [$result], $info[1], $info[2])->await(function () use ($deferred, &$data){
+                                    $deferred->result($data);
+                                    Friday::trace('Saved query result in cache', 'yii\db\Command::query');
+                                });
+                            }
+                        });
+                    }
+                });
+
             } else {
-                if ($fetchMode === null) {
-                    $fetchMode = $this->fetchMode;
-                }
-                $result = call_user_func_array([$this->statement, $method], (array)$fetchMode);
-                $this->statement->closeCursor();
+                $this->prepare(true);
+
+                Friday::beginProfile($rawSql, 'Friday\Db\Command::query');
+
+                $this->statement->execute()->await(function ($result) use ($deferred, &$rawSql, &$method, &$fetchMode) {
+
+                    if($result instanceof Throwable) {
+                        $deferred->exception($result);
+                    } else {
+                        try {
+                            if ($method === '') {
+                                $data = new DataReader($this);
+                            } else {
+                                if ($fetchMode === null) {
+                                    $fetchMode = $this->fetchMode;
+                                }
+                                $data = call_user_func_array([$this->statement, $method], (array)$fetchMode);
+                                //$this->statement->closeCursor();
+                            }
+                            Friday::endProfile($rawSql, 'Friday\Db\Command::query');
+                        } catch (Throwable $e) {
+                            Friday::endProfile($rawSql, 'Friday\Db\Command::query');
+                            $deferred->exception($this->adapter->getSchema()->convertException($e, $rawSql));
+                            return;
+                        }
+
+                        $deferred->result($data);
+                        Friday::trace('Saved query result in cache', 'yii\db\Command::query');
+                    }
+                });
             }
-
-            Friday::endProfile($token, 'Friday\Db\Command::query');
-        } catch (\Exception $e) {
-            Friday::endProfile($token, 'Friday\Db\Command::query');
-            throw $this->adapter->getSchema()->convertException($e, $rawSql);
         }
 
-        if (isset($cache, $cacheKey, $info)) {
-            $cache->set($cacheKey, [$result], $info[1], $info[2]);
-            Friday::trace('Saved query result in cache', 'yii\db\Command::query');
-        }
-
-        return $result;
+        return $deferred->awaitable();
     }
 
     /**
      * Marks a specified table schema to be refreshed after command execution.
      * @param string $name name of the table, which schema should be refreshed.
      * @return $this this command instance
-     * @since 2.0.6
      */
     protected function requireTableSchemaRefresh($name)
     {

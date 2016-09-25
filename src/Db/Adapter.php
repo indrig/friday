@@ -5,6 +5,7 @@ use Friday;
 use Friday\Base\Awaitable;
 use Friday\Base\Component;
 use Friday\Base\Exception\NotSupportedException;
+use Friday\Cache\AbstractCache;
 
 class Adapter extends Component
 {
@@ -110,6 +111,38 @@ class Adapter extends Component
      * @see enableSchemaCache
      */
     public $schemaCache = 'cache';
+
+    /**
+     * @var boolean whether to enable query caching.
+     * Note that in order to enable query caching, a valid cache component as specified
+     * by [[queryCache]] must be enabled and [[enableQueryCache]] must be set true.
+     * Also, only the results of the queries enclosed within [[cache()]] will be cached.
+     * @see queryCache
+     * @see cache()
+     * @see noCache()
+     */
+    public $enableQueryCache = true;
+    /**
+     * @var integer the default number of seconds that query results can remain valid in cache.
+     * Use 0 to indicate that the cached data will never expire.
+     * Defaults to 3600, meaning 3600 seconds, or one hour. Use 0 to indicate that the cached data will never expire.
+     * The value of this property will be used when [[cache()]] is called without a cache duration.
+     * @see enableQueryCache
+     * @see cache()
+     */
+    public $queryCacheDuration = 3600;
+    /**
+     * @var AbstractCache|string the cache object or the ID of the cache application component
+     * that is used for query caching.
+     * @see enableQueryCache
+     */
+    public $queryCache = 'cache';
+
+    /**
+     * @var array query cache parameters for the [[cache()]] calls
+     */
+    private $_queryCacheInfo = [];
+
 
     protected $clientMap = [
         'mysqli' => 'Friday\Db\Mysqli\Client'
@@ -322,5 +355,43 @@ class Adapter extends Component
         return $this->getConnectionPool()->getConnection();
         //$this->open();
         //return $this->pdo;
+    }
+
+    /**
+     * Returns the current query cache information.
+     * This method is used internally by [[Command]].
+     * @param integer $duration the preferred caching duration. If null, it will be ignored.
+     * @param \Friday\Cache\AbstractDependency $dependency the preferred caching dependency. If null, it will be ignored.
+     * @return array the current query cache information, or null if query cache is not enabled.
+     * @internal
+     */
+    public function getQueryCacheInfo(int $duration, $dependency)
+    {
+        if (!$this->enableQueryCache) {
+            return null;
+        }
+
+        $info = end($this->_queryCacheInfo);
+        if (is_array($info)) {
+            if ($duration === null) {
+                $duration = $info[0];
+            }
+            if ($dependency === null) {
+                $dependency = $info[1];
+            }
+        }
+
+        if ($duration === 0 || $duration > 0) {
+            if (is_string($this->queryCache) && Friday::$app) {
+                $cache = Friday::$app->get($this->queryCache, false);
+            } else {
+                $cache = $this->queryCache;
+            }
+            if ($cache instanceof AbstractCache) {
+                return [$cache, $duration, $dependency];
+            }
+        }
+
+        return null;
     }
 }

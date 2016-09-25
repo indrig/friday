@@ -33,4 +33,63 @@ class Statement extends AbstractStatement {
         }
         return $deferred->awaitable();
     }
+
+    /**
+     *  @inheritdoc
+     */
+    public function fetch($fetchMode = null)
+    {
+        $driverFetchMode = null;
+        switch ($fetchMode) {
+            case AbstractStatement::FETCH_ASSOC:
+                $driverFetchMode = MYSQLI_ASSOC;
+                break;
+            case AbstractStatement::FETCH_NUM:
+                $driverFetchMode = MYSQLI_NUM;
+                break;
+            case AbstractStatement::FETCH_BOTH:
+                $driverFetchMode = MYSQLI_BOTH;
+                break;
+        }
+        return $this->getResult()->getResource()->fetch_array($driverFetchMode);
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function fetchAll($fetchMode = null)
+    {
+        $driverFetchMode = null;
+        switch ($fetchMode) {
+            case AbstractStatement::FETCH_ASSOC:
+                $driverFetchMode = MYSQLI_ASSOC;
+                break;
+            case AbstractStatement::FETCH_NUM:
+                $driverFetchMode = MYSQLI_NUM;
+                break;
+            case AbstractStatement::FETCH_BOTH:
+                $driverFetchMode = MYSQLI_BOTH;
+                break;
+        }
+        return $this->getResult()->getResource()->fetch_all($driverFetchMode);
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function fetchColumn($columnNumber = 0)
+    {
+        if(false === $row = $this->getResult()->getResource()->fetch_array(MYSQLI_NUM)){
+            return false;
+        }
+        return $row[$columnNumber];
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function fetchObject(string $className, array $classArguments = [])
+    {
+        return $this->getResult()->getResource()->fetch_object($className, $classArguments);
+    }
 }

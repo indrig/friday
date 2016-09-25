@@ -6,6 +6,10 @@ use Friday\Db\Exception\Exception;
 
 abstract class AbstractStatement extends BaseObject
 {
+    const FETCH_ASSOC = 2;
+    const FETCH_NUM = 3;
+    const FETCH_BOTH = 4;
+
     /**
      * @var AbstractConnection
      */
@@ -26,6 +30,10 @@ abstract class AbstractStatement extends BaseObject
      */
     protected $_parameterContainer;
 
+    /**
+     * @var AbstractResult
+     */
+    private $_result;
 
     /**
      * Execute
@@ -182,4 +190,55 @@ abstract class AbstractStatement extends BaseObject
     {
         return $this->_sql;
     }
+
+    /**
+     * Set sql
+     *
+     * @param AbstractResult
+     * @return $this
+     */
+    public function setResult($result)
+    {
+        $this->_result = $result;
+        return $this;
+    }
+
+    /**
+     * @return AbstractResult
+     */
+    public function getResult()
+    {
+        return $this->_result;
+    }
+
+    /**
+     * Извлечение следующей строки из результирующего набора
+     *
+     * @param null|integer $fetchMode
+     * @return false|array
+     */
+    abstract public function fetch($fetchMode = null);
+
+    /**
+     * Возвращает массив, содержащий все строки результирующего набора
+     *
+     * @param null|integer $fetchMode
+     * @return array
+     */
+    abstract public function fetchAll($fetchMode = null);
+
+    /**
+     * Возвращает данные одного столбца следующей строки результирующего набора
+     *
+     * @param int $columnNumber
+     * @return mixed|false
+     */
+    abstract public function fetchColumn($columnNumber = 0);
+
+    /**
+     * @param string $className
+     * @param array $classArguments
+     * @return object
+     */
+    abstract public function fetchObject(string $className, array $classArguments = []);
 }

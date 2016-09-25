@@ -13,6 +13,7 @@ abstract class AbstractResult{
      */
     public function setStatement(AbstractStatement $statement){
         $this->_statement = $statement;
+        $statement->setResult($this);
         return $this;
     }
 
