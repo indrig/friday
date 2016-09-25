@@ -1,6 +1,7 @@
 <?php
 namespace Friday\Base;
 
+use Friday;
 use Throwable;
 
 class Awaitable {
@@ -15,12 +16,18 @@ class Awaitable {
     protected $callback;
 
     /**
+     * @var ContextInterface
+     */
+    protected $context;
+
+    /**
      * @var bool
      */
     protected $withWrapper = false;
 
     public function __construct(callable $callback)
     {
+        $this->context = Friday::$app->getContext();
         try {
             $callback(
                 function ($values = []) {
@@ -70,17 +77,28 @@ class Awaitable {
      *
      */
     protected function resolve(){
-        if ($this->result !== null && $this->callback !== null) {
-            if($this->withWrapper) {
 
-                call_user_func($this->callback, $this->result);
-            } else {
-                if($this->result->isSucceeded()){
-                    call_user_func($this->callback, $this->result->getResult());
+        if ($this->result !== null && $this->callback !== null) {
+            $oldContext = Friday::$app->getContext();
+
+            Friday::$app->setContext($this->context);
+
+            try {
+                if($this->withWrapper) {
+                    call_user_func($this->callback, $this->result);
                 } else {
-                    call_user_func($this->callback, $this->result->getException());
+                    if($this->result->isSucceeded()){
+                        call_user_func($this->callback, $this->result->getResult());
+                    } else {
+                        call_user_func($this->callback, $this->result->getException());
+                    }
                 }
+            }catch (Throwable $throwable){
+                Friday::$app->errorHandler->handleException($throwable);
             }
+
+            Friday::$app->setContext($oldContext);
+
         }
     }
 

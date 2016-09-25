@@ -3,6 +3,7 @@ namespace Friday\Web;
 
 use Friday;
 use Friday\Base\Awaitable;
+use Friday\Base\ContextInterface;
 use Friday\Base\Deferred;
 use Friday\Base\EventTrait;
 use Friday\Base\Exception\RuntimeException;
@@ -24,7 +25,7 @@ use SplObjectStorage;
  * @property Controller $controller
  * @property bool $isFinished
  */
-class ConnectionContext extends ServiceLocator
+class ConnectionContext extends ServiceLocator implements ContextInterface
 {
     const EVENT_CONNECTION_CONTENT_BEFORE_RUN_ACTION = 'before-run-action';
     const EVENT_CONNECTION_CONTENT_AFTER_RUN_ACTION = 'after-run-action';
@@ -171,9 +172,9 @@ class ConnectionContext extends ServiceLocator
         $timer = $this->looper->task(function ($timer) use ($callback) {
             $application = Friday::$app;
 
-            $oldContext = $application->currentContext;
+            $oldContext = $application->getContext();
 
-            $application->currentContext = $this;
+            $application->setContext($this);
 
             try {
                 call_user_func($callback);
@@ -181,7 +182,7 @@ class ConnectionContext extends ServiceLocator
                 $this->error($throwable);
             }
 
-            $application->currentContext = $oldContext;
+            $application->setContext($oldContext);
 
             $this->_timers->detach($timer);
 
@@ -201,15 +202,15 @@ class ConnectionContext extends ServiceLocator
         $timer = $this->looper->taskWithDelayed(function ($timer) use ($callback) {
             $application = Friday::$app;
 
-            $oldContext = $application->currentContext;
+            $oldContext = $application->getContext();
 
-            $application->currentContext = $this;
+            $application->setContext($this);
             try {
                 call_user_func($callback);
             } catch (Throwable $throwable) {
                 $this->error($throwable);
             }
-            $application->currentContext = $oldContext;
+            $application->setContext($oldContext);
 
             $this->_timers->detach($timer);
         }, $delay);

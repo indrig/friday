@@ -12,6 +12,7 @@ return [
 'Friday\Base\BootstrapInterface' => __DIR__ . '/Base/BootstrapInterface.php',
 'Friday\Base\Component' => __DIR__ . '/Base/Component.php',
 'Friday\Base\ConfigurableInterface' => __DIR__ . '/Base/ConfigurableInterface.php',
+'Friday\Base\ContextInterface' => __DIR__ . '/Base/ContextInterface.php',
 'Friday\Base\Controller' => __DIR__ . '/Base/Controller.php',
 'Friday\Base\Deferred' => __DIR__ . '/Base/Deferred.php',
 'Friday\Base\DestroyableInterface' => __DIR__ . '/Base/DestroyableInterface.php',

@@ -411,7 +411,6 @@ abstract class AbstractCache extends Component
         }
         AwaitableHelper::all($results, true)->await(function($results) use ($deferred){
             $failedKeys = [];
-            var_dump($results);
             foreach ($results as $name => $result){
                 if($result === false) {
                     $failedKeys[] = $name;

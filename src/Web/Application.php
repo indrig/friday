@@ -5,7 +5,6 @@ use Friday;
 use Friday\Base\Awaitable;
 use Friday\Base\Exception\InvalidRouteException;
 use Friday\Base\ResultOrExceptionWrapperInterface;
-use Friday\Promise\PromiseInterface;
 use Friday\Web\Event\ConnectionContextErrorEvent;
 use Friday\Web\Event\ConnectionContextEvent;
 use Friday\Web\Event\RequestEvent;
@@ -26,7 +25,6 @@ use Throwable;
  * @property Session $session
  * @property Response $response
  * @property Controller $controller
- * @property ConnectionContext|null $currentContext
  */
 class Application extends AbstractApplication
 {
@@ -35,11 +33,6 @@ class Application extends AbstractApplication
      * @var SplObjectStorage
      */
     protected $_contexts;
-
-    /**
-     * @var ConnectionContext
-     */
-    protected $_currentContext;
 
     /**
      * @var string|boolean the layout that should be applied for views in this application. Defaults to 'main'.
@@ -190,31 +183,15 @@ class Application extends AbstractApplication
         ]);
     }
 
-    /**
-     * @param $connectionContext
-     * @return $this
-     */
-    public function setCurrentContext($connectionContext)
-    {
-        $this->_currentContext = $connectionContext;
-        return $this;
-    }
 
-    /**
-     * @return ConnectionContext
-     */
-    public function getCurrentContext()
-    {
-        return $this->_currentContext;
-    }
 
     /**
      * @return Request|null
      */
     public function getRequest()
     {
-        if ($this->_currentContext !== null) {
-            return $this->currentContext->getRequest();
+        if ($this->_context !== null) {
+            return $this->getContext()->getRequest();
         }
         return null;
     }
@@ -224,8 +201,8 @@ class Application extends AbstractApplication
      */
     public function getResponse()
     {
-        if ($this->_currentContext !== null) {
-            return $this->currentContext->getResponse();
+        if ($this->_context !== null) {
+            return $this->getContext()->getResponse();
         }
         return null;
     }
@@ -235,8 +212,8 @@ class Application extends AbstractApplication
      */
     public function getController()
     {
-        if ($this->_currentContext !== null) {
-            return $this->currentContext->controller;
+        if ($this->_context !== null) {
+            return $this->getContext()->controller;
         }
         return null;
     }
@@ -246,8 +223,8 @@ class Application extends AbstractApplication
      */
     public function getUser()
     {
-        if ($this->_currentContext !== null) {
-            return $this->currentContext->user;
+        if ($this->_context !== null) {
+            return $this->getContext()->user;
         }
         return null;
     }
@@ -257,8 +234,8 @@ class Application extends AbstractApplication
      */
     public function getSession()
     {
-        if ($this->_currentContext !== null) {
-            return $this->currentContext->session;
+        if ($this->_context !== null) {
+            return $this->getContext()->session;
         }
         return null;
     }

@@ -360,12 +360,12 @@ class Adapter extends Component
     /**
      * Returns the current query cache information.
      * This method is used internally by [[Command]].
-     * @param integer $duration the preferred caching duration. If null, it will be ignored.
+     * @param int|null $duration the preferred caching duration. If null, it will be ignored.
      * @param \Friday\Cache\AbstractDependency $dependency the preferred caching dependency. If null, it will be ignored.
      * @return array the current query cache information, or null if query cache is not enabled.
      * @internal
      */
-    public function getQueryCacheInfo(int $duration, $dependency)
+    public function getQueryCacheInfo($duration, $dependency)
     {
         if (!$this->enableQueryCache) {
             return null;

@@ -125,7 +125,7 @@ class Url
         }
 
         // relative route
-        if ((null === $currentContext = Friday::$app->currentContext) || $currentContext->controller === null) {
+        if ((null === $currentContext = Friday::$app->getContext()) || $currentContext->controller === null) {
             throw new InvalidArgumentException("Unable to resolve the relative route: $route. No active controller is available.");
         }
 

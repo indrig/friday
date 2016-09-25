@@ -5,6 +5,7 @@ use Friday;
 use Friday\Base\Awaitable;
 use Friday\Base\BaseObject;
 use Friday\Base\Deferred;
+use Friday\Base\Exception\InvalidArgumentException;
 use Friday\Db\Exception\Exception;
 use Friday\Db\ParameterContainer;
 use Friday\Db\AbstractStatement;
@@ -13,10 +14,9 @@ class Statement extends AbstractStatement {
     /**
      * Execute
      *
-     * @param null|array $parameters
      * @return Awaitable
      */
-    public function execute($parameters = null) : Awaitable
+    public function execute() : Awaitable
     {
         $deferred   = new Deferred();
         /**
@@ -25,7 +25,8 @@ class Statement extends AbstractStatement {
         $connection = $this->getConnection();
         $resource   = $connection->getResource();
 
-        if(false === $status = $resource->query($this->_preparedSql, MYSQLI_ASYNC)){
+        $preparedSql = $this->buildQueryWithParameters();
+        if(false === $status = $resource->query($preparedSql, MYSQLI_ASYNC)){
 
             $deferred->exception(new Exception($resource->error));
             $connection->free();
@@ -52,7 +53,7 @@ class Statement extends AbstractStatement {
                 $driverFetchMode = MYSQLI_BOTH;
                 break;
         }
-        return $this->getResult()->getResource()->fetch_array($driverFetchMode);
+        return $this->getResult()->fetch_array($driverFetchMode);
     }
 
     /**
@@ -72,7 +73,7 @@ class Statement extends AbstractStatement {
                 $driverFetchMode = MYSQLI_BOTH;
                 break;
         }
-        return $this->getResult()->getResource()->fetch_all($driverFetchMode);
+        return $this->getResult()->fetch_all($driverFetchMode);
     }
 
     /**
@@ -80,7 +81,27 @@ class Statement extends AbstractStatement {
      */
     public function fetchColumn($columnNumber = 0)
     {
-        if(false === $row = $this->getResult()->getResource()->fetch_array(MYSQLI_NUM)){
+        var_dump('fetchColumn');
+        if($columnNumber < 0 && $columnNumber >= $this->getResult()->field_count) {
+            throw new InvalidArgumentException('$columnNumber out of rage [0..'.$this->getResult()->field_count.']');
+        }
+        $rows = $this->getResult()->fetch_all(MYSQLI_NUM);
+        $result = [];
+
+        foreach ($rows as $row) {        var_dump($row, $columnNumber);
+
+            $result[] = $row[$columnNumber];
+        }
+        return $result;
+    }
+
+
+    /**
+     * @inheritdoc
+     */
+    public function fetchScalar($columnNumber = 0)
+    {
+        if(false === $row = $this->getResult()->fetch_array(MYSQLI_NUM)){
             return false;
         }
         return $row[$columnNumber];
@@ -91,6 +112,13 @@ class Statement extends AbstractStatement {
      */
     public function fetchObject(string $className, array $classArguments = [])
     {
-        return $this->getResult()->getResource()->fetch_object($className, $classArguments);
+        return $this->getResult()->fetch_object($className, $classArguments);
+    }
+
+    /**
+     * @return int
+     */
+    public function rowCount() : int {
+        return $this->getResult()->num_rows;
     }
 }

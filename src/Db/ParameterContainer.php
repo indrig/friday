@@ -370,6 +370,13 @@ class ParameterContainer implements Iterator, ArrayAccess, Countable
         return $this;
     }
 
+    /**
+     * @param integer|string|null $name
+     * @param mixed $value
+     * @param string $dataType
+     * @param null $length
+     * @return $this
+     */
     public function bindParam($name, $value, $dataType = ParameterContainer::TYPE_AUTO, $length = null){
         $position = false;
         // if integer, get name for this position
@@ -400,9 +407,18 @@ class ParameterContainer implements Iterator, ArrayAccess, Countable
         } else {
             $this->offsetUnsetMaxLength($name);
         }
+
+        return $this;
     }
 
+    /**
+     * @param integer|string|null $name
+     * @param mixed $value
+     * @param string $dataType
+     * @return $this
+     */
     public function bindValue($name, &$value, $dataType = ParameterContainer::TYPE_AUTO){
+
         $position = false;
         // if integer, get name for this position
         if (is_int($name)) {
@@ -429,5 +445,7 @@ class ParameterContainer implements Iterator, ArrayAccess, Countable
         }
 
         $this->offsetUnsetMaxLength($name);
+
+        return $this;
     }
 }

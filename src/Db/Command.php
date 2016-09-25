@@ -355,10 +355,10 @@ class Command extends Component
     /**
      * Executes the SQL statement and returns query result.
      * This method is for executing a SQL query that returns result set, such as `SELECT`.
-     * @return DataReader the reader object for fetching the query result
+     * @return Awaitable
      * @throws Exception execution failed
      */
-    public function query()
+    public function query() : Awaitable
     {
         return $this->queryInternal('');
     }
@@ -367,11 +367,11 @@ class Command extends Component
      * Executes the SQL statement and returns ALL rows at once.
      * @param integer $fetchMode the result fetch mode. Please refer to [PHP manual](http://www.php.net/manual/en/function.PDOStatement-setFetchMode.php)
      * for valid fetch modes. If this parameter is null, the value set in [[fetchMode]] will be used.
-     * @return array all rows of the query result. Each array element is an array representing a row of data.
+     * @return Awaitable array all rows of the query result. Each array element is an array representing a row of data.
      * An empty array is returned if the query results in nothing.
      * @throws Exception execution failed
      */
-    public function queryAll($fetchMode = null)
+    public function queryAll($fetchMode = null) : Awaitable
     {
         return $this->queryInternal('fetchAll', $fetchMode);
     }
@@ -381,11 +381,11 @@ class Command extends Component
      * This method is best used when only the first row of result is needed for a query.
      * @param integer $fetchMode the result fetch mode. Please refer to [PHP manual](http://www.php.net/manual/en/function.PDOStatement-setFetchMode.php)
      * for valid fetch modes. If this parameter is null, the value set in [[fetchMode]] will be used.
-     * @return array|false the first row (in terms of an array) of the query result. False is returned if the query
+     * @return Awaitable array|false the first row (in terms of an array) of the query result. False is returned if the query
      * results in nothing.
      * @throws Exception execution failed
      */
-    public function queryOne($fetchMode = null)
+    public function queryOne($fetchMode = null) : Awaitable
     {
         return $this->queryInternal('fetch', $fetchMode);
     }
@@ -393,30 +393,28 @@ class Command extends Component
     /**
      * Executes the SQL statement and returns the value of the first column in the first row of data.
      * This method is best used when only a single value is needed for a query.
-     * @return string|null|false the value of the first column in the first row of the query result.
+     * @param int $columnNumber
+     * @return Awaitable string|null|false the value of the first column in the first row of the query result.
      * False is returned if there is no value.
      * @throws Exception execution failed
      */
-    public function queryScalar()
+    public function queryScalar($columnNumber = 0) : Awaitable
     {
-        $result = $this->queryInternal('fetchColumn', 0);
-        if (is_resource($result) && get_resource_type($result) === 'stream') {
-            return stream_get_contents($result);
-        } else {
-            return $result;
-        }
+        return $this->queryInternal('fetchScalar', $columnNumber);
+
     }
 
     /**
      * Executes the SQL statement and returns the first column of the result.
      * This method is best used when only the first column of result (i.e. the first element in each row)
      * is needed for a query.
-     * @return array the first column of the query result. Empty array is returned if the query results in nothing.
-     * @throws Exception execution failed
+     * @param int $columnNumber
+     * @return Awaitable array the first column of the query result. Empty array is returned if the query results in nothing.
+     * @throws Awaitable
      */
-    public function queryColumn()
+    public function queryColumn($columnNumber = 0) : Awaitable
     {
-        return $this->queryInternal('fetchAll', \PDO::FETCH_COLUMN);
+        return $this->queryInternal('fetchColumn', $columnNumber);
     }
 
     /**
@@ -441,7 +439,7 @@ class Command extends Component
     public function insert($table, $columns)
     {
         $params = [];
-        $sql = $this->db->getQueryBuilder()->insert($table, $columns, $params);
+        $sql = $this->adapter->getQueryBuilder()->insert($table, $columns, $params);
 
         return $this->setSql($sql)->bindValues($params);
     }

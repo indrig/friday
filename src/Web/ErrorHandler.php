@@ -58,7 +58,7 @@ class ErrorHandler extends AbstractErrorHandler{
      */
     protected function renderException($exception)
     {
-        if(null !== $currentContext = Friday::$app->currentContext){
+        if(null !== $currentContext = Friday::$app->getContext()){
             $response   = $currentContext->response;
             $request    = $currentContext->request;
 

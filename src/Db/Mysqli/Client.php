@@ -54,7 +54,6 @@ class Client implements ClientInterface{
 
         if(static::$poolTask === null) {
             static::$poolTask = Friday::$app->getLooper()->taskPeriodic(function (Task $task){
-                var_dump('test');
                 $links = $errors = $reject = static::$poolResource;
                 mysqli_poll($links, $errors, $reject, 0); // don't wait, just check
                 $each = array('links' => $links, 'errors' => $errors, 'reject' => $reject) ;
@@ -70,19 +69,13 @@ class Client implements ClientInterface{
                             $statement = static::$poolStatement[$id];
                             if ($type === 'links') {
                                 /**
-                                 * @var $result \mysqli_result
+                                 * @var $queryResult \mysqli_result
                                  */
-                                if ($result === $result = $resource->reap_async_query()) {
+                                if (false === $queryResult = $resource->reap_async_query()) {
                                     $deferred->exception(new Exception($resource->error));
                                 } else {
-
-                                    $result = Friday::createObject([
-                                        'class'     => 'Friday\Db\Mysqli\Result',
-                                        'statement' => $statement,
-                                        'resource'  => $result
-                                    ]);
-
-                                    $deferred->result($result);
+                                    $statement->setResult($queryResult);
+                                    $deferred->result($statement);
                                 }
                             }elseif ($type === 'errors') {
                                 $deferred->exception(new Exception($resource->error));

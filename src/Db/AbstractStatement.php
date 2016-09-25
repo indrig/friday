@@ -23,7 +23,7 @@ abstract class AbstractStatement extends BaseObject
     /**
      * @var string
      */
-    protected $_preparedSql;
+    protected $_prepared = false;
 
     /**
      * @var ParameterContainer|null
@@ -31,17 +31,15 @@ abstract class AbstractStatement extends BaseObject
     protected $_parameterContainer;
 
     /**
-     * @var AbstractResult
+     * @var \mysqli_result|resource
      */
     private $_result;
 
     /**
      * Execute
-     *
-     * @param null|array $parameters
      * @return Awaitable
      */
-    abstract public function execute($parameters = null) : Awaitable;
+    abstract public function execute() : Awaitable;
 
     /**
      * Initialize
@@ -72,12 +70,24 @@ abstract class AbstractStatement extends BaseObject
      */
     public function prepare($sql = null)
     {
-        if ($this->_preparedSql !== null) {
+        if ($this->_prepared) {
             throw new Exception('This statement has already been prepared');
         }
-        $sql = ($sql) ?: $this->_sql;
 
+        if($sql !== null) {
+            $this->_sql = $sql;
+        }
+
+        $this->_prepared = true;
+        return $this;
+    }
+
+    /**
+     *
+     */
+    protected function buildQueryWithParameters(){
         $parameterContainer = $this->getParameterContainer();
+
         if($parameterContainer->count() > 0){
             $params = [];
 
@@ -110,18 +120,17 @@ abstract class AbstractStatement extends BaseObject
             }
             if (!isset($params[1])) {
                 return strtr($this->_sql, $params);
-            }
-            $sql = '';
-            foreach (explode('?', $this->_sql) as $i => $part) {
-                $sql .= (isset($params[$i]) ? $params[$i] : '') . $part;
-            }
+            } else {
+                $sql = '';
+                foreach (explode('?', $this->_sql) as $i => $part) {
+                    $sql .= (isset($params[$i]) ? $params[$i] : '') . $part;
+                }
 
-            $this->_preparedSql = $sql;
+                return $sql;
+            }
         } else {
-            $this->_preparedSql = $sql;
+            return $this->_sql;
         }
-
-        return $this;
     }
 
     /**
@@ -131,7 +140,7 @@ abstract class AbstractStatement extends BaseObject
      */
     public function isPrepared()
     {
-        return $this->_preparedSql !== null;
+        return $this->_prepared !== null;
     }
 
 
@@ -163,9 +172,11 @@ abstract class AbstractStatement extends BaseObject
      * @param $name
      * @param $value
      * @param $dataType
+     * @return $this
      */
     public function bindValue($name, &$value, $dataType) {
         $this->getParameterContainer()->bindValue($name, $value, $dataType);
+        return $this;
     }
 
 
@@ -194,7 +205,7 @@ abstract class AbstractStatement extends BaseObject
     /**
      * Set sql
      *
-     * @param AbstractResult
+     * @param \mysqli_result $result
      * @return $this
      */
     public function setResult($result)
@@ -204,7 +215,7 @@ abstract class AbstractStatement extends BaseObject
     }
 
     /**
-     * @return AbstractResult
+     * @return \mysqli_result
      */
     public function getResult()
     {
@@ -236,9 +247,18 @@ abstract class AbstractStatement extends BaseObject
     abstract public function fetchColumn($columnNumber = 0);
 
     /**
+     *
+     * @param int
+     * @return mixed|false
+     */
+    abstract public function fetchScalar($columnNumber = 0);
+
+    /**
      * @param string $className
      * @param array $classArguments
      * @return object
      */
     abstract public function fetchObject(string $className, array $classArguments = []);
+
+    abstract public function rowCount() : int ;
 }

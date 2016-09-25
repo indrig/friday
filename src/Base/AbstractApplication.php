@@ -16,6 +16,8 @@ use Friday\EventLoop\LoopInterface;
  * @property AbstractErrorHandler $errorHandler
  * @property \Friday\Cache\AbstractCache $cache
  *
+ * @property Friday\Web\ConnectionContext|ContextInterface|null $currentContext
+ *
  */
 class AbstractApplication extends Module {
     /**
@@ -64,6 +66,14 @@ class AbstractApplication extends Module {
      */
     private $_looper;
 
+    /**
+     * @var ContextInterface
+     */
+    protected $_context;
+
+    /**
+     * @var string
+     */
     public $controllerNamespace = 'Application\Controller';
 
     /**
@@ -350,5 +360,23 @@ class AbstractApplication extends Module {
             $this->_looper = new Looper();
         }
         return $this->_looper;
+    }
+
+    /**
+     * @param ContextInterface|Friday\Web\ConnectionContext $connectionContext
+     * @return $this
+     */
+    public function setContext($connectionContext)
+    {
+        $this->_context = $connectionContext;
+        return $this;
+    }
+
+    /**
+     * @return ContextInterface|Friday\Web\ConnectionContext
+     */
+    public function getContext()
+    {
+        return $this->_context;
     }
 }
