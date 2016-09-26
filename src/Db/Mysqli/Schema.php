@@ -1,10 +1,14 @@
 <?php
 namespace Friday\Db\Mysqli;
 
+use Friday\Base\Awaitable;
+use Friday\Base\Deferred;
+use Friday\Db\Exception\Exception;
 use Friday\Db\Expression;
 use Friday\Db\TableSchema;
 use Friday\Db\ColumnSchema;
 use Friday\Db\Schema as BaseSchema;
+use Throwable;
 
 /**
  * Schema is the class for retrieving metadata from a MySQL database (version 4.1.x and 5.x).
@@ -79,20 +83,30 @@ class Schema extends BaseSchema
     /**
      * Loads the metadata for the specified table.
      * @param string $name table name
-     * @return TableSchema driver dependent table metadata. Null if the table does not exist.
+     * @return Awaitable TableSchema driver dependent table metadata.
      */
-    protected function loadTableSchema($name)
+    protected function loadTableSchema($name) : Awaitable
     {
+        $deferred = new Deferred();
+
         $table = new TableSchema;
         $this->resolveTableNames($table, $name);
 
-        if ($this->findColumns($table)) {
-            $this->findConstraints($table);
+        $this->findColumns($table)->await(function ($result) use ($deferred, $table) {
+           if($result instanceof  Throwable) {
+               $deferred->exception($result);
+           } else {
+               $this->findConstraints($table)->await(function ($result) use ($deferred, $table){
+                   if($result instanceof  Throwable) {
+                       $deferred->exception($result);
+                   } else {
+                       $deferred->result($table);
+                   }
+               });
+           }
+        });
 
-            return $table;
-        } else {
-            return null;
-        }
+        return $deferred->awaitable();
     }
 
     /**
@@ -180,64 +194,74 @@ class Schema extends BaseSchema
     /**
      * Collects the metadata of table columns.
      * @param TableSchema $table the table metadata
-     * @return boolean whether the table exists in the database
+     * @return Awaitable boolean whether the table exists in the database
      * @throws \Exception if DB query fails
      */
-    protected function findColumns($table)
+    protected function findColumns($table) : Awaitable
     {
+        $deferred = new Deferred();
         $sql = 'SHOW FULL COLUMNS FROM ' . $this->quoteTableName($table->fullName);
-        try {
-            $columns = $this->db->createCommand($sql)->queryAll();
-        } catch (\Exception $e) {
-            $previous = $e->getPrevious();
-            if ($previous instanceof \PDOException && strpos($previous->getMessage(), 'SQLSTATE[42S02') !== false) {
-                // table does not exist
-                // https://dev.mysql.com/doc/refman/5.5/en/error-messages-server.html#error_er_bad_table_error
-                return false;
-            }
-            throw $e;
-        }
-        foreach ($columns as $info) {
-            if ($this->db->slavePdo->getAttribute(\PDO::ATTR_CASE) !== \PDO::CASE_LOWER) {
-                $info = array_change_key_case($info, CASE_LOWER);
-            }
-            $column = $this->loadColumnSchema($info);
-            $table->columns[$column->name] = $column;
-            if ($column->isPrimaryKey) {
-                $table->primaryKey[] = $column->name;
-                if ($column->autoIncrement) {
-                    $table->sequenceName = '';
+        $this->adapter->createCommand($sql)->queryAll()->await(function ($columns) use ($deferred, &$table){
+            if($columns instanceof Throwable){
+                //TODO: not found
+                $deferred->exception($columns);
+            } else {
+                foreach ($columns as $info) {
+                    $column = $this->loadColumnSchema($info);
+                    $table->columns[$column->name] = $column;
+                    if ($column->isPrimaryKey) {
+                        $table->primaryKey[] = $column->name;
+                        if ($column->autoIncrement) {
+                            $table->sequenceName = '';
+                        }
+                    }
                 }
-            }
-        }
 
-        return true;
+                $deferred->result();
+            }
+
+        });
+        return $deferred->awaitable();
     }
 
     /**
      * Gets the CREATE TABLE sql string.
      * @param TableSchema $table the table metadata
-     * @return string $sql the result of 'SHOW CREATE TABLE'
+     * @return Awaitable string $sql the result of 'SHOW CREATE TABLE'
      */
-    protected function getCreateTableSql($table)
+    protected function getCreateTableSql($table) : Awaitable
     {
-        $row = $this->db->createCommand('SHOW CREATE TABLE ' . $this->quoteTableName($table->fullName))->queryOne();
-        if (isset($row['Create Table'])) {
-            $sql = $row['Create Table'];
-        } else {
-            $row = array_values($row);
-            $sql = $row[1];
-        }
+        $deferred = new Deferred();
 
-        return $sql;
+       $this->adapter->createCommand('SHOW CREATE TABLE ' . $this->quoteTableName($table->fullName))->queryOne()->await(function ($row) use ($deferred){
+           if($row instanceof Throwable) {
+               $deferred->exception($row);
+           } elseif(is_array($row)) {
+               if (isset($row['Create Table'])) {
+                   $sql = $row['Create Table'];
+               } else {
+                   $row = array_values($row);
+                   $sql = $row[1];
+               }
+
+               $deferred->result($sql);
+           } else {
+               $deferred->exception(new Exception('Show create table invalidate result.'));
+           }
+        });
+
+        return $deferred->awaitable();
     }
 
     /**
      * Collects the foreign key column details for the given table.
      * @param TableSchema $table the table metadata
+     * @return Awaitable
      */
-    protected function findConstraints($table)
+    protected function findConstraints($table) : Awaitable
     {
+        $deferred = new Deferred();
+
         $sql = <<<SQL
 SELECT
     kcu.constraint_name,
@@ -256,42 +280,56 @@ WHERE rc.constraint_schema = database() AND kcu.table_schema = database()
 AND rc.table_name = :tableName AND kcu.table_name = :tableName1
 SQL;
 
-        try {
-            $rows = $this->db->createCommand($sql, [':tableName' => $table->name, ':tableName1' => $table->name])->queryAll();
-            $constraints = [];
-            foreach ($rows as $row) {
-                $constraints[$row['constraint_name']]['referenced_table_name'] = $row['referenced_table_name'];
-                $constraints[$row['constraint_name']]['columns'][$row['column_name']] = $row['referenced_column_name'];
-            }
-            $table->foreignKeys = [];
-            foreach ($constraints as $constraint) {
-                $table->foreignKeys[] = array_merge(
-                    [$constraint['referenced_table_name']],
-                    $constraint['columns']
-                );
-            }
-        } catch (\Exception $e) {
-            $previous = $e->getPrevious();
-            if (!$previous instanceof \PDOException || strpos($previous->getMessage(), 'SQLSTATE[42S02') === false) {
-                throw $e;
-            }
-
-            // table does not exist, try to determine the foreign keys using the table creation sql
-            $sql = $this->getCreateTableSql($table);
-            $regexp = '/FOREIGN KEY\s+\(([^\)]+)\)\s+REFERENCES\s+([^\(^\s]+)\s*\(([^\)]+)\)/mi';
-            if (preg_match_all($regexp, $sql, $matches, PREG_SET_ORDER)) {
-                foreach ($matches as $match) {
-                    $fks = array_map('trim', explode(',', str_replace('`', '', $match[1])));
-                    $pks = array_map('trim', explode(',', str_replace('`', '', $match[3])));
-                    $constraint = [str_replace('`', '', $match[2])];
-                    foreach ($fks as $k => $name) {
-                        $constraint[$name] = $pks[$k];
+        $this->adapter->createCommand($sql, [':tableName' => $table->name, ':tableName1' => $table->name])->queryAll()->await(function ($rows) use ($deferred, &$table){
+            if($rows instanceof Throwable) {
+                /*$previous = $e->getPrevious();
+                if (!$previous instanceof \PDOException || strpos($previous->getMessage(), 'SQLSTATE[42S02') === false) {
+                    throw $e;
+                }*/
+               // $deferred->exception($rows);
+               // return;
+                // table does not exist, try to determine the foreign keys using the table creation sql
+                $this->getCreateTableSql($table)->await(function($sql) use ($deferred, &$table){
+                    if($sql instanceof Throwable) {
+                        $deferred->exception($sql);
+                    } elseif(is_string($sql)) {
+                        $regexp = '/FOREIGN KEY\s+\(([^\)]+)\)\s+REFERENCES\s+([^\(^\s]+)\s*\(([^\)]+)\)/mi';
+                        if (preg_match_all($regexp, $sql, $matches, PREG_SET_ORDER)) {
+                            foreach ($matches as $match) {
+                                $fks = array_map('trim', explode(',', str_replace('`', '', $match[1])));
+                                $pks = array_map('trim', explode(',', str_replace('`', '', $match[3])));
+                                $constraint = [str_replace('`', '', $match[2])];
+                                foreach ($fks as $k => $name) {
+                                    $constraint[$name] = $pks[$k];
+                                }
+                                $table->foreignKeys[md5(serialize($constraint))] = $constraint;
+                            }
+                            $table->foreignKeys = array_values($table->foreignKeys);
+                        }
+                        $deferred->result();
+                    } else {
+                        $deferred->exception(new Exception('findConstraints get bad result for create table.'));
                     }
-                    $table->foreignKeys[md5(serialize($constraint))] = $constraint;
+                });
+
+            } else {
+                $constraints = [];
+                foreach ($rows as $row) {
+                    $constraints[$row['constraint_name']]['referenced_table_name'] = $row['referenced_table_name'];
+                    $constraints[$row['constraint_name']]['columns'][$row['column_name']] = $row['referenced_column_name'];
                 }
-                $table->foreignKeys = array_values($table->foreignKeys);
+                $table->foreignKeys = [];
+                foreach ($constraints as $constraint) {
+                    $table->foreignKeys[] = array_merge(
+                        [$constraint['referenced_table_name']],
+                        $constraint['columns']
+                    );
+                }
+                $deferred->result();
             }
-        }
+        });
+
+        return $deferred->awaitable();
     }
 
     /**

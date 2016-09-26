@@ -9,6 +9,7 @@ use Friday\Base\Exception\NotSupportedException;
 use Friday\Base\Exception\BadMethodCallException;
 use Friday\Cache\AbstractCache;
 use Friday\Cache\TagDependency;
+use Friday\Db\Exception\Exception;
 use Throwable;
 
 /**
@@ -102,18 +103,19 @@ abstract class Schema extends BaseObject
     /**
      * Loads the metadata for the specified table.
      * @param string $name table name
-     * @return null|TableSchema DBMS-dependent table metadata, null if the table does not exist.
+     * @return Awaitable TableSchema DBMS-dependent table metadata.
      */
-    abstract protected function loadTableSchema($name);
+    abstract protected function loadTableSchema($name) : Awaitable;
 
     /**
      * Obtains the metadata for the named table.
      * @param string $name table name. The table name may contain schema name if any. Do not quote the table name.
      * @param boolean $refresh whether to reload the table schema even if it is found in the cache.
-     * @return null|TableSchema table metadata. Null if the named table does not exist.
+     * @return Awaitable null|TableSchema table metadata. Null if the named table does not exist.
      */
-    public function getTableSchema($name, $refresh = false)
+    public function getTableSchema($name, $refresh = false) : Awaitable
     {
+        $deferred = new Deferred();
         if (array_key_exists($name, $this->_tables) && !$refresh) {
             return $this->_tables[$name];
         }
@@ -126,22 +128,64 @@ abstract class Schema extends BaseObject
             $cache = is_string($db->schemaCache) ? Friday::$app->get($db->schemaCache, false) : $db->schemaCache;
             if ($cache instanceof AbstractCache) {
                 $key = $this->getCacheKey($name);
-                if ($refresh || ($table = $cache->get($key)) === false) {
-                    $this->_tables[$name] = $table = $this->loadTableSchema($realName);
-                    if ($table !== null) {
-                        $cache->set($key, $table, $db->schemaCacheDuration, new TagDependency([
-                            'tags' => $this->getCacheTag(),
-                        ]));
-                    }
+                if($refresh) {
+                    $this->loadTableSchema($realName)->await(function ($table) use (&$name, $cache, &$key, $db, $deferred){
+                        if($table instanceof Throwable){
+                            $deferred->exception($table);
+                        } else {
+                            $this->_tables[$name] = $table;
+                            if ($table !== null) {
+                                $cache->set($key, $table, $db->schemaCacheDuration, new TagDependency([
+                                    'tags' => $this->getCacheTag(),
+                                ]))->await(function () use ($deferred, $table){
+                                    $deferred->result($table);
+                                });
+                            } else {
+                                $deferred->result();
+                            }
+                        }
+                    });
                 } else {
-                    $this->_tables[$name] = $table;
+                    $cache->get($key)->await(function ($table) use (&$realName, &$name, $cache, &$key, $db, $deferred){
+                        if($table === false) {
+                            $this->loadTableSchema($realName)->await(function ($table) use (&$name, $cache, &$key, $db, $deferred){
+                                if($table instanceof Throwable){
+                                    $deferred->exception($table);
+                                } else {
+                                    $this->_tables[$name] = $table;
+                                    if ($table !== null) {
+                                        $cache->set($key, $table, $db->schemaCacheDuration, new TagDependency([
+                                            'tags' => $this->getCacheTag(),
+                                        ]))->await(function () use ($deferred, $table){
+                                            $deferred->result($table);
+                                        });
+                                    } else {
+                                        $deferred->result();
+                                    }
+                                }
+                            });
+                        } else {
+                            $this->_tables[$name] = $table;
+                            $deferred->result($table);
+                        }
+                    });
                 }
 
-                return $this->_tables[$name];
+                $deferred->result($this->_tables[$name]);
             }
+        } else {
+            $this->loadTableSchema($realName)->await(function ($table) use ($deferred, &$name){
+                if($table instanceof Throwable) {
+                    $deferred->exception($table);
+                } else {
+                    $this->_tables[$name] =  $table;
+
+                    $deferred->result($name);
+                }
+            });
         }
 
-        return $this->_tables[$name] = $this->loadTableSchema($realName);
+        return $deferred->awaitable();
     }
 
     /**
@@ -450,26 +494,39 @@ abstract class Schema extends BaseObject
      * Executes the INSERT command, returning primary key values.
      * @param string $table the table that new rows will be inserted into.
      * @param array $columns the column data (name => value) to be inserted into the table.
-     * @return array primary key values or false if the command fails
-     * @since 2.0.4
+     * @return Awaitable array primary key values or false if the command fails
      */
     public function insert($table, $columns) : Awaitable
     {
+        $deferred = new Deferred();
+
         $command = $this->adapter->createCommand()->insert($table, $columns);
-        if (!$command->execute()) {
-            return false;
-        }
-        $tableSchema = $this->getTableSchema($table);
-        $result = [];
-        foreach ($tableSchema->primaryKey as $name) {
-            if ($tableSchema->columns[$name]->autoIncrement) {
-                $result[$name] = $this->getLastInsertID($tableSchema->sequenceName);
-                break;
+
+        $command->execute()->await(function ($insertResult) use (&$table, $deferred){
+            if($insertResult instanceof Throwable) {
+                $deferred->exception($insertResult);
             } else {
-                $result[$name] = isset($columns[$name]) ? $columns[$name] : $tableSchema->columns[$name]->defaultValue;
+                $this->getTableSchema($table)->await(function ($tableSchema) use ($deferred, &$table) {
+                    if($tableSchema instanceof Throwable) {
+                        $deferred->exception($tableSchema);
+                    } elseif ($tableSchema instanceof TableSchema) {
+                        $result = [];
+                        foreach ($tableSchema->primaryKey as $name) {
+                            if ($tableSchema->columns[$name]->autoIncrement) {
+                                $result[$name] = $this->getLastInsertID($tableSchema->sequenceName);
+                                break;
+                            } else {
+                                $result[$name] = isset($columns[$name]) ? $columns[$name] : $tableSchema->columns[$name]->defaultValue;
+                            }
+                        }
+                        $deferred->result($result);
+                    } else {
+                        $deferred->exception(new Exception('Get table schema "'.$table.'" error.'));
+                    }
+                });
             }
-        }
-        return $result;
+        });
+        return $deferred->awaitable();
     }
 
     /**

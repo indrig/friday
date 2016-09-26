@@ -244,9 +244,9 @@ class Adapter extends Component
      * Obtains the schema information for the named table.
      * @param string $name table name.
      * @param boolean $refresh whether to reload the table schema even if it is found in the cache.
-     * @return TableSchema table schema information. Null if the named table does not exist.
+     * @return Awaitable TableSchema table schema information. Null if the named table does not exist.
      */
-    public function getTableSchema($name, $refresh = false)
+    public function getTableSchema($name, $refresh = false) : Awaitable
     {
         return $this->getSchema()->getTableSchema($name, $refresh);
     }

@@ -203,9 +203,10 @@ class Command extends Component
      * automatically.
      * @param boolean $forRead whether this method is called for a read query. If null, it means
      * the SQL statement should be used to determine whether it is for read or write.
-     * @return Awaitable
+     * @param bool $sync
+     * @return Awaitable|Ab
      */
-    public function prepare($forRead = null) : Awaitable
+    public function prepare($forRead = null, $sync = false)
     {
         if ($this->statement) {
             $this->bindPendingParams();
@@ -850,7 +851,6 @@ class Command extends Component
 
         $this->prepare(false)->await(function ($result) use ($deferred, &$rawSql) {
             if ($result instanceof Throwable) {
-                echo($result);
                 $deferred->exception($result);
             } else {
                 $token = $rawSql;
