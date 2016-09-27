@@ -1,7 +1,7 @@
 <?php
 namespace Friday\Web;
 
-use Friday\Base\Event;
+use Friday\Base\Event\Event;
 
 /**
  * This event class is used for Events triggered by the [[User]] class.

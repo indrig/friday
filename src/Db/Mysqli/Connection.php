@@ -1,16 +1,20 @@
 <?php
 namespace Friday\Db\Mysqli;
 
+use Fridat\Db\Transaction;
 use Friday;
-use Friday\Base\BaseObject;
 use Friday\Base\Exception\InvalidArgumentException;
-use Friday\Base\Task;
 use Friday\Db\AbstractConnection;
-use Friday\Db\Adapter;
+use Friday\Db\Exception\ConnectionException;
 use Friday\Db\Exception\Exception;
 use mysqli;
 
 class Connection extends AbstractConnection  {
+
+    /**
+     * @var Transaction
+     */
+    private $_transaction;
     /**
      * @var mysqli
      */
@@ -34,6 +38,7 @@ class Connection extends AbstractConnection  {
         $this->_resource = $resource;
         return $this;
     }
+
     /**
      * @return $this
      * @throws Exception
@@ -42,15 +47,14 @@ class Connection extends AbstractConnection  {
         if($this->isConnected()) {
             return $this;
         }
-        $adapter = $this->adapter;
+        $adapter = $this->getAdapter();
 
         $resource = $this->_resource = new mysqli();
         $resource->init();
 
-        $resource->real_connect($adapter->host, $adapter->username, $adapter->password, $adapter->database);
+        if(false === @$resource->real_connect($adapter->host, $adapter->username, $adapter->password, $adapter->database)){
+            throw new ConnectionException($resource->connect_error, (int)$resource->connect_errno);
 
-        if($resource->connect_error){
-            throw new Exception($resource->connect_error, $resource->connect_errno);
         }
 
         if (!empty($adapter->charset)) {
@@ -83,14 +87,14 @@ class Connection extends AbstractConnection  {
      * @inheritdoc
      */
     public function prepare($sql){
+
         $this->connect();
 
         $statement = Friday::createObject([
-            'class' => 'Friday\Db\Mysqli\Statement',
-            'connection' => $this,
-            'sql' => $sql,
+            'class'         => 'Friday\Db\Mysqli\Statement',
+            'connection'    => $this,
+            'sql'           => $sql,
         ]);
-        $statement->prepare();
 
         return $statement;
     }
@@ -101,7 +105,13 @@ class Connection extends AbstractConnection  {
             $remove = true;
         }
 
-        $this->adapter->getConnectionPool()->free($this, $remove);
+        /**
+        $this->_resource->begin_transaction();
+        $this->_resource->rollback();
+        $this->_resource->commit();
+*/
+        $this->getAdapter()->getConnectionPool()->free($this, $remove);
     }
+
 
 }

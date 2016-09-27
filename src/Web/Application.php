@@ -110,7 +110,9 @@ class Application extends AbstractApplication
                                 $result = $result->getResult();
                                 if ($result instanceof Awaitable) {
                                     $result->await(function ($result) use ($connectionContent) {
-                                        if ($result instanceof Response) {
+                                        if($result instanceof Throwable){
+                                            Friday::$app->errorHandler->handleException($result);
+                                        }elseif ($result instanceof Response) {
                                             $response = $result;
                                             $response->send();
                                         } else {

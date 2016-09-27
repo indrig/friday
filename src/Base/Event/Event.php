@@ -1,5 +1,6 @@
 <?php
-namespace Friday\Base;
+namespace Friday\Base\Event;
+use Friday\Base\BaseObject;
 
 /**
  * Event is the base class for all event classes.

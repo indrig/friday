@@ -13,25 +13,34 @@ class AwaitableHelper{
      */
     public static function all(array $awaitables, bool  $withWrapper = false){
         return new Awaitable(function ($resolve, $reject) use ($awaitables, $withWrapper)  {
-            $toResolve = count($awaitables);
+            if(0 === $toResolve = count($awaitables)){
+                call_user_func($resolve, []);
 
-            $resolveCallback = $resolve;
-            $values    = [];
-            foreach ($awaitables as $key => $awaitable) {
-                $awaitable->await(function ($result) use (&$values, &$toResolve, $resolveCallback, $key){
-                    $values[$key] = $result;
+            } else {
+                $values    = [];
+                foreach ($awaitables as $key => $awaitable) {
+                    $awaitable->await(function ($result) use (&$values, &$toResolve, $resolve, $key){
+                        $values[$key] = $result;
 
-                    if (0 === --$toResolve) {
-                        call_user_func($resolveCallback, $values);
-                    }
-                }, false);
+                        if (0 === --$toResolve) {
+                            call_user_func($resolve, $values);
+                        }
+                    }, false);
+                }
             }
+
         });
     }
 
     public static function result($result = null){
         $deferred = new Deferred();
         $deferred->result($result);
+        return $deferred->awaitable();
+    }
+
+    public static function exception($throwable = null){
+        $deferred = new Deferred();
+        $deferred->exception($throwable);
         return $deferred->awaitable();
     }
 }

@@ -5,6 +5,10 @@ use Friday;
 use ArrayAccess;
 use ArrayObject;
 use ArrayIterator;
+use Friday\Base\Event\ModelEvent;
+use Friday\Base\Exception\InvalidArgumentException;
+use Friday\Base\Exception\InvalidConfigException;
+use Friday\Helper\AwaitableHelper;
 use ReflectionClass;
 use IteratorAggregate;
 use Friday\Helper\Inflector;
@@ -320,35 +324,45 @@ class Model extends Component implements IteratorAggregate, ArrayAccess, Arrayab
      * If this parameter is empty, it means any attribute listed in the applicable
      * validation rules should be validated.
      * @param boolean $clearErrors whether to call [[clearErrors()]] before performing validation
-     * @return boolean whether the validation is successful without any error.
-     * @throws InvalidParamException if the current scenario is unknown.
+     * @return Awaitable boolean whether the validation is successful without any error.
+     * @throws InvalidArgumentException if the current scenario is unknown.
      */
-    public function validate($attributeNames = null, $clearErrors = true)
+    public function validate($attributeNames = null, $clearErrors = true) : Awaitable
     {
+
         if ($clearErrors) {
             $this->clearErrors();
         }
 
         if (!$this->beforeValidate()) {
-            return false;
+            return AwaitableHelper::result(false);
         }
+
 
         $scenarios = $this->scenarios();
         $scenario = $this->getScenario();
+
         if (!isset($scenarios[$scenario])) {
-            throw new InvalidParamException("Unknown scenario: $scenario");
+            throw new InvalidArgumentException("Unknown scenario: $scenario");
         }
 
         if ($attributeNames === null) {
             $attributeNames = $this->activeAttributes();
         }
 
+        $validators = [];
         foreach ($this->getActiveValidators() as $validator) {
-            $validator->validateAttributes($this, $attributeNames);
+            $validators[] = $validator->validateAttributes($this, $attributeNames);
         }
-        $this->afterValidate();
+        $deferred = new Deferred();
 
-        return !$this->hasErrors();
+        AwaitableHelper::all($validators)->await(function () use ($deferred){
+            $this->afterValidate();
+
+            $deferred->result(!$this->hasErrors());
+        });
+
+        return $deferred->awaitable();
     }
 
     /**
@@ -406,7 +420,7 @@ class Model extends Component implements IteratorAggregate, ArrayAccess, Arrayab
      * Returns the validators applicable to the current [[scenario]].
      * @param string $attribute the name of the attribute whose applicable validators should be returned.
      * If this is null, the validators for ALL attributes in the model will be returned.
-     * @return \yii\validators\Validator[] the validators applicable to the current [[scenario]].
+     * @return \Friday\Validator\Validator[] the validators applicable to the current [[scenario]].
      */
     public function getActiveValidators($attribute = null)
     {
@@ -703,8 +717,8 @@ class Model extends Component implements IteratorAggregate, ArrayAccess, Arrayab
      */
     public function onUnsafeAttribute($name, $value)
     {
-        if (YII_DEBUG) {
-            Yii::trace("Failed to set unsafe attribute '$name' in '" . get_class($this) . "'.", __METHOD__);
+        if (FRIDAY_DEBUG) {
+            Friday::trace("Failed to set unsafe attribute '$name' in '" . get_class($this) . "'.", __METHOD__);
         }
     }
 
@@ -931,9 +945,8 @@ class Model extends Component implements IteratorAggregate, ArrayAccess, Arrayab
      * The default implementation of this method returns [[attributes()]] indexed by the same attribute names.
      *
      * @return array the list of field names or field definitions.
-     * @see toArray()
      */
-    public function fields()
+    public function fields() : array
     {
         $fields = $this->attributes();
 

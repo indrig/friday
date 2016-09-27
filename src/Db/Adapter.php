@@ -27,7 +27,7 @@ class Adapter extends Component
     const EVENT_ROLLBACK_TRANSACTION = 'rollbackTransaction';
 
     /**
-     * @var Schema the database schema
+     * @var AbstractSchema the database schema
      */
     private $_schema;
 
@@ -216,7 +216,7 @@ class Adapter extends Component
 
     /**
      * Returns the schema information for the database opened by this connection.
-     * @return Schema the schema information for the database opened by this connection.
+     * @return AbstractSchema the schema information for the database opened by this connection.
      * @throws NotSupportedException if there is no support for the current driver type
      */
     public function getSchema()
@@ -224,7 +224,9 @@ class Adapter extends Component
         if ($this->_schema === null) {
                 $client = $this->getClient();
 
-            $this->_schema = $client->createSchema();
+            $this->_schema = $client->createSchema([
+                'adapter' => $this
+            ]);
         }
 
 
@@ -394,4 +396,5 @@ class Adapter extends Component
 
         return null;
     }
+
 }

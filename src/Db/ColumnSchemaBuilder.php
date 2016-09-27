@@ -67,26 +67,26 @@ class ColumnSchemaBuilder extends BaseObject
      * @var array mapping of abstract column types (keys) to type categories (values).
      */
     public $categoryMap = [
-        Schema::TYPE_PK => self::CATEGORY_PK,
-        Schema::TYPE_UPK => self::CATEGORY_PK,
-        Schema::TYPE_BIGPK => self::CATEGORY_PK,
-        Schema::TYPE_UBIGPK => self::CATEGORY_PK,
-        Schema::TYPE_CHAR => self::CATEGORY_STRING,
-        Schema::TYPE_STRING => self::CATEGORY_STRING,
-        Schema::TYPE_TEXT => self::CATEGORY_STRING,
-        Schema::TYPE_SMALLINT => self::CATEGORY_NUMERIC,
-        Schema::TYPE_INTEGER => self::CATEGORY_NUMERIC,
-        Schema::TYPE_BIGINT => self::CATEGORY_NUMERIC,
-        Schema::TYPE_FLOAT => self::CATEGORY_NUMERIC,
-        Schema::TYPE_DOUBLE => self::CATEGORY_NUMERIC,
-        Schema::TYPE_DECIMAL => self::CATEGORY_NUMERIC,
-        Schema::TYPE_DATETIME => self::CATEGORY_TIME,
-        Schema::TYPE_TIMESTAMP => self::CATEGORY_TIME,
-        Schema::TYPE_TIME => self::CATEGORY_TIME,
-        Schema::TYPE_DATE => self::CATEGORY_TIME,
-        Schema::TYPE_BINARY => self::CATEGORY_OTHER,
-        Schema::TYPE_BOOLEAN => self::CATEGORY_NUMERIC,
-        Schema::TYPE_MONEY => self::CATEGORY_NUMERIC,
+        AbstractSchema::TYPE_PK => self::CATEGORY_PK,
+        AbstractSchema::TYPE_UPK => self::CATEGORY_PK,
+        AbstractSchema::TYPE_BIGPK => self::CATEGORY_PK,
+        AbstractSchema::TYPE_UBIGPK => self::CATEGORY_PK,
+        AbstractSchema::TYPE_CHAR => self::CATEGORY_STRING,
+        AbstractSchema::TYPE_STRING => self::CATEGORY_STRING,
+        AbstractSchema::TYPE_TEXT => self::CATEGORY_STRING,
+        AbstractSchema::TYPE_SMALLINT => self::CATEGORY_NUMERIC,
+        AbstractSchema::TYPE_INTEGER => self::CATEGORY_NUMERIC,
+        AbstractSchema::TYPE_BIGINT => self::CATEGORY_NUMERIC,
+        AbstractSchema::TYPE_FLOAT => self::CATEGORY_NUMERIC,
+        AbstractSchema::TYPE_DOUBLE => self::CATEGORY_NUMERIC,
+        AbstractSchema::TYPE_DECIMAL => self::CATEGORY_NUMERIC,
+        AbstractSchema::TYPE_DATETIME => self::CATEGORY_TIME,
+        AbstractSchema::TYPE_TIMESTAMP => self::CATEGORY_TIME,
+        AbstractSchema::TYPE_TIME => self::CATEGORY_TIME,
+        AbstractSchema::TYPE_DATE => self::CATEGORY_TIME,
+        AbstractSchema::TYPE_BINARY => self::CATEGORY_OTHER,
+        AbstractSchema::TYPE_BOOLEAN => self::CATEGORY_NUMERIC,
+        AbstractSchema::TYPE_MONEY => self::CATEGORY_NUMERIC,
     ];
     /**
      * @var \Friday\Db\Adapter the current database connection. It is used mainly to escape strings
@@ -188,11 +188,11 @@ class ColumnSchemaBuilder extends BaseObject
     public function unsigned()
     {
         switch ($this->type) {
-            case Schema::TYPE_PK:
-                $this->type = Schema::TYPE_UPK;
+            case AbstractSchema::TYPE_PK:
+                $this->type = AbstractSchema::TYPE_UPK;
                 break;
-            case Schema::TYPE_BIGPK:
-                $this->type = Schema::TYPE_UBIGPK;
+            case AbstractSchema::TYPE_BIGPK:
+                $this->type = AbstractSchema::TYPE_UBIGPK;
                 break;
         }
         $this->isUnsigned = true;

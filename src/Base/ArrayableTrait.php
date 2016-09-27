@@ -61,7 +61,7 @@ trait ArrayableTrait
      * @return array the list of field names or field definitions.
      * @see toArray()
      */
-    public function fields()
+    public function fields() : array
     {
         $fields = array_keys(ObjectHelper::getObjectVars($this));
         return array_combine($fields, $fields);
@@ -85,7 +85,7 @@ trait ArrayableTrait
      * @see toArray()
      * @see fields()
      */
-    public function extraFields()
+    public function extraFields() : array
     {
         return [];
     }
@@ -106,7 +106,7 @@ trait ArrayableTrait
      * @param boolean $recursive whether to recursively return array representation of embedded objects.
      * @return array the array representation of the object
      */
-    public function toArray(array $fields = [], array $expand = [], $recursive = true)
+    public function toArray(array $fields = [], array $expand = [], bool $recursive = true) : array
     {
         $data = [];
         foreach ($this->resolveFields($fields, $expand) as $field => $definition) {

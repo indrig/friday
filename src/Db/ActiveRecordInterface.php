@@ -1,5 +1,6 @@
 <?php
 namespace Friday\Db;
+use Friday\Base\Awaitable;
 
 /**
  * ActiveRecordInterface
@@ -296,9 +297,9 @@ interface ActiveRecordInterface
      * will not be saved to the database and this method will return `false`.
      * @param array $attributes list of attributes that need to be saved. Defaults to null,
      * meaning all attributes that are loaded from DB will be saved.
-     * @return boolean whether the attributes are valid and the record is inserted successfully.
+     * @return Awaitable boolean whether the attributes are valid and the record is inserted successfully.
      */
-    public function insert($runValidation = true, $attributes = null);
+    public function insert($runValidation = true, $attributes = null) : Awaitable;
 
     /**
      * Saves the changes to this active record into the database.
@@ -317,12 +318,12 @@ interface ActiveRecordInterface
      * will not be saved to the database and this method will return `false`.
      * @param array $attributeNames list of attributes that need to be saved. Defaults to null,
      * meaning all attributes that are loaded from DB will be saved.
-     * @return integer|boolean the number of rows affected, or false if validation fails
+     * @return Awaitable integer|boolean the number of rows affected, or false if validation fails
      * or updating process is stopped for other reasons.
      * Note that it is possible that the number of rows affected is 0, even though the
      * update execution is successful.
      */
-    public function update($runValidation = true, $attributeNames = null);
+    public function update($runValidation = true, $attributeNames = null) : Awaitable;
 
     /**
      * Deletes the record from the database.

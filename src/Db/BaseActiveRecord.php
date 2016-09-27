@@ -2,17 +2,21 @@
 namespace Friday\Db;
 
 use Exception;
+use Friday\Base\Awaitable;
+use Friday\Base\Deferred;
 use Friday\Base\Exception\BadMethodCallException;
 use Friday\Base\Exception\InvalidArgumentException;
 use Friday\Base\Exception\InvalidConfigException;
-use Friday\Base\Event;
+use Friday\Base\Event\Event;
 use Friday\Base\Model;
 use Friday\Base\Exception\InvalidParamException;
-use Friday\Base\ModelEvent;
+use Friday\Base\Event\ModelEvent;
 use Friday\Base\Exception\NotSupportedException;
 use Friday\Base\Exception\UnknownMethodException;
 use Friday\Base\Exception\InvalidCallException;
+use Friday\Db\Exception\StaleObjectException;
 use Friday\Helper\ArrayHelper;
+use Throwable;
 
 /**
  * ActiveRecord is the base class for classes representing relational data in terms of objects.
@@ -231,7 +235,7 @@ abstract class BaseActiveRecord extends Model implements ActiveRecordInterface
      * @return mixed property value
      * @see getAttribute()
      */
-    public function __get($name)
+    public function __get(string $name)
     {
         if (isset($this->_attributes[$name]) || array_key_exists($name, $this->_attributes)) {
             return $this->_attributes[$name];
@@ -256,7 +260,7 @@ abstract class BaseActiveRecord extends Model implements ActiveRecordInterface
      * @param string $name property name
      * @param mixed $value property value
      */
-    public function __set($name, $value)
+    public function __set(string $name, $value)
     {
         if ($this->hasAttribute($name)) {
             $this->_attributes[$name] = $value;
@@ -271,7 +275,7 @@ abstract class BaseActiveRecord extends Model implements ActiveRecordInterface
      * @param string $name the property name or the event name
      * @return boolean whether the property value is null
      */
-    public function __isset($name)
+    public function __isset(string $name)
     {
         try {
             return $this->__get($name) !== null;
@@ -286,7 +290,7 @@ abstract class BaseActiveRecord extends Model implements ActiveRecordInterface
      * the specified attribute value.
      * @param string $name the property name or the event name
      */
-    public function __unset($name)
+    public function __unset(string $name)
     {
         if ($this->hasAttribute($name)) {
             unset($this->_attributes[$name]);
@@ -436,7 +440,7 @@ abstract class BaseActiveRecord extends Model implements ActiveRecordInterface
      * Sets the named attribute value.
      * @param string $name the attribute name
      * @param mixed $value the attribute value.
-     * @throws InvalidParamException if the named attribute does not exist.
+     * @throws InvalidArgumentException if the named attribute does not exist.
      * @see hasAttribute()
      */
     public function setAttribute($name, $value)
@@ -444,7 +448,7 @@ abstract class BaseActiveRecord extends Model implements ActiveRecordInterface
         if ($this->hasAttribute($name)) {
             $this->_attributes[$name] = $value;
         } else {
-            throw new InvalidParamException(get_class($this) . ' has no attribute named "' . $name . '".');
+            throw new InvalidArgumentException(get_class($this) . ' has no attribute named "' . $name . '".');
         }
     }
 
@@ -486,7 +490,7 @@ abstract class BaseActiveRecord extends Model implements ActiveRecordInterface
      * Sets the old value of the named attribute.
      * @param string $name the attribute name
      * @param mixed $value the old attribute value.
-     * @throws InvalidParamException if the named attribute does not exist.
+     * @throws InvalidArgumentException if the named attribute does not exist.
      * @see hasAttribute()
      */
     public function setOldAttribute($name, $value)
@@ -494,7 +498,7 @@ abstract class BaseActiveRecord extends Model implements ActiveRecordInterface
         if (isset($this->_oldAttributes[$name]) || $this->hasAttribute($name)) {
             $this->_oldAttributes[$name] = $value;
         } else {
-            throw new InvalidParamException(get_class($this) . ' has no attribute named "' . $name . '".');
+            throw new InvalidArgumentException(get_class($this) . ' has no attribute named "' . $name . '".');
         }
     }
 
@@ -542,6 +546,7 @@ abstract class BaseActiveRecord extends Model implements ActiveRecordInterface
     public function getDirtyAttributes($names = null)
     {
         if ($names === null) {
+
             $names = $this->attributes();
         }
         $names = array_flip($names);
@@ -582,15 +587,20 @@ abstract class BaseActiveRecord extends Model implements ActiveRecordInterface
      * will not be saved to the database and this method will return `false`.
      * @param array $attributeNames list of attribute names that need to be saved. Defaults to null,
      * meaning all attributes that are loaded from DB will be saved.
-     * @return boolean whether the saving succeeded (i.e. no validation errors occurred).
+     * @return Awaitable boolean whether the saving succeeded (i.e. no validation errors occurred).
      */
-    public function save($runValidation = true, $attributeNames = null)
+    public function save($runValidation = true, $attributeNames = null) : Awaitable
     {
-        if ($this->getIsNewRecord()) {
-            return $this->insert($runValidation, $attributeNames);
-        } else {
-            return $this->update($runValidation, $attributeNames) !== false;
-        }
+        $deferred = new Deferred();
+        ($this->getIsNewRecord() ? $this->insert($runValidation, $attributeNames) :  $this->update($runValidation, $attributeNames))
+            ->await(function ($result) use ($deferred){
+                if($result instanceof Throwable) {
+                    $deferred->exception($result);
+                } else {
+                    $deferred->result($result !== false);
+                }
+            });
+        return $deferred->awaitable();
     }
 
     /**
@@ -645,7 +655,7 @@ abstract class BaseActiveRecord extends Model implements ActiveRecordInterface
      * being updated is outdated.
      * @throws Exception in case update failed.
      */
-    public function update($runValidation = true, $attributeNames = null)
+    public function update($runValidation = true, $attributeNames = null) : Awaitable
     {
         if ($runValidation && !$this->validate($attributeNames)) {
             return false;
@@ -1572,7 +1582,7 @@ abstract class BaseActiveRecord extends Model implements ActiveRecordInterface
      *
      * The default implementation returns the names of the relations that have been populated into this record.
      */
-    public function extraFields()
+    public function extraFields() : array
     {
         $fields = array_keys($this->getRelatedRecords());
 

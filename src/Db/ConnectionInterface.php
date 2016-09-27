@@ -28,4 +28,15 @@ interface ConnectionInterface{
      * @return AbstractStatement
      */
     public function prepare($sql);
+
+    /**
+     * @param Adapter $adapter
+     */
+    public function setAdapter($adapter);
+
+    /**
+     * @return Adapter
+     *
+     */
+    public function getAdapter();
 }

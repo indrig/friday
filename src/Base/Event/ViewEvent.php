@@ -1,11 +1,8 @@
 <?php
-namespace Friday\Base;
+namespace Friday\Base\Event;
 
 /**
  * ViewEvent represents events triggered by the [[View]] component.
- *
- * @author Qiang Xue <qiang.xue@gmail.com>
- * @since 2.0
  */
 class ViewEvent extends Event
 {

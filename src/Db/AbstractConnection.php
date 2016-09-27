@@ -2,15 +2,30 @@
 namespace Friday\Db;
 
 use Friday\Base\BaseObject;
-use Friday\Base\ContextInterface;
 use Friday\Base\EventTrait;
 
-abstract class AbstractConnection extends BaseObject implements ContextInterface{
+abstract class AbstractConnection extends BaseObject implements ConnectionInterface{
     /**
      * @var Adapter
      */
-    public $adapter;
+    protected $_adapter;
 
     use EventTrait;
+
+    /**
+     * @inheritdoc
+     */
+    public function setAdapter($adapter)
+    {
+        $this->_adapter = $adapter;
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function getAdapter()
+    {
+        return $this->_adapter;
+    }
 
 }

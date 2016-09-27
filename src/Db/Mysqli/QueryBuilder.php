@@ -1,10 +1,15 @@
 <?php
 namespace Friday\Db\Mysqli;
 
+use Friday\Base\Awaitable;
+use Friday\Base\Deferred;
 use Friday\Base\Exception\InvalidArgumentException;
 use Friday\Db\Exception\Exception;
 use Friday\Db\Expression;
+use Friday\Db\ParameterContainer;
 use Friday\Db\QueryBuilder as BaseQueryBuilder;
+use Friday\Db\TableSchema;
+use Throwable;
 
 /**
  * QueryBuilder is the query builder for MySQL databases.
@@ -177,40 +182,51 @@ class QueryBuilder extends BaseQueryBuilder
     /**
      * @inheritdoc
      */
-    public function insert($table, $columns, &$params)
+    public function insert($table, $columns, &$params) : Awaitable
     {
+        $deferred = new Deferred();
         $schema = $this->adapter->getSchema();
-        if (($tableSchema = $schema->getTableSchema($table)) !== null) {
-            $columnSchemas = $tableSchema->columns;
-        } else {
-            $columnSchemas = [];
-        }
-        $names = [];
-        $placeholders = [];
-        foreach ($columns as $name => $value) {
-            $names[] = $schema->quoteColumnName($name);
-            if ($value instanceof Expression) {
-                $placeholders[] = $value->expression;
-                foreach ($value->params as $n => $v) {
-                    $params[$n] = $v;
-                }
-            } else {
-                $phName = self::PARAM_PREFIX . count($params);
-                $placeholders[] = $phName;
-                $params[$phName] = !is_array($value) && isset($columnSchemas[$name]) ? $columnSchemas[$name]->dbTypecast($value) : $value;
-            }
-        }
-        if (empty($names) && $tableSchema !== null) {
-            $columns = !empty($tableSchema->primaryKey) ? $tableSchema->primaryKey : reset($tableSchema->columns)->name;
-            foreach ($columns as $name) {
-                $names[] = $schema->quoteColumnName($name);
-                $placeholders[] = 'DEFAULT';
-            }
-        }
 
-        return 'INSERT INTO ' . $schema->quoteTableName($table)
-            . (!empty($names) ? ' (' . implode(', ', $names) . ')' : '')
-            . (!empty($placeholders) ? ' VALUES (' . implode(', ', $placeholders) . ')' : ' DEFAULT VALUES');
+        if($schema->getTableSchema($table)->await(function ($tableSchema) use ($deferred, &$table, &$columns, &$params, $schema){
+            if($tableSchema instanceof Throwable){
+                $deferred->exception($tableSchema);
+            } else {
+                if($tableSchema instanceof TableSchema) {
+                    $columnSchemas = $tableSchema->columns;
+                } else {
+                    $columnSchemas = [];
+                }
+
+                $names = [];
+                $placeholders = [];
+                foreach ($columns as $name => $value) {
+                    $names[] = $schema->quoteColumnName($name);
+                    if ($value instanceof Expression) {
+                        $placeholders[] = $value->expression;
+                        foreach ($value->params as $n => $v) {
+                            $params[$n] = $v;
+                        }
+                    } else {
+                        $phName = self::PARAM_PREFIX . count($params);
+                        $placeholders[] = $phName;
+                        $params[$phName] = !is_array($value) && isset($columnSchemas[$name]) ? $columnSchemas[$name]->dbTypecast($value) : $value;
+                    }
+                }
+                if (empty($names) && $tableSchema !== null) {
+                    $columns = !empty($tableSchema->primaryKey) ? $tableSchema->primaryKey : reset($tableSchema->columns)->name;
+                    foreach ($columns as $name) {
+                        $names[] = $schema->quoteColumnName($name);
+                        $placeholders[] = 'DEFAULT';
+                    }
+                }
+
+                $deferred->result('INSERT INTO ' . $schema->quoteTableName($table)
+                . (!empty($names) ? ' (' . implode(', ', $names) . ')' : '')
+                . (!empty($placeholders) ? ' VALUES (' . implode(', ', $placeholders) . ')' : ' DEFAULT VALUES'));
+            }
+        }));
+
+        return $deferred->awaitable();
     }
 
     /**

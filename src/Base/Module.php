@@ -3,6 +3,7 @@
 namespace Friday\Base;
 
 use Friday;
+use Friday\Base\Event\ActionEvent;
 use Friday\Base\Exception\InvalidConfigException;
 use Friday\Base\Exception\InvalidRouteException;
 use Friday\Di\ServiceLocator;

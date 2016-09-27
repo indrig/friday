@@ -5,9 +5,12 @@ use Friday;
 use Friday\Base\Awaitable;
 use Friday\Base\Deferred;
 use Friday\Base\Exception\InvalidConfigException;
+use Friday\Db\Exception\StaleObjectException;
 use Friday\Helper\ArrayHelper;
+use Friday\Helper\AwaitableHelper;
 use Friday\Helper\Inflector;
 use Friday\Helper\StringHelper;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -348,21 +351,11 @@ class ActiveRecord extends BaseActiveRecord
     /**
      * Returns the list of all attribute names of the model.
      * The default implementation will return all column names of the table associated with this AR class.
-     * @return Awaitable array list of attribute names.
+     * @return array list of attribute names.
      */
-    public function attributes() : Awaitable
+    public function attributes()
     {
-        $deferred = new Deferred();
-
-        static::getTableSchema()->await(function ($tableSchema) use ($deferred, &$skipIfSet){
-            if($tableSchema instanceof Throwable){
-                $deferred->exception($tableSchema);
-            } else {
-                $deferred->result(array_keys($tableSchema->columns));
-            }
-        });
-
-        return $deferred->awaitable();
+        return [];
     }
 
     /**
@@ -463,47 +456,67 @@ class ActiveRecord extends BaseActiveRecord
      * will not be saved to the database and this method will return `false`.
      * @param array $attributes list of attributes that need to be saved. Defaults to null,
      * meaning all attributes that are loaded from DB will be saved.
-     * @return boolean whether the attributes are valid and the record is inserted successfully.
+     * @return Awaitable boolean whether the attributes are valid and the record is inserted successfully.
      * @throws \Exception in case insert failed.
      */
-    public function insert($runValidation = true, $attributes = null)
+    public function insert($runValidation = true, $attributes = null) : Awaitable
     {
-        if ($runValidation && !$this->validate($attributes)) {
-            Friday::info('Model not inserted due to validation error.', __METHOD__);
-            return false;
-        }
+        $deferred = new Deferred();
 
-        if (!$this->isTransactional(self::OP_INSERT)) {
-            return $this->insertInternal($attributes);
-        }
-
-        $transaction = static::getDb()->beginTransaction();
-        try {
-            $result = $this->insertInternal($attributes);
-            if ($result === false) {
-                $transaction->rollBack();
+        $afterValidate = function() use (&$attributes, $deferred){
+            if (!$this->isTransactional(self::OP_INSERT)) {
+                $this->insertInternal($attributes)->await(function ($result) use ( $deferred){
+                    $deferred->result($result);
+                });
             } else {
-                $transaction->commit();
+                /*
+                $transaction = static::getDb()->beginTransaction();
+                try {
+                    $result = $this->insertInternal($attributes);
+                    if ($result === false) {
+                        $transaction->rollBack();
+                    } else {
+                        $transaction->commit();
+                    }
+                    //return $result;
+                } catch (\Exception $e) {
+                    $transaction->rollBack();
+                    throw $e;
+                }*/
+                throw new RuntimeException('Not support transactions now');
             }
-            return $result;
-        } catch (\Exception $e) {
-            $transaction->rollBack();
-            throw $e;
+        };
+
+        if($runValidation) {
+            $this->validate($attributes)->await(function ($result) use ($deferred, &$attributes, $afterValidate){
+                if($result) {
+                    $afterValidate->call($this);
+                } else {
+                    Friday::info('Model not inserted due to validation error.', __METHOD__);
+                    $deferred->result();
+                }
+            });
+        } else {
+            $afterValidate->call($this);
         }
+
+        return $deferred->awaitable();
     }
 
     /**
      * Inserts an ActiveRecord into DB without considering transaction.
      * @param array $attributes list of attributes that need to be saved. Defaults to null,
      * meaning all attributes that are loaded from DB will be saved.
-     * @return boolean whether the record is inserted successfully.
+     * @return Awaitable whether the record is inserted successfully.
      */
-    protected function insertInternal($attributes = null)
+    protected function insertInternal($attributes = null) : Awaitable
     {
-        $deferred = new Deferred();
         if (!$this->beforeSave(true)) {
-            return false;
+            return AwaitableHelper::result(false);
         }
+
+        $deferred = new Deferred();
+
         $values = $this->getDirtyAttributes($attributes);
         static::getDb()->getSchema()->insert(static::tableName(), $values)->await(function ($primaryKeys) use ($deferred, &$values){
             if($deferred instanceof Throwable) {
@@ -531,11 +544,8 @@ class ActiveRecord extends BaseActiveRecord
             }
         });
 
-        if (($primaryKeys = static::getDb()->getSchema()->insert(static::tableName(), $values)) === false)  {
-            return false;
-        }
 
-        return true;
+        return $deferred->awaitable();
     }
 
     /**
@@ -584,13 +594,10 @@ class ActiveRecord extends BaseActiveRecord
      * will not be saved to the database and this method will return `false`.
      * @param array $attributeNames list of attributes that need to be saved. Defaults to null,
      * meaning all attributes that are loaded from DB will be saved.
-     * @return integer|boolean the number of rows affected, or false if validation fails
+     * @return Awaitable integer|boolean the number of rows affected, or false if validation fails
      * or [[beforeSave()]] stops the updating process.
-     * @throws StaleObjectException if [[optimisticLock|optimistic locking]] is enabled and the data
-     * being updated is outdated.
-     * @throws \Exception in case update failed.
      */
-    public function update($runValidation = true, $attributeNames = null)
+    public function update($runValidation = true, $attributeNames = null) : Awaitable
     {
         if ($runValidation && !$this->validate($attributeNames)) {
             Friday::info('Model not updated due to validation error.', __METHOD__);

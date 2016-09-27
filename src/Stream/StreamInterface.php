@@ -1,7 +1,7 @@
 <?php
 namespace Friday\Stream;
 
-use Friday\Base\Event;
+use Friday\Base\Event\Event;
 
 interface StreamInterface{
     const EVENT_END         = 'end';

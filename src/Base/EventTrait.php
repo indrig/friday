@@ -2,7 +2,14 @@
 namespace Friday\Base;
 
 use Friday;
+use Friday\Base\Event\Event;
 
+/**
+ * Class EventTrait
+ * @package Friday\Base
+ *
+ * @property BaseObject $this
+ */
 trait EventTrait{
     /**
      * Returns a value indicating whether there is any handler attached to the named event.
@@ -268,6 +275,7 @@ trait EventTrait{
      */
     private function attachBehaviorInternal($name, $behavior)
     {
+
         if (!($behavior instanceof Behavior)) {
             $behavior = Friday::createObject($behavior);
         }

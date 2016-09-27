@@ -10,6 +10,7 @@ use Friday\Base\Exception\BadMethodCallException;
 use Friday\Cache\AbstractCache;
 use Friday\Cache\TagDependency;
 use Friday\Db\Exception\Exception;
+use Friday\Helper\AwaitableHelper;
 use Throwable;
 
 /**
@@ -30,7 +31,7 @@ use Throwable;
  * [[Transaction::REPEATABLE_READ]] and [[Transaction::SERIALIZABLE]] but also a string containing DBMS specific
  * syntax to be used after `SET TRANSACTION ISOLATION LEVEL`. This property is write-only.
  */
-abstract class Schema extends BaseObject
+abstract class AbstractSchema extends BaseObject
 {
     /**
      * The following are the supported abstract column data types.
@@ -117,7 +118,7 @@ abstract class Schema extends BaseObject
     {
         $deferred = new Deferred();
         if (array_key_exists($name, $this->_tables) && !$refresh) {
-            return $this->_tables[$name];
+            return AwaitableHelper::result($this->_tables[$name]);
         }
 
         $db = $this->adapter;
@@ -500,32 +501,37 @@ abstract class Schema extends BaseObject
     {
         $deferred = new Deferred();
 
-        $command = $this->adapter->createCommand()->insert($table, $columns);
-
-        $command->execute()->await(function ($insertResult) use (&$table, $deferred){
-            if($insertResult instanceof Throwable) {
-                $deferred->exception($insertResult);
-            } else {
-                $this->getTableSchema($table)->await(function ($tableSchema) use ($deferred, &$table) {
-                    if($tableSchema instanceof Throwable) {
-                        $deferred->exception($tableSchema);
-                    } elseif ($tableSchema instanceof TableSchema) {
-                        $result = [];
-                        foreach ($tableSchema->primaryKey as $name) {
-                            if ($tableSchema->columns[$name]->autoIncrement) {
-                                $result[$name] = $this->getLastInsertID($tableSchema->sequenceName);
-                                break;
-                            } else {
-                                $result[$name] = isset($columns[$name]) ? $columns[$name] : $tableSchema->columns[$name]->defaultValue;
+        $this->adapter->createCommand()->insert($table, $columns)->await(function ($command) use($deferred) {
+            /**
+             * @var Command $command
+             */
+            $command->execute()->await(function ($insertResult) use (&$table, $deferred){
+                if($insertResult instanceof Throwable) {
+                    $deferred->exception($insertResult);
+                } else {
+                    $this->getTableSchema($table)->await(function ($tableSchema) use ($deferred, &$table) {
+                        if($tableSchema instanceof Throwable) {
+                            $deferred->exception($tableSchema);
+                        } elseif ($tableSchema instanceof TableSchema) {
+                            $result = [];
+                            foreach ($tableSchema->primaryKey as $name) {
+                                if ($tableSchema->columns[$name]->autoIncrement) {
+                                    $result[$name] = $this->getLastInsertID($tableSchema->sequenceName);
+                                    break;
+                                } else {
+                                    $result[$name] = isset($columns[$name]) ? $columns[$name] : $tableSchema->columns[$name]->defaultValue;
+                                }
                             }
+                            $deferred->result($result);
+                        } else {
+                            $deferred->exception(new Exception('Get table schema "'.$table.'" error.'));
                         }
-                        $deferred->result($result);
-                    } else {
-                        $deferred->exception(new Exception('Get table schema "'.$table.'" error.'));
-                    }
-                });
-            }
+                    });
+                }
+            });
         });
+
+
         return $deferred->awaitable();
     }
 

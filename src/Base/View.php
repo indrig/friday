@@ -2,6 +2,7 @@
 namespace Friday\Base;
 
 use Friday;
+use Friday\Base\Event\ViewEvent;
 use Friday\Base\Exception\BadMethodCallException;
 use Friday\Base\Exception\InvalidArgumentException;
 use Friday\Helper\AliasHelper;

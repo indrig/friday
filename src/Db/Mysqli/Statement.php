@@ -12,6 +12,7 @@ use Friday\Db\AbstractStatement;
 
 class Statement extends AbstractStatement {
 
+    private $_rowCount;
     /**
      * Execute
      *
@@ -28,7 +29,6 @@ class Statement extends AbstractStatement {
 
         $preparedSql = $this->buildQueryWithParameters();
         if(false === $status = $resource->query($preparedSql, MYSQLI_ASYNC)){
-
             $deferred->exception(new Exception($resource->error));
             $connection->free();
         } else {
@@ -117,7 +117,16 @@ class Statement extends AbstractStatement {
      * @return int
      */
     public function rowCount() : int {
-        return $this->getResult()->num_rows;
+        if($this->_rowCount === null) {
+            if(null === $result = $this->getResult()){
+                return 0;
+            }
+
+            return $result->num_rows;
+        } else {
+            return $this->_rowCount;
+        }
+
     }
 
     /**
@@ -130,5 +139,13 @@ class Statement extends AbstractStatement {
     public function free()
     {
         return $this->getResult()->free_result();
+    }
+
+    /**
+     * @param $rowCount
+     * @internal
+     */
+    public function setRowCount($rowCount){
+        $this->_rowCount = $rowCount;
     }
 }

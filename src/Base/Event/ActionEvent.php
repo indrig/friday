@@ -1,13 +1,11 @@
 <?php
-namespace Friday\Base;
+namespace Friday\Base\Event;
+use Friday\Base\Action;
 
 /**
  * ActionEvent represents the event parameter used for an action event.
  *
  * By setting the [[isValid]] property, one may control whether to continue running the action.
- *
- * @author Qiang Xue <qiang.xue@gmail.com>
- * @since 2.0
  */
 class ActionEvent extends Event
 {

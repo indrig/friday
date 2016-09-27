@@ -1,6 +1,7 @@
 <?php
 namespace Friday\Db;
 
+use Friday\Base\Awaitable;
 use Friday\Base\BaseObject;
 use Friday\Base\Exception\InvalidArgumentException;
 use Friday\Base\Exception\NotSupportedException;
@@ -138,7 +139,7 @@ class QueryBuilder extends BaseObject
      * They should be bound to the DB command later.
      * @return string the INSERT SQL
      */
-    public function insert($table, $columns, &$params)
+    public function insert($table, $columns, &$params) : Awaitable
     {
         $schema = $this->adapter->getSchema();
         if (($tableSchema = $schema->getTableSchema($table)) !== null) {

@@ -2,6 +2,7 @@
 namespace Friday\Base;
 
 use Friday;
+use Friday\Base\Event\ActionEvent;
 use Friday\Base\Exception\InvalidArgumentException;
 use Friday\Base\Exception\InvalidRouteException;
 use Friday\Helper\AliasHelper;
@@ -16,9 +17,6 @@ use Friday\Helper\AliasHelper;
  * @property string $uniqueId The controller ID that is prefixed with the module ID (if any). This property is
  * read-only.
  * @property string $viewPath The directory containing the view files for this controller.
- *
- * @author Qiang Xue <qiang.xue@gmail.com>
- * @since 2.0
  */
 class Controller extends Component implements ViewContextInterface
 {
@@ -203,7 +201,7 @@ class Controller extends Component implements ViewContextInterface
      * where `Xyz` stands for the action ID. If found, an [[InlineAction]] representing that
      * method will be created and returned.
      * @param string $id the action ID.
-     * @return  Action the newly created action instance. Null if the ID doesn't resolve into any action.
+     * @return Action|object the newly created action instance. Null if the ID doesn't resolve into any action.
      */
     public function createAction($id)
     {

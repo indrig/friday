@@ -7,13 +7,13 @@ use Friday\Db\Exception\Exception;
 use Friday\Db\Expression;
 use Friday\Db\TableSchema;
 use Friday\Db\ColumnSchema;
-use Friday\Db\Schema as BaseSchema;
+use Friday\Db\AbstractSchema;
 use Throwable;
 
 /**
  * Schema is the class for retrieving metadata from a MySQL database (version 4.1.x and 5.x).
  */
-class Schema extends BaseSchema
+class Schema extends AbstractSchema
 {
     /**
      * @var array mapping from physical column types (keys) to abstract column types (values)
@@ -77,7 +77,7 @@ class Schema extends BaseSchema
      */
     public function createQueryBuilder()
     {
-        return new QueryBuilder($this->db);
+        return new QueryBuilder($this->adapter);
     }
 
     /**
@@ -207,6 +207,7 @@ class Schema extends BaseSchema
                 $deferred->exception($columns);
             } else {
                 foreach ($columns as $info) {
+                    $info = array_change_key_case($info);
                     $column = $this->loadColumnSchema($info);
                     $table->columns[$column->name] = $column;
                     if ($column->isPrimaryKey) {

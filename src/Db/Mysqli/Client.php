@@ -73,6 +73,10 @@ class Client implements ClientInterface{
                                  */
                                 if (false === $queryResult = $resource->reap_async_query()) {
                                     $deferred->exception(new Exception($resource->error));
+                                } elseif(true === $queryResult) {
+                                    $resource->affected_rows;
+                                    //$statement->setResult($queryResult);
+                                    $deferred->result($statement);
                                 } else {
                                     $statement->setResult($queryResult);
                                     $deferred->result($statement);
