@@ -1,9 +1,11 @@
 <?php
 namespace Friday\Db;
 
+use Friday\Base\Awaitable;
 use Friday\Base\Component;
 use Friday;
-use Friday\Promise\PromiseInterface;
+use Friday\Base\Deferred;
+use Throwable;
 
 /**
  * Query represents a SELECT SQL statement in a way that is independent of DBMS.
@@ -148,17 +150,17 @@ class Query extends Component implements QueryInterface
      * ```
      *
      * @param integer $batchSize the number of records to be fetched in each batch.
-     * @param Adapter $db the database connection. If not set, the "db" application component will be used.
-     * @return BatchQueryResult the batch query result. It implements the [[\Iterator]] interface
+     * @param Adapter $adapter the database connection. If not set, the "db" application component will be used.
+     * @return BatchQueryResult|object the batch query result. It implements the [[\Iterator]] interface
      * and can be traversed to retrieve the data in batches.
      */
-    public function batch($batchSize = 100, $db = null)
+    public function batch($batchSize = 100, $adapter = null)
     {
         return Friday::createObject([
             'class' => BatchQueryResult::className(),
             'query' => $this,
             'batchSize' => $batchSize,
-            'db' => $db,
+            'db' => $adapter,
             'each' => false,
         ]);
     }
@@ -176,7 +178,7 @@ class Query extends Component implements QueryInterface
      *
      * @param integer $batchSize the number of records to be fetched in each batch.
      * @param Adapter $db the database connection. If not set, the "db" application component will be used.
-     * @return BatchQueryResult the batch query result. It implements the [[\Iterator]] interface
+     * @return BatchQueryResult|object the batch query result. It implements the [[\Iterator]] interface
      * and can be traversed to retrieve the data in batches.
      */
     public function each($batchSize = 100, $db = null)
@@ -192,14 +194,21 @@ class Query extends Component implements QueryInterface
 
     /**
      * Executes the query and returns all results as an array.
-     * @param Connection $db the database connection used to generate the SQL statement.
+     * @param Adapter $adapter the database connection used to generate the SQL statement.
      * If this parameter is not given, the `db` application component will be used.
-     * @return array the query results. If the query results in nothing, an empty array will be returned.
+     * @return Awaitable array the query results. If the query results in nothing, an empty array will be returned.
      */
-    public function all($db = null) : PromiseInterface
+    public function all($adapter = null) : Awaitable
     {
-        $rows = $this->createCommand($db)->queryAll();
-        return $this->populate($rows);
+        $deferred = new Deferred();
+        $this->createCommand($adapter)->queryAll()->await(function ($rows) use ($deferred){
+            if($rows instanceof Throwable){
+                $deferred -> exception($rows);
+            } else {
+                $this->populate($rows);
+            }
+        });
+        return $deferred->awaitable();
     }
 
     /**
@@ -228,78 +237,95 @@ class Query extends Component implements QueryInterface
 
     /**
      * Executes the query and returns a single row of result.
-     * @param Connection $db the database connection used to generate the SQL statement.
+     * @param Adapter $adapter the database connection used to generate the SQL statement.
      * If this parameter is not given, the `db` application component will be used.
-     * @return array|boolean the first row (in terms of an array) of the query result. False is returned if the query
+     * @return Awaitable array|boolean the first row (in terms of an array) of the query result. False is returned if the query
      * results in nothing.
      */
-    public function one($db = null) : PromiseInterface
+    public function one($adapter = null) : Awaitable
     {
-        return $this->createCommand($db)->queryOne();
+        return $this->createCommand($adapter)->queryOne();
     }
 
     /**
      * Returns the query result as a scalar value.
      * The value returned will be the first column in the first row of the query results.
-     * @param Connection $db the database connection used to generate the SQL statement.
+     * @param Adapter $adapter the database connection used to generate the SQL statement.
      * If this parameter is not given, the `db` application component will be used.
-     * @return string|null|false the value of the first column in the first row of the query result.
+     * @return Awaitable string|null|false the value of the first column in the first row of the query result.
      * False is returned if the query result is empty.
      */
-    public function scalar($db = null) : PromiseInterface
+    public function scalar($adapter = null) : Awaitable
     {
-        return $this->createCommand($db)->queryScalar();
+        return $this->createCommand($adapter)->queryScalar();
     }
 
     /**
      * Executes the query and returns the first column of the result.
-     * @param Connection $db the database connection used to generate the SQL statement.
+     * @param Adapter $adapter the database connection used to generate the SQL statement.
      * If this parameter is not given, the `db` application component will be used.
-     * @return array the first column of the query result. An empty array is returned if the query results in nothing.
+     * @return Awaitable array the first column of the query result. An empty array is returned if the query results in nothing.
      */
-    public function column($db = null) : PromiseInterface
+    public function column($adapter = null) : Awaitable
     {
+        $deferred = new Deferred();
         if (!is_string($this->indexBy)) {
-            return $this->createCommand($db)->queryColumn();
-        }
-        if (is_array($this->select) && count($this->select) === 1) {
-            $this->select[] = $this->indexBy;
-        }
-        $rows = $this->createCommand($db)->queryAll();
-        $results = [];
-        foreach ($rows as $row) {
-            if (array_key_exists($this->indexBy, $row)) {
-                $results[$row[$this->indexBy]] = reset($row);
-            } else {
-                $results[] = reset($row);
+            //return $this->createCommand($adapter)->queryColumn();
+            $this->createCommand($adapter)->queryColumn()->await(function ($result) use ($deferred){
+                if($result instanceof Throwable){
+                    $deferred->exception($result);
+                } else {
+                    $deferred->result($result);
+                }
+            });
+        } else {
+            if (is_array($this->select) && count($this->select) === 1) {
+                $this->select[] = $this->indexBy;
             }
+            $this->createCommand($adapter)->queryAll()->await(function ($rows) use ($deferred){
+                if($rows instanceof Throwable) {
+                    $deferred->exception($rows);
+                } else {
+                    $results = [];
+                    foreach ($rows as $row) {
+                        if (array_key_exists($this->indexBy, $row)) {
+                            $results[$row[$this->indexBy]] = reset($row);
+                        } else {
+                            $results[] = reset($row);
+                        }
+                    }
+
+                    $deferred->result();
+                }
+            });
         }
-        return $results;
+
+        return $deferred->awaitable();
     }
 
     /**
      * Returns the number of records.
      * @param string $q the COUNT expression. Defaults to '*'.
      * Make sure you properly [quote](guide:db-dao#quoting-table-and-column-names) column names in the expression.
-     * @param Connection $db the database connection used to generate the SQL statement.
+     * @param Adapter $adapter the database connection used to generate the SQL statement.
      * If this parameter is not given (or null), the `db` application component will be used.
-     * @return integer|string number of records. The result may be a string depending on the
+     * @return Awaitable integer|string number of records. The result may be a string depending on the
      * underlying database engine and to support integer values higher than a 32bit PHP integer can handle.
      */
-    public function count($q = '*', $db = null) : PromiseInterface
+    public function count($q = '*', $adapter = null) : Awaitable
     {
-        return $this->queryScalar("COUNT($q)", $db);
+        return $this->queryScalar("COUNT($q)", $adapter);
     }
 
     /**
      * Returns the sum of the specified column values.
      * @param string $q the column name or expression.
      * Make sure you properly [quote](guide:db-dao#quoting-table-and-column-names) column names in the expression.
-     * @param Connection $db the database connection used to generate the SQL statement.
+     * @param Adapter $db the database connection used to generate the SQL statement.
      * If this parameter is not given, the `db` application component will be used.
-     * @return mixed the sum of the specified column values.
+     * @return Awaitable mixed the sum of the specified column values.
      */
-    public function sum($q, $db = null) : PromiseInterface
+    public function sum($q, $db = null) : Awaitable
     {
         return $this->queryScalar("SUM($q)", $db);
     }
@@ -308,11 +334,11 @@ class Query extends Component implements QueryInterface
      * Returns the average of the specified column values.
      * @param string $q the column name or expression.
      * Make sure you properly [quote](guide:db-dao#quoting-table-and-column-names) column names in the expression.
-     * @param Connection $db the database connection used to generate the SQL statement.
+     * @param Adapter $db the database connection used to generate the SQL statement.
      * If this parameter is not given, the `db` application component will be used.
-     * @return mixed the average of the specified column values.
+     * @return Awaitable mixed the average of the specified column values.
      */
-    public function average($q, $db = null) : PromiseInterface
+    public function average($q, $db = null) : Awaitable
     {
         return $this->queryScalar("AVG($q)", $db);
     }
@@ -321,11 +347,11 @@ class Query extends Component implements QueryInterface
      * Returns the minimum of the specified column values.
      * @param string $q the column name or expression.
      * Make sure you properly [quote](guide:db-dao#quoting-table-and-column-names) column names in the expression.
-     * @param Connection $db the database connection used to generate the SQL statement.
+     * @param Adapter $db the database connection used to generate the SQL statement.
      * If this parameter is not given, the `db` application component will be used.
-     * @return mixed the minimum of the specified column values.
+     * @return Awaitable mixed the minimum of the specified column values.
      */
-    public function min($q, $db = null) : PromiseInterface
+    public function min($q, $db = null) : Awaitable
     {
         return $this->queryScalar("MIN($q)", $db);
     }
@@ -334,28 +360,39 @@ class Query extends Component implements QueryInterface
      * Returns the maximum of the specified column values.
      * @param string $q the column name or expression.
      * Make sure you properly [quote](guide:db-dao#quoting-table-and-column-names) column names in the expression.
-     * @param Connection $db the database connection used to generate the SQL statement.
+     * @param Adapter $db the database connection used to generate the SQL statement.
      * If this parameter is not given, the `db` application component will be used.
-     * @return mixed the maximum of the specified column values.
+     * @return Awaitable mixed the maximum of the specified column values.
      */
-    public function max($q, $db = null) : PromiseInterface
+    public function max($q, $db = null) : Awaitable
     {
         return $this->queryScalar("MAX($q)", $db);
     }
 
     /**
      * Returns a value indicating whether the query result contains any row of data.
-     * @param Connection $db the database connection used to generate the SQL statement.
+     * @param Adapter $db the database connection used to generate the SQL statement.
      * If this parameter is not given, the `db` application component will be used.
-     * @return boolean whether the query result contains any row of data.
+     * @return Awaitable boolean whether the query result contains any row of data.
      */
-    public function exists($db = null) : PromiseInterface
+    public function exists($db = null) : Awaitable
     {
+        $deferred = new Deferred();
+
         $command = $this->createCommand($db);
         $params = $command->params;
-        $command->setSql($command->db->getQueryBuilder()->selectExists($command->getSql()));
+        $command->setSql($command->adapter->getQueryBuilder()->selectExists($command->getSql()));
         $command->bindValues($params);
-        return (boolean)$command->queryScalar();
+
+        $command->queryScalar()->await(function ($result) use ($deferred){
+
+            if($result instanceof Throwable) {
+                $deferred->exception($result);
+            } else{
+                $deferred->result(boolval($result));
+            }
+        });
+        return $deferred->awaitable();
     }
 
     /**
@@ -363,9 +400,9 @@ class Query extends Component implements QueryInterface
      * Restores the value of select to make this query reusable.
      * @param string|Expression $selectExpression
      * @param Adapter|null $db
-     * @return boolean|string
+     * @return Awaitable boolean|string
      */
-    protected function queryScalar($selectExpression, $db) : PromiseInterface
+    protected function queryScalar($selectExpression, $db) : Awaitable
     {
         $select = $this->select;
         $limit = $this->limit;

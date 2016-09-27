@@ -921,12 +921,13 @@ class Command extends Component
                                 try {
                                     if ($method === '') {
                                         $data = new DataReader($this);
+
                                     } else {
                                         if ($fetchMode === null) {
                                             $fetchMode = $this->fetchMode;
                                         }
                                         $data = call_user_func_array([$this->statement, $method], (array)$fetchMode);
-                                        $this->statement->closeCursor();
+                                        $this->statement->free();
                                     }
                                     Friday::endProfile($rawSql, 'Friday\Db\Command::query');
                                 } catch (Throwable $e) {

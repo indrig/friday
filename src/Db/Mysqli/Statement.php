@@ -11,6 +11,7 @@ use Friday\Db\ParameterContainer;
 use Friday\Db\AbstractStatement;
 
 class Statement extends AbstractStatement {
+
     /**
      * Execute
      *
@@ -41,19 +42,7 @@ class Statement extends AbstractStatement {
      */
     public function fetch($fetchMode = null)
     {
-        $driverFetchMode = null;
-        switch ($fetchMode) {
-            case AbstractStatement::FETCH_ASSOC:
-                $driverFetchMode = MYSQLI_ASSOC;
-                break;
-            case AbstractStatement::FETCH_NUM:
-                $driverFetchMode = MYSQLI_NUM;
-                break;
-            case AbstractStatement::FETCH_BOTH:
-                $driverFetchMode = MYSQLI_BOTH;
-                break;
-        }
-        return $this->getResult()->fetch_array($driverFetchMode);
+        return $this->getResult()->fetch_array($this->driverFetchMode($fetchMode));
     }
 
     /**
@@ -61,21 +50,30 @@ class Statement extends AbstractStatement {
      */
     public function fetchAll($fetchMode = null)
     {
-        $driverFetchMode = null;
-        switch ($fetchMode) {
-            case AbstractStatement::FETCH_ASSOC:
-                $driverFetchMode = MYSQLI_ASSOC;
-                break;
-            case AbstractStatement::FETCH_NUM:
-                $driverFetchMode = MYSQLI_NUM;
-                break;
-            case AbstractStatement::FETCH_BOTH:
-                $driverFetchMode = MYSQLI_BOTH;
-                break;
-        }
-        return $this->getResult()->fetch_all($driverFetchMode);
+
+        return $this->getResult()->fetch_all($this->driverFetchMode($fetchMode));
     }
 
+    /**
+     * @param null $fetchMode
+     * @return int
+     */
+    protected function driverFetchMode($fetchMode = null) : int {
+        if($fetchMode === null){
+            $fetchMode = $this->_fetchMode;
+        }
+
+        switch ($fetchMode) {
+            case AbstractStatement::FETCH_ASSOC:
+                return MYSQLI_ASSOC;
+            case AbstractStatement::FETCH_NUM:
+                return MYSQLI_NUM;
+            case AbstractStatement::FETCH_BOTH:
+                return MYSQLI_BOTH;
+        }
+
+        throw new InvalidArgumentException("Fetch mode has bad value.");
+    }
     /**
      * @inheritdoc
      */
@@ -120,5 +118,17 @@ class Statement extends AbstractStatement {
      */
     public function rowCount() : int {
         return $this->getResult()->num_rows;
+    }
+
+    /**
+     * @return int
+     */
+    public function columnCount() : int {
+        return $this->getResult()->field_count;
+    }
+
+    public function free()
+    {
+        return $this->getResult()->free_result();
     }
 }

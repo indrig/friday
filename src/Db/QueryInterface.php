@@ -1,6 +1,7 @@
 <?php
 namespace Friday\Db;
-use Friday\Promise\PromiseInterface;
+
+use Friday\Base\Awaitable;
 
 
 /**
@@ -18,35 +19,35 @@ interface QueryInterface
      * Executes the query and returns all results as an array.
      * @param Adapter $db the database connection used to execute the query.
      * If this parameter is not given, the `db` application component will be used.
-     * @return PromiseInterface array the query results. If the query results in nothing, an empty array will be returned.
+     * @return Awaitable array the query results. If the query results in nothing, an empty array will be returned.
      */
-    public function all($db = null) : PromiseInterface;
+    public function all($db = null) : Awaitable;
 
     /**
      * Executes the query and returns a single row of result.
      * @param Adapter $db the database connection used to execute the query.
      * If this parameter is not given, the `db` application component will be used.
-     * @return PromiseInterface array|boolean the first row (in terms of an array) of the query result. False is returned if the query
+     * @return Awaitable array|boolean the first row (in terms of an array) of the query result. False is returned if the query
      * results in nothing.
      */
-    public function one($db = null) : PromiseInterface;
+    public function one($db = null) : Awaitable;
 
     /**
      * Returns the number of records.
      * @param string $q the COUNT expression. Defaults to '*'.
      * @param Adapter $db the database connection used to execute the query.
      * If this parameter is not given, the `db` application component will be used.
-     * @return PromiseInterface integer number of records.
+     * @return Awaitable integer number of records.
      */
-    public function count($q = '*', $db = null) : PromiseInterface;
+    public function count($q = '*', $db = null) : Awaitable;
 
     /**
      * Returns a value indicating whether the query result contains any row of data.
      * @param Adapter $db the database connection used to execute the query.
      * If this parameter is not given, the `db` application component will be used.
-     * @return PromiseInterface boolean whether the query result contains any row of data.
+     * @return Awaitable boolean whether the query result contains any row of data.
      */
-    public function exists($db = null) : PromiseInterface;
+    public function exists($db = null) : Awaitable;
 
     /**
      * Sets the [[indexBy]] property.

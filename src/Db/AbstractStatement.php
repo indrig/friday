@@ -2,18 +2,14 @@
 namespace Friday\Db;
 use Friday\Base\Awaitable;
 use Friday\Base\BaseObject;
-use Friday\Db\Exception\Exception;
 
-abstract class AbstractStatement extends BaseObject
+abstract class AbstractStatement extends BaseObject implements StatementInterface
 {
-    const FETCH_ASSOC = 2;
-    const FETCH_NUM = 3;
-    const FETCH_BOTH = 4;
 
     /**
      * @var AbstractConnection
      */
-    private $_connection;
+    protected $_connection;
 
     /**
      * @var string
@@ -33,14 +29,13 @@ abstract class AbstractStatement extends BaseObject
     /**
      * @var \mysqli_result|resource
      */
-    private $_result;
+    protected $_result;
 
-    /**
-     * Execute
-     * @return Awaitable
-     */
-    abstract public function execute() : Awaitable;
+    protected $_fetchMode;
 
+    public function setFetchMode($fetchMode){
+        $this->_fetchMode = $fetchMode;
+    }
     /**
      * Initialize
      *
@@ -59,27 +54,6 @@ abstract class AbstractStatement extends BaseObject
     public function getConnection()
     {
         return $this->_connection;
-    }
-
-    /**
-     * Prepare
-     *
-     * @param string $sql
-     * @throws Exception
-     * @return $this
-     */
-    public function prepare($sql = null)
-    {
-        if ($this->_prepared) {
-            throw new Exception('This statement has already been prepared');
-        }
-
-        if($sql !== null) {
-            $this->_sql = $sql;
-        }
-
-        $this->_prepared = true;
-        return $this;
     }
 
     /**
@@ -133,15 +107,6 @@ abstract class AbstractStatement extends BaseObject
         }
     }
 
-    /**
-     * Is prepared
-     *
-     * @return bool
-     */
-    public function isPrepared()
-    {
-        return $this->_prepared !== null;
-    }
 
 
     /**
@@ -222,43 +187,4 @@ abstract class AbstractStatement extends BaseObject
         return $this->_result;
     }
 
-    /**
-     * Извлечение следующей строки из результирующего набора
-     *
-     * @param null|integer $fetchMode
-     * @return false|array
-     */
-    abstract public function fetch($fetchMode = null);
-
-    /**
-     * Возвращает массив, содержащий все строки результирующего набора
-     *
-     * @param null|integer $fetchMode
-     * @return array
-     */
-    abstract public function fetchAll($fetchMode = null);
-
-    /**
-     * Возвращает данные одного столбца следующей строки результирующего набора
-     *
-     * @param int $columnNumber
-     * @return mixed|false
-     */
-    abstract public function fetchColumn($columnNumber = 0);
-
-    /**
-     *
-     * @param int
-     * @return mixed|false
-     */
-    abstract public function fetchScalar($columnNumber = 0);
-
-    /**
-     * @param string $className
-     * @param array $classArguments
-     * @return object
-     */
-    abstract public function fetchObject(string $className, array $classArguments = []);
-
-    abstract public function rowCount() : int ;
 }

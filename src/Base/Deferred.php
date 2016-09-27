@@ -41,4 +41,20 @@ class Deferred {
         call_user_func($this->exceptionCallback, $throwable);
     }
 
+    /**
+     * @param null $valueOrThrowable
+     */
+    public function proxy($valueOrThrowable = null)
+    {
+        if($valueOrThrowable instanceof Throwable){
+            $this->awaitable();
+
+            call_user_func($this->exceptionCallback, $valueOrThrowable);
+        } else {
+            $this->awaitable();
+
+            call_user_func($this->resultCallback, $valueOrThrowable);
+        }
+
+    }
 }

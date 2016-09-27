@@ -1,6 +1,7 @@
 <?php
 namespace Friday\Db;
 
+use Friday\Base\Awaitable;
 use Friday\Base\Exception\InvalidConfigException;
 
 /**
@@ -114,13 +115,13 @@ class ActiveQuery extends Query implements ActiveQueryInterface
 
     /**
      * Executes query and returns all results as an array.
-     * @param Connection $db the DB connection used to create the DB command.
+     * @param Adapter $adapter the DB connection used to create the DB command.
      * If null, the DB connection returned by [[modelClass]] will be used.
-     * @return array|ActiveRecord[] the query results. If the query results in nothing, an empty array will be returned.
+     * @return Awaitable array|ActiveRecord[] the query results. If the query results in nothing, an empty array will be returned.
      */
-    public function all($db = null)
+    public function all($adapter = null) : Awaitable
     {
-        return parent::all($db);
+        return parent::all($adapter);
     }
 
     /**
@@ -763,7 +764,6 @@ class ActiveQuery extends Query implements ActiveQueryInterface
      *
      * @param string $alias the table alias.
      * @return $this the query object itself
-     * @since 2.0.7
      */
     public function alias($alias)
     {

@@ -2,9 +2,10 @@
 namespace Friday\Db;
 
 use Friday\Base\BaseObject;
+use Friday\Base\ContextInterface;
 use Friday\Base\EventTrait;
 
-abstract class AbstractConnection extends BaseObject {
+abstract class AbstractConnection extends BaseObject implements ContextInterface{
     /**
      * @var Adapter
      */
@@ -12,30 +13,4 @@ abstract class AbstractConnection extends BaseObject {
 
     use EventTrait;
 
-    /**
-     * @return mixed
-     */
-    abstract public function connect();
-
-    /**
-     * @return mixed
-     */
-    abstract public function disconnect();
-
-    /**
-     * @return bool
-     */
-    abstract public function isConnected() : bool ;
-
-    /**
-     * Free connection on pool
-     * @return void
-     */
-    abstract public function free();
-
-    /**
-     * @param $sql
-     * @return AbstractStatement
-     */
-    abstract public function prepare($sql);
 }

@@ -500,22 +500,40 @@ class ActiveRecord extends BaseActiveRecord
      */
     protected function insertInternal($attributes = null)
     {
+        $deferred = new Deferred();
         if (!$this->beforeSave(true)) {
             return false;
         }
         $values = $this->getDirtyAttributes($attributes);
-        if (($primaryKeys = static::getDb()->getSchema()->insert(static::tableName(), $values)) === false) {
+        static::getDb()->getSchema()->insert(static::tableName(), $values)->await(function ($primaryKeys) use ($deferred, &$values){
+            if($deferred instanceof Throwable) {
+                $deferred->exception($primaryKeys);
+            } else {
+
+                static::getTableSchema()->await(function ($tableSchema) use ($deferred, &$primaryKeys, &$values){
+                    if($tableSchema instanceof Throwable){
+                        $deferred->exception($tableSchema);
+                    } else {
+                        /**
+                         * @var TableSchema $tableSchema
+                         */
+                        foreach ($primaryKeys as $name => $value) {
+                            $id = $tableSchema->columns[$name]->phpTypecast($value);
+                            $this->setAttribute($name, $id);
+                            $values[$name] = $id;
+                        }
+
+                        $changedAttributes = array_fill_keys(array_keys($values), null);
+                        $this->setOldAttributes($values);
+                        $this->afterSave(true, $changedAttributes);
+                    }
+                });
+            }
+        });
+
+        if (($primaryKeys = static::getDb()->getSchema()->insert(static::tableName(), $values)) === false)  {
             return false;
         }
-        foreach ($primaryKeys as $name => $value) {
-            $id = static::getTableSchema()->columns[$name]->phpTypecast($value);
-            $this->setAttribute($name, $id);
-            $values[$name] = $id;
-        }
-
-        $changedAttributes = array_fill_keys(array_keys($values), null);
-        $this->setOldAttributes($values);
-        $this->afterSave(true, $changedAttributes);
 
         return true;
     }
