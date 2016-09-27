@@ -78,6 +78,7 @@ return [
 'Friday\Db\ConnectionInterface' => __DIR__ . '/Db/ConnectionInterface.php',
 'Friday\Db\ConnectionPool' => __DIR__ . '/Db/ConnectionPool.php',
 'Friday\Db\DataReader' => __DIR__ . '/Db/DataReader.php',
+'Friday\Db\Event\AfterSaveEvent' => __DIR__ . '/Db/Event/AfterSaveEvent.php',
 'Friday\Db\Exception\ConnectionException' => __DIR__ . '/Db/Exception/ConnectionException.php',
 'Friday\Db\Exception\Exception' => __DIR__ . '/Db/Exception/Exception.php',
 'Friday\Db\Exception\ExceptionInterface' => __DIR__ . '/Db/Exception/ExceptionInterface.php',

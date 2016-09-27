@@ -186,7 +186,6 @@ class QueryBuilder extends BaseQueryBuilder
     {
         $deferred = new Deferred();
         $schema = $this->adapter->getSchema();
-
         if($schema->getTableSchema($table)->await(function ($tableSchema) use ($deferred, &$table, &$columns, &$params, $schema){
             if($tableSchema instanceof Throwable){
                 $deferred->exception($tableSchema);

@@ -120,5 +120,10 @@ interface StatementInterface{
 
     public function free();
 
+    /**
+     * @return mixed
+     */
+    public function insertId();
+
 
 }

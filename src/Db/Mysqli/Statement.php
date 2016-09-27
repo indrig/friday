@@ -12,7 +12,14 @@ use Friday\Db\AbstractStatement;
 
 class Statement extends AbstractStatement {
 
+    /**
+     * @var int|null
+     */
     private $_rowCount;
+    /**
+     * @var int|null
+     */
+    private $_insertId;
     /**
      * Execute
      *
@@ -29,6 +36,7 @@ class Statement extends AbstractStatement {
 
         $preparedSql = $this->buildQueryWithParameters();
         if(false === $status = $resource->query($preparedSql, MYSQLI_ASYNC)){
+
             $deferred->exception(new Exception($resource->error));
             $connection->free();
         } else {
@@ -79,14 +87,13 @@ class Statement extends AbstractStatement {
      */
     public function fetchColumn($columnNumber = 0)
     {
-        var_dump('fetchColumn');
         if($columnNumber < 0 && $columnNumber >= $this->getResult()->field_count) {
             throw new InvalidArgumentException('$columnNumber out of rage [0..'.$this->getResult()->field_count.']');
         }
         $rows = $this->getResult()->fetch_all(MYSQLI_NUM);
         $result = [];
 
-        foreach ($rows as $row) {        var_dump($row, $columnNumber);
+        foreach ($rows as $row) {
 
             $result[] = $row[$columnNumber];
         }
@@ -147,5 +154,18 @@ class Statement extends AbstractStatement {
      */
     public function setRowCount($rowCount){
         $this->_rowCount = $rowCount;
+    }
+
+    /**
+     * @param $insertId
+     * @internal
+     */
+    public function setInsertId($insertId){
+        $this->_insertId = $insertId;
+    }
+
+    public function insertId()
+    {
+        return $this->_insertId;
     }
 }

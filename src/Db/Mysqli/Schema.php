@@ -376,7 +376,7 @@ SQL;
             $sql .= ' FROM ' . $this->quoteSimpleTableName($schema);
         }
 
-        return $this->db->createCommand($sql)->queryColumn();
+        return $this->adapter->createCommand($sql)->queryColumn();
     }
 
     /**
@@ -384,6 +384,6 @@ SQL;
      */
     public function createColumnSchemaBuilder($type, $length = null)
     {
-        return new ColumnSchemaBuilder($type, $length, $this->db);
+        return new ColumnSchemaBuilder($type, $length, $this->adapter);
     }
 }

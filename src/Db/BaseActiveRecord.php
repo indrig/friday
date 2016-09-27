@@ -14,6 +14,7 @@ use Friday\Base\Event\ModelEvent;
 use Friday\Base\Exception\NotSupportedException;
 use Friday\Base\Exception\UnknownMethodException;
 use Friday\Base\Exception\InvalidCallException;
+use Friday\Db\Event\AfterSaveEvent;
 use Friday\Db\Exception\StaleObjectException;
 use Friday\Helper\ArrayHelper;
 use Throwable;

@@ -123,12 +123,12 @@ abstract class AbstractSchema extends BaseObject
 
         $db = $this->adapter;
         $realName = $this->getRawTableName($name);
-
         if ($db->enableSchemaCache && !in_array($name, $db->schemaCacheExclude, true)) {
             /* @var $cache AbstractCache */
             $cache = is_string($db->schemaCache) ? Friday::$app->get($db->schemaCache, false) : $db->schemaCache;
             if ($cache instanceof AbstractCache) {
                 $key = $this->getCacheKey($name);
+
                 if($refresh) {
                     $this->loadTableSchema($realName)->await(function ($table) use (&$name, $cache, &$key, $db, $deferred){
                         if($table instanceof Throwable){
@@ -225,22 +225,21 @@ abstract class AbstractSchema extends BaseObject
      * @param string $schema the schema of the tables. Defaults to empty string, meaning the current or default schema name.
      * @param boolean $refresh whether to fetch the latest available table schemas. If this is false,
      * cached data may be returned if available.
-     * @return TableSchema[] the metadata for all tables in the database.
+     * @return Awaitable TableSchema[] the metadata for all tables in the database.
      * Each array element is an instance of [[TableSchema]] or its child class.
      */
-    public function getTableSchemas($schema = '', $refresh = false)
+    public function getTableSchemas($schema = '', $refresh = false) : Awaitable
     {
         $tables = [];
+        $shames = [];
         foreach ($this->getTableNames($schema, $refresh) as $name) {
             if ($schema !== '') {
                 $name = $schema . '.' . $name;
             }
-            if (($table = $this->getTableSchema($name, $refresh)) !== null) {
-                $tables[] = $table;
-            }
+            $shames[]  = $this->getTableSchema($name, $refresh);
         }
 
-        return $tables;
+        return AwaitableHelper::all($shames);
     }
 
     /**
@@ -501,33 +500,37 @@ abstract class AbstractSchema extends BaseObject
     {
         $deferred = new Deferred();
 
-        $this->adapter->createCommand()->insert($table, $columns)->await(function ($command) use($deferred) {
+        $this->adapter->createCommand()->insert($table, $columns)->await(function ($command) use($deferred, &$table) {
             /**
              * @var Command $command
              */
-            $command->execute()->await(function ($insertResult) use (&$table, $deferred){
-                if($insertResult instanceof Throwable) {
-                    $deferred->exception($insertResult);
-                } else {
-                    $this->getTableSchema($table)->await(function ($tableSchema) use ($deferred, &$table) {
-                        if($tableSchema instanceof Throwable) {
-                            $deferred->exception($tableSchema);
-                        } elseif ($tableSchema instanceof TableSchema) {
-                            $result = [];
-                            foreach ($tableSchema->primaryKey as $name) {
-                                if ($tableSchema->columns[$name]->autoIncrement) {
-                                    $result[$name] = $this->getLastInsertID($tableSchema->sequenceName);
-                                    break;
+            $command
+                ->execute()
+                ->await(function ($insertResult) use (&$table, $deferred, $command) {
+                    if($insertResult instanceof Throwable) {
+                        $deferred->exception($insertResult);
+                    } else {
+                        $this
+                            ->getTableSchema($table)
+                            ->await(function ($tableSchema) use ($deferred, &$table, $command) {
+                                if($tableSchema instanceof Throwable) {
+                                    $deferred->exception($tableSchema);
+                                } elseif ($tableSchema instanceof TableSchema) {
+                                    $result = [];
+                                    foreach ($tableSchema->primaryKey as $name) {
+                                        if ($tableSchema->columns[$name]->autoIncrement) {
+                                            $result[$name] = $command->statement->insertId();
+                                            break;
+                                        } else {
+                                            $result[$name] = isset($columns[$name]) ? $columns[$name] : $tableSchema->columns[$name]->defaultValue;
+                                        }
+                                    }
+                                    $deferred->result($result);
                                 } else {
-                                    $result[$name] = isset($columns[$name]) ? $columns[$name] : $tableSchema->columns[$name]->defaultValue;
+                                    $deferred->exception(new Exception('Get table schema "'.$table.'" error.'));
                                 }
-                            }
-                            $deferred->result($result);
-                        } else {
-                            $deferred->exception(new Exception('Get table schema "'.$table.'" error.'));
-                        }
-                    });
-                }
+                        });
+                    }
             });
         });
 
