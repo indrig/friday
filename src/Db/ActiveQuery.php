@@ -2,7 +2,9 @@
 namespace Friday\Db;
 
 use Friday\Base\Awaitable;
+use Friday\Base\Deferred;
 use Friday\Base\Exception\InvalidConfigException;
+use Throwable;
 
 /**
  * ActiveQuery represents a DB query associated with an Active Record class.
@@ -275,26 +277,35 @@ class ActiveQuery extends Query implements ActiveQueryInterface
 
     /**
      * Executes query and returns a single row of result.
-     * @param Connection $db the DB connection used to create the DB command.
+     * @param Adapter $db the DB connection used to create the DB command.
      * If null, the DB connection returned by [[modelClass]] will be used.
-     * @return ActiveRecord|array|null a single row of query result. Depending on the setting of [[asArray]],
+     * @return Awaitable ActiveRecord|array|null a single row of query result. Depending on the setting of [[asArray]],
      * the query result may be either an array or an ActiveRecord object. Null will be returned
      * if the query results in nothing.
      */
-    public function one($db = null)
+    public function one($db = null)  : Awaitable
     {
-        $row = parent::one($db);
-        if ($row !== false) {
-            $models = $this->populate([$row]);
-            return reset($models) ?: null;
-        } else {
-            return null;
-        }
+        $deferred = new Deferred();
+        parent::one($db)->await(function ($row) use ($deferred){
+            if($row instanceof Throwable){
+                $deferred->exception($row);
+            } else {
+                if ($row !== false) {
+                    $models = $this->populate([$row]);
+                    $deferred->result(reset($models) ?: null);
+                } else {
+                    $deferred->result();
+                }
+            }
+
+        });
+
+        return $deferred->awaitable();
     }
 
     /**
      * Creates a DB command that can be used to execute this query.
-     * @param Connection $db the DB connection used to create the DB command.
+     * @param Adapter $db the DB connection used to create the DB command.
      * If null, the DB connection returned by [[modelClass]] will be used.
      * @return Command the created DB command instance.
      */
@@ -319,7 +330,7 @@ class ActiveQuery extends Query implements ActiveQueryInterface
     /**
      * @inheritdoc
      */
-    protected function queryScalar($selectExpression, $db)
+    protected function queryScalar($selectExpression, $db) : Awaitable
     {
         if ($this->sql === null) {
             return parent::queryScalar($selectExpression, $db);

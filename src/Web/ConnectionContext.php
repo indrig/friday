@@ -61,6 +61,16 @@ class ConnectionContext extends ServiceLocator implements ContextInterface
 
     private $_isFinished = false;
 
+    /**
+     * @var Session
+     */
+    private $_session;
+
+    /**
+     * @var
+     */
+    private $_user;
+
     public function init()
     {
         parent::init();
@@ -258,19 +268,23 @@ class ConnectionContext extends ServiceLocator implements ContextInterface
 
 
     /**
-     * @return mixed
+     * @return Session
      */
     public function getSession(){
-        return $this->get('session');
+
+        if($this->_session === null){
+            $this->_session = Friday::createObject([
+                'class' => 'Friday/Web/Session'
+            ]);
+        }
+
+        return $this->_session;
     }
 
 
     public function finish(){
 
         $this->response->end();
-
-
-
 
         $this->destroy();
 
@@ -289,6 +303,10 @@ class ConnectionContext extends ServiceLocator implements ContextInterface
             if(method_exists($component, 'setConnectionContext')) {
                 $component->setConnectionContext(null);
             }
+        }
+
+        if($this->_session !== null){
+            unset($this->_session);
         }
     }
 

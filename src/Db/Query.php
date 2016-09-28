@@ -203,7 +203,7 @@ class Query extends Component implements QueryInterface
         $deferred = new Deferred();
         $this->createCommand($adapter)->queryAll()->await(function ($rows) use ($deferred){
             if($rows instanceof Throwable){
-                $deferred -> exception($rows);
+                $deferred->exception($rows);
             } else {
                 $this->populate($rows);
             }

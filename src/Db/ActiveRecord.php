@@ -6,6 +6,7 @@ use Friday\Base\Awaitable;
 use Friday\Base\Deferred;
 use Friday\Base\Exception\InvalidConfigException;
 use Friday\Db\Exception\StaleObjectException;
+use Friday\Db\Exception\TableNotExistsException;
 use Friday\Helper\ArrayHelper;
 use Friday\Helper\AwaitableHelper;
 use Friday\Helper\Inflector;
@@ -173,29 +174,42 @@ class ActiveRecord extends BaseActiveRecord
      * Finds ActiveRecord instance(s) by the given condition.
      * This method is internally called by [[findOne()]] and [[findAll()]].
      * @param mixed $condition please refer to [[findOne()]] for the explanation of this parameter
-     * @return ActiveQueryInterface the newly created [[ActiveQueryInterface|ActiveQuery]] instance.
+     * @return Awaitable ActiveQueryInterface the newly created [[ActiveQueryInterface|ActiveQuery]] instance.
      * @throws InvalidConfigException if there is no primary key defined
      * @internal
      */
-    protected static function findByCondition($condition)
+    protected static function findByCondition($condition) : Awaitable
     {
         $query = static::find();
 
         if (!ArrayHelper::isAssociative($condition)) {
-            // query by primary key
-            $primaryKey = static::primaryKey();
-            if (isset($primaryKey[0])) {
-                $pk = $primaryKey[0];
-                if (!empty($query->join) || !empty($query->joinWith)) {
-                    $pk = static::tableName() . '.' . $pk;
-                }
-                $condition = [$pk => $condition];
-            } else {
-                throw new InvalidConfigException('"' . get_called_class() . '" must have a primary key.');
-            }
-        }
+            $deferred = new Deferred();
 
-        return $query->andWhere($condition);
+            // query by primary key
+            static::primaryKey()->await(function ($primaryKey) use ($deferred, $condition, $query){
+                if($primaryKey instanceof  Throwable) {
+                    $deferred->exception($primaryKey);
+                } else {
+                    if (isset($primaryKey[0])) {
+                        $pk = $primaryKey[0];
+                        if (!empty($query->join) || !empty($query->joinWith)) {
+                            $pk = static::tableName() . '.' . $pk;
+                        }
+                        $condition = [$pk => $condition];
+
+                        $deferred->result($query->andWhere($condition));
+                    } else {
+                        $deferred->exception(new InvalidConfigException('"' . get_called_class() . '" must have a primary key.'));
+                    }
+                }
+
+            });
+
+            return $deferred->awaitable();
+
+        } else {
+            return AwaitableHelper::result($query->andWhere($condition));
+        }
     }
 
     /**
@@ -324,12 +338,13 @@ class ActiveRecord extends BaseActiveRecord
         $deferred = new Deferred();
         static::getDb()
             ->getSchema()
-            ->getTableSchema(static::tableName())->await(function ($tableSchema) use ($deferred) {
+            ->getTableSchema(static::tableName())
+            ->await(function ($tableSchema) use ($deferred) {
                 if($tableSchema instanceof Throwable) {
                     $deferred->exception($tableSchema);
                 } else {
                     if ($tableSchema === null) {
-                        $deferred->exception( new InvalidConfigException('The table does not exist: ' . static::tableName()));
+                        $deferred->exception( new TableNotExistsException( static::tableName()));
                     } else {
                         $deferred->result($tableSchema);
                     }
@@ -353,16 +368,17 @@ class ActiveRecord extends BaseActiveRecord
      *
      * @return Awaitable string[] the primary keys of the associated database table.
      */
-    public static function primaryKey()
+    public static function primaryKey() : Awaitable
     {
         $deferred = new Deferred();
 
-        static::getTableSchema()->await(function ($tableSchema) use ($deferred, &$skipIfSet){
-            if($tableSchema instanceof Throwable){
-                $deferred->exception($tableSchema);
-            } else {
-                $deferred->result($tableSchema->primaryKey);
-            }
+        static::getTableSchema()
+            ->await(function ($tableSchema) use ($deferred, &$skipIfSet){
+                if($tableSchema instanceof Throwable){
+                    $deferred->exception($tableSchema);
+                } else {
+                    $deferred->result($tableSchema->primaryKey);
+                }
         });
 
         return $deferred->awaitable();

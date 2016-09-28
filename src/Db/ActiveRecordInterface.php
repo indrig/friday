@@ -18,9 +18,9 @@ interface ActiveRecordInterface
      *
      * For the primary key **value** see [[getPrimaryKey()]] instead.
      *
-     * @return string[] the primary key name(s) for this AR class.
+     * @return Awaitable string[] the primary key name(s) for this AR class.
      */
-    public static function primaryKey();
+    public static function primaryKey() : Awaitable;
 
     /**
      * Returns the list of all attribute names of the record.

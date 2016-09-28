@@ -8,6 +8,7 @@ use Friday\Base\Exception\BadMethodCallException;
 use Friday\Base\Exception\InvalidArgumentException;
 use Friday\Base\Exception\InvalidConfigException;
 use Friday\Base\Event\Event;
+use Friday\Base\Exception\RuntimeException;
 use Friday\Base\Model;
 use Friday\Base\Exception\InvalidParamException;
 use Friday\Base\Event\ModelEvent;
@@ -99,45 +100,87 @@ abstract class BaseActiveRecord extends Model implements ActiveRecordInterface
 
     /**
      * @inheritdoc
-     * @return static|null ActiveRecord instance matching the condition, or `null` if nothing matches.
+     * @return Awaitable static|null ActiveRecord instance matching the condition, or `null` if nothing matches.
      */
-    public static function findOne($condition)
+    public static function findOne($condition) : Awaitable
     {
-        return static::findByCondition($condition)->one();
+        $deferred = new Deferred();
+
+        static::findByCondition($condition)->await(
+            function ($query) use ($deferred){
+                if($query instanceof Throwable) {
+                    $deferred->exception($query);
+                } elseif ($query instanceof ActiveQueryInterface) {
+                    $query->one()->await(function ($result) use ($deferred){
+                        $deferred->proxy($result);
+                    });
+                } else {
+                    $deferred->exception(new RuntimeException('Incorrect result type, need "Throwable" or "Friday\Db\ActiveQueryInterface".'));
+                }
+            }
+        );
+
+        return $deferred->awaitable();
     }
 
     /**
      * @inheritdoc
-     * @return static[] an array of ActiveRecord instances, or an empty array if nothing matches.
+     * @return Awaitable static[] an array of ActiveRecord instances, or an empty array if nothing matches.
      */
-    public static function findAll($condition)
+    public static function findAll($condition) : Awaitable
     {
-        return static::findByCondition($condition)->all();
+        $deferred = new Deferred();
+
+        static::findByCondition($condition)->await(
+            function ($query) use ($deferred){
+                if($query instanceof Throwable) {
+                    $deferred->exception($query);
+                } elseif ($query instanceof ActiveQueryInterface) {
+                    $query->all()->await(function ($result) use ($deferred){
+                        $deferred->proxy($result);
+                    });
+                } else {
+                    $deferred->exception(new RuntimeException('Incorrect result type, need "Throwable" or "Friday\Db\ActiveQueryInterface".'));
+                }
+            }
+        );
+
+        return $deferred->awaitable();
     }
 
     /**
      * Finds ActiveRecord instance(s) by the given condition.
      * This method is internally called by [[findOne()]] and [[findAll()]].
      * @param mixed $condition please refer to [[findOne()]] for the explanation of this parameter
-     * @return ActiveQueryInterface the newly created [[ActiveQueryInterface|ActiveQuery]] instance.
-     * @throws InvalidConfigException if there is no primary key defined
+     * @return Awaitable ActiveQueryInterface the newly created [[ActiveQueryInterface|ActiveQuery]] instance.
      * @internal
      */
-    protected static function findByCondition($condition)
+    protected static function findByCondition($condition) : Awaitable
     {
+
         $query = static::find();
-
         if (!ArrayHelper::isAssociative($condition)) {
+            $deferred = new Deferred();
             // query by primary key
-            $primaryKey = static::primaryKey();
-            if (isset($primaryKey[0])) {
-                $condition = [$primaryKey[0] => $condition];
-            } else {
-                throw new InvalidConfigException('"' . get_called_class() . '" must have a primary key.');
-            }
-        }
+            static::primaryKey()->await(function ($primaryKey) use ($deferred, $condition, $query){
+                if($primaryKey instanceof Throwable) {
+                    $deferred->exception($primaryKey);
+                } else {
+                    if (isset($primaryKey[0])) {
+                        $condition = [$primaryKey[0] => $condition];
 
-        return $query->andWhere($condition);
+                        $deferred->result($query->andWhere($condition));
+                    } else {
+                        $deferred->exception(new InvalidConfigException('"' . get_called_class() . '" must have a primary key.'));
+                    }
+                }
+            });
+
+            return $deferred->awaitable();
+
+        } else {
+            return AwaitableHelper::result($query->andWhere($condition));
+        }
     }
 
     /**

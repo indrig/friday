@@ -181,7 +181,7 @@ abstract class AbstractSchema extends BaseObject
                 } else {
                     $this->_tables[$name] =  $table;
 
-                    $deferred->result($name);
+                    $deferred->result($table);
                 }
             });
         }
