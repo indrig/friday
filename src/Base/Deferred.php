@@ -22,13 +22,14 @@ class Deferred {
 
 
     /**
-     *
+     * @param mixed $value
+     * 
      */
     public function result($value = null)
     {
         $this->awaitable();
 
-        call_user_func($this->resultCallback, $value);
+        return call_user_func($this->resultCallback, $value);
     }
 
     /**
@@ -38,7 +39,7 @@ class Deferred {
     {
         $this->awaitable();
 
-        call_user_func($this->exceptionCallback, $throwable);
+        return call_user_func($this->exceptionCallback, $throwable);
     }
 
     /**

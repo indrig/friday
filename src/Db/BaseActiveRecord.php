@@ -17,6 +17,7 @@ use Friday\Base\Exception\InvalidCallException;
 use Friday\Db\Event\AfterSaveEvent;
 use Friday\Db\Exception\StaleObjectException;
 use Friday\Helper\ArrayHelper;
+use Friday\Helper\AwaitableHelper;
 use Throwable;
 
 /**
@@ -708,18 +709,18 @@ abstract class BaseActiveRecord extends Model implements ActiveRecordInterface
     /**
      * @see update()
      * @param array $attributes attributes to update
-     * @return integer number of rows updated
+     * @return Awaitable integer number of rows updated
      * @throws StaleObjectException
      */
-    protected function updateInternal($attributes = null)
+    protected function updateInternal($attributes = null) : Awaitable
     {
         if (!$this->beforeSave(false)) {
-            return false;
+            return AwaitableHelper::result(false);
         }
         $values = $this->getDirtyAttributes($attributes);
         if (empty($values)) {
             $this->afterSave(false, $values);
-            return 0;
+            return AwaitableHelper::result(0);
         }
         $condition = $this->getOldPrimaryKey(true);
         $lock = $this->optimisticLock();

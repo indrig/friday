@@ -445,9 +445,17 @@ class Command extends Component
     {
         $deferred = new Deferred();
         $params = [];
-        $this->adapter->getQueryBuilder()->insert($table, $columns, $params)->await(function ($sql) use ($deferred, &$params){
-            $deferred->result($this->setSql($sql)->bindValues($params));
-        });
+        $this
+            ->adapter
+            ->getQueryBuilder()
+            ->insert($table, $columns, $params)
+            ->await(function ($sql) use ($deferred, &$params){
+                if($sql instanceof Throwable) {
+                    $deferred->exception($sql);
+                } else {
+                    $deferred->result($this->setSql($sql)->bindValues($params));
+                }
+            });
 
         return $deferred->awaitable();
 
@@ -474,13 +482,21 @@ class Command extends Component
      * @param string $table the table that new rows will be inserted into.
      * @param array $columns the column names
      * @param array $rows the rows to be batch inserted into the table
-     * @return $this the command object itself
+     * @return Awaitable $this the command object itself
      */
-    public function batchInsert($table, $columns, $rows)
+    public function batchInsert($table, $columns, $rows) : Awaitable
     {
-        $sql = $this->adapter->getQueryBuilder()->batchInsert($table, $columns, $rows);
+        $deferred = new Deferred();
 
-        return $this->setSql($sql);
+        $this->adapter->getQueryBuilder()->batchInsert($table, $columns, $rows)->await(function ($sql) use ($deferred){
+            if($sql instanceof Throwable) {
+                $deferred->exception($sql);
+            } else {
+                $deferred->result($this->setSql($sql));
+            }
+        });
+
+        return $deferred->awaitable();
     }
 
     /**
@@ -500,13 +516,19 @@ class Command extends Component
      * @param string|array $condition the condition that will be put in the WHERE part. Please
      * refer to [[Query::where()]] on how to specify condition.
      * @param array $params the parameters to be bound to the command
-     * @return $this the command object itself
+     * @return Awaitable $this the command object itself
      */
-    public function update($table, $columns, $condition = '', $params = [])
+    public function update($table, $columns, $condition = '', $params = []) : Awaitable
     {
-        $sql = $this->adapter->getQueryBuilder()->update($table, $columns, $condition, $params);
-
-        return $this->setSql($sql)->bindValues($params);
+        $deferred = new Deferred();
+        $this->adapter->getQueryBuilder()->update($table, $columns, $condition, $params)->await(function ($sql) use ($deferred, $params){
+            if($sql instanceof Throwable) {
+                $deferred->exception($sql);
+            } else {
+                $deferred->result($this->setSql($sql)->bindValues($params));
+            }
+        });
+        return $deferred->awaitable();
     }
 
     /**

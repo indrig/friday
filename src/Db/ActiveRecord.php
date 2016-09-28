@@ -214,8 +214,28 @@ class ActiveRecord extends BaseActiveRecord
      */
     public static function updateAll($attributes, $condition = '', $params = []) : Awaitable
     {
+        $deferred = new Deferred();
+
         $command = static::getDb()->createCommand();
-        $command->update(static::tableName(), $attributes, $condition, $params);
+        $command->update(static::tableName(), $attributes, $condition, $params)->await(function ($command) use ($deferred){
+            if($command instanceof Throwable) {
+                $deferred->exception($command);
+            } elseif($command instanceof Command) {
+                /**
+                 *
+                 */
+                $command
+                    ->execute()
+                    ->await(function ($result) use ($deferred){
+                            $deferred->proxy($result);
+                        }
+                    );
+            } else {
+                $deferred->exception(new RuntimeException('Result has incorrect type, need "Throwable" or command "Friday\Db\Command".'));
+            }
+        });
+
+        $deferred->awaitable();
 
         return $command->execute();
     }
@@ -465,6 +485,7 @@ class ActiveRecord extends BaseActiveRecord
 
         $afterValidate = function() use (&$attributes, $deferred){
             if (!$this->isTransactional(self::OP_INSERT)) {
+
                 $this->insertInternal($attributes)->await(function ($result) use ( $deferred){
                     $deferred->result($result);
                 });
@@ -493,7 +514,7 @@ class ActiveRecord extends BaseActiveRecord
                     $afterValidate->call($this);
                 } else {
                     Friday::info('Model not inserted due to validation error.', __METHOD__);
-                    $deferred->result();
+                    $deferred->result(false);
                 }
             });
         } else {
@@ -539,6 +560,8 @@ class ActiveRecord extends BaseActiveRecord
                         $changedAttributes = array_fill_keys(array_keys($values), null);
                         $this->setOldAttributes($values);
                         $this->afterSave(true, $changedAttributes);
+
+                        $deferred->result(true);
                     }
                 });
             }
@@ -599,27 +622,45 @@ class ActiveRecord extends BaseActiveRecord
      */
     public function update($runValidation = true, $attributeNames = null) : Awaitable
     {
-        if ($runValidation && !$this->validate($attributeNames)) {
-            Friday::info('Model not updated due to validation error.', __METHOD__);
-            return false;
-        }
 
-        if (!$this->isTransactional(self::OP_UPDATE)) {
-            return $this->updateInternal($attributeNames);
-        }
+        $deferred = new Deferred();
 
-        $transaction = static::getDb()->beginTransaction();
-        try {
-            $result = $this->updateInternal($attributeNames);
-            if ($result === false) {
-                $transaction->rollBack();
+        $afterValidate = function() use (&$attributeNames, $deferred){
+            if (!$this->isTransactional(self::OP_UPDATE)) {
+
+                $this->updateInternal($attributeNames)->await(function ($result) use ( $deferred){
+                    $deferred->result($result);
+                });
             } else {
-                $transaction->commit();
+                /*
+                $transaction = static::getDb()->beginTransaction();
+                try {
+                    $result = $this->updateInternal($attributeNames);
+                    if ($result === false) {
+                        $transaction->rollBack();
+                    } else {
+                        $transaction->commit();
+                    }
+                    return $result;
+                } catch (\Exception $e) {
+                    $transaction->rollBack();
+                    throw $e;
+                }*/
+                throw new RuntimeException('Not support transactions now');
             }
-            return $result;
-        } catch (\Exception $e) {
-            $transaction->rollBack();
-            throw $e;
+        };
+
+        if($runValidation) {
+            $this->validate($attributeNames)->await(function ($result) use ($deferred, &$attributes, $afterValidate){
+                if($result) {
+                    $afterValidate->call($this);
+                } else {
+                    Friday::info('Model not inserted due to validation error.', __METHOD__);
+                    $deferred->result(false);
+                }
+            });
+        } else {
+            $afterValidate->call($this);
         }
     }
 
@@ -642,37 +683,45 @@ class ActiveRecord extends BaseActiveRecord
      * being deleted is outdated.
      * @throws \Exception in case delete failed.
      */
-    public function delete()
+    public function delete() : Awaitable
     {
+
+
         if (!$this->isTransactional(self::OP_DELETE)) {
             return $this->deleteInternal();
+        } else {
+            $deferred = new Deferred();
+/*
+            $transaction = static::getDb()->beginTransaction();
+            try {
+                $result = $this->deleteInternal();
+                if ($result === false) {
+                    $transaction->rollBack();
+                } else {
+                    $transaction->commit();
+                }
+                return $result;
+            } catch (\Exception $e) {
+                $transaction->rollBack();
+                throw $e;
+            }*/
+            throw new RuntimeException('Not support transactions now');
+
+            return $deferred->awaitable();
         }
 
-        $transaction = static::getDb()->beginTransaction();
-        try {
-            $result = $this->deleteInternal();
-            if ($result === false) {
-                $transaction->rollBack();
-            } else {
-                $transaction->commit();
-            }
-            return $result;
-        } catch (\Exception $e) {
-            $transaction->rollBack();
-            throw $e;
-        }
     }
 
     /**
      * Deletes an ActiveRecord without considering transaction.
-     * @return integer|false the number of rows deleted, or false if the deletion is unsuccessful for some reason.
+     * @return Awaitable integer|false the number of rows deleted, or false if the deletion is unsuccessful for some reason.
      * Note that it is possible the number of rows deleted is 0, even though the deletion execution is successful.
-     * @throws StaleObjectException
      */
-    protected function deleteInternal()
+    protected function deleteInternal() : Awaitable
     {
+        $deferred = new Deferred();
         if (!$this->beforeDelete()) {
-            return false;
+            return AwaitableHelper::result(false);
         }
 
         // we do not check the return value of deleteAll() because it's possible
@@ -682,14 +731,23 @@ class ActiveRecord extends BaseActiveRecord
         if ($lock !== null) {
             $condition[$lock] = $this->$lock;
         }
-        $result = static::deleteAll($condition);
-        if ($lock !== null && !$result) {
-            throw new StaleObjectException('The object being deleted is outdated.');
-        }
-        $this->setOldAttributes(null);
-        $this->afterDelete();
 
-        return $result;
+        static::deleteAll($condition)->await(function ($result) use ($deferred, &$lock){
+            if($result instanceof Throwable) {
+                $deferred->exception($result);
+            } else {
+                if ($lock !== null && !$result) {
+                    $deferred->exception(new StaleObjectException('The object being deleted is outdated.'));
+                }
+
+                $this->setOldAttributes(null);
+                $this->afterDelete();
+
+                $deferred->result($result);
+            }
+        });
+
+        return $deferred->awaitable();
     }
 
     /**
