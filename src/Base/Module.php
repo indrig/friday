@@ -514,7 +514,6 @@ class Module extends ServiceLocator
             $route = substr($route, $pos + 1);
         }
 
-
         $controller = $this->createControllerByID($id);
         if ($controller === null && $route !== '') {
             $controller = $this->createControllerByID($id . '/' . $route);
@@ -539,6 +538,7 @@ class Module extends ServiceLocator
      */
     public function createControllerByID($id)
     {
+        var_dump($id);
         $pos = strrpos($id, '/');
         if ($pos === false) {
             $prefix = '';

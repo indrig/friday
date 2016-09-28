@@ -25,6 +25,8 @@ use Throwable;
  * @property ConnectionContext $connectionContext
  * @property bool $isAjax
  * @property bool $isPjax
+ * @property bool $isPost
+ * @property bool $isGet
  */
 class Request extends Component implements ReadableStreamInterface
 {
@@ -874,4 +876,11 @@ class Request extends Component implements ReadableStreamInterface
         return new Cookie($options);
     }
 
+    public function getIsPost(){
+        return $this->_method === 'POST';
+    }
+
+    public function getIsGet(){
+        return $this->_method === 'POST';
+    }
 }

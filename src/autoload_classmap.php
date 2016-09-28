@@ -1,5 +1,8 @@
 <?php
 return [
+'Friday\Asset\ActiveFormAsset' => __DIR__ . '/Asset/ActiveFormAsset.php',
+'Friday\Asset\FridayAsset' => __DIR__ . '/Asset/FridayAsset.php',
+'Friday\Asset\JqueryAsset' => __DIR__ . '/Asset/JqueryAsset.php',
 'Friday\Base\AbstractApplication' => __DIR__ . '/Base/AbstractApplication.php',
 'Friday\Base\AbstractErrorHandler' => __DIR__ . '/Base/AbstractErrorHandler.php',
 'Friday\Base\Action' => __DIR__ . '/Base/Action.php',
@@ -83,6 +86,7 @@ return [
 'Friday\Db\Exception\Exception' => __DIR__ . '/Db/Exception/Exception.php',
 'Friday\Db\Exception\ExceptionInterface' => __DIR__ . '/Db/Exception/ExceptionInterface.php',
 'Friday\Db\Exception\StaleObjectException' => __DIR__ . '/Db/Exception/StaleObjectException.php',
+'Friday\Db\Exception\TableNotExistsException' => __DIR__ . '/Db/Exception/TableNotExistsException.php',
 'Friday\Db\Expression' => __DIR__ . '/Db/Expression.php',
 'Friday\Db\Mysqli\Client' => __DIR__ . '/Db/Mysqli/Client.php',
 'Friday\Db\Mysqli\ColumnSchemaBuilder' => __DIR__ . '/Db/Mysqli/ColumnSchemaBuilder.php',
@@ -109,6 +113,7 @@ return [
 'Friday\Helper\FileHelper' => __DIR__ . '/Helper/FileHelper.php',
 'Friday\Helper\Html' => __DIR__ . '/Helper/Html.php',
 'Friday\Helper\Inflector' => __DIR__ . '/Helper/Inflector.php',
+'Friday\Helper\Json' => __DIR__ . '/Helper/Json.php',
 'Friday\Helper\ObjectHelper' => __DIR__ . '/Helper/ObjectHelper.php',
 'Friday\Helper\StringHelper' => __DIR__ . '/Helper/StringHelper.php',
 'Friday\Helper\Url' => __DIR__ . '/Helper/Url.php',
@@ -191,6 +196,7 @@ return [
 'Friday\Web\HttpException\HttpException' => __DIR__ . '/Web/HttpException/HttpException.php',
 'Friday\Web\HttpException\NotFoundHttpException' => __DIR__ . '/Web/HttpException/NotFoundHttpException.php',
 'Friday\Web\IdentityInterface' => __DIR__ . '/Web/IdentityInterface.php',
+'Friday\Web\JsExpression' => __DIR__ . '/Web/JsExpression.php',
 'Friday\Web\Link' => __DIR__ . '/Web/Link.php',
 'Friday\Web\Linkable' => __DIR__ . '/Web/Linkable.php',
 'Friday\Web\Request' => __DIR__ . '/Web/Request.php',
@@ -208,4 +214,7 @@ return [
 'Friday\Web\View' => __DIR__ . '/Web/View.php',
 'Friday\Web\ViewAction' => __DIR__ . '/Web/ViewAction.php',
 'Friday\Web\Widget' => __DIR__ . '/Web/Widget.php',
+'Friday\Widget\AbstractWidget' => __DIR__ . '/Widget/AbstractWidget.php',
+'Friday\Widget\ActiveField' => __DIR__ . '/Widget/ActiveField.php',
+'Friday\Widget\ActiveForm' => __DIR__ . '/Widget/ActiveForm.php',
 ];

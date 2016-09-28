@@ -296,6 +296,7 @@ class AbstractApplication extends Module {
         parent::setBasePath($path);
         AliasHelper::setAlias('@root', $this->getBasePath());
         AliasHelper::setAlias('@webroot', $this->getBasePath() . '/web');
+        AliasHelper::setAlias('@web', $this->getBasePath());
         AliasHelper::setAlias('@src', $this->getBasePath() . '/src');
 
         AliasHelper::setAlias('@Application', $this->getBasePath() . '/src');

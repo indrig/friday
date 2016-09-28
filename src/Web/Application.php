@@ -67,11 +67,11 @@ class Application extends AbstractApplication
             ->run();
 
 
-        $looper->taskPeriodic(function () {
-            Friday\Helper\Console::stdout('memory_usage: ' . number_format(memory_get_usage(true), 0, '.', ' ') . "b\n");
-        }, 2);
+       // $looper->taskPeriodic(function () {
+       //     Friday\Helper\Console::stdout('memory_usage: ' . number_format(memory_get_usage(true), 0, '.', ' ') . "b\n");
+       // }, 2);
 
-        $this->looper->loop();
+        $looper->loop();
 
     }
 
@@ -90,6 +90,8 @@ class Application extends AbstractApplication
             'connectionContent' => $connectionContent
         ]));
 
+        $this->setContext($connectionContent);
+
         $event->request->resolve()->await(
         //Success
             function (ResultOrExceptionWrapperInterface $result) use ($connectionContent) {
@@ -101,8 +103,11 @@ class Application extends AbstractApplication
                         $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_BEFORE_RUN_ACTION, new ConnectionContextEvent([
                             'connectionContent' => $connectionContent
                         ]));
+
                         $connectionContent->runAction($route, $params)->await(function (ResultOrExceptionWrapperInterface $result) use ($connectionContent) {
+
                             if ($result->isSucceeded()) {
+
                                 $this->trigger(ConnectionContext::EVENT_CONNECTION_CONTENT_AFTER_RUN_ACTION, new ConnectionContextEvent([
                                     'connectionContent' => $connectionContent
                                 ]));
@@ -181,7 +186,6 @@ class Application extends AbstractApplication
             'server' => ['class' => 'Friday\Web\Server'],
             'urlManager' => ['class' => 'Friday\Web\UrlManager'],
             'errorHandler' => ['class' => 'Friday\Web\ErrorHandler'],
-            'view' => ['class' => 'Friday\Web\View'],
         ]);
     }
 
@@ -262,5 +266,12 @@ class Application extends AbstractApplication
     public function setHomeUrl($value)
     {
         $this->_homeUrl = $value;
+    }
+
+    /**
+     * @return Friday\Base\Component|null
+     */
+    public function getView(){
+        return $this->getContext()->getView();
     }
 }

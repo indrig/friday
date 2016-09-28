@@ -28,9 +28,6 @@ use Friday\Helper\Url;
  *
  * @property AssetConverterInterface $converter The asset converter. Note that the type of this property
  * differs in getter and setter. See [[getConverter()]] and [[setConverter()]] for details.
- *
- * @author Qiang Xue <qiang.xue@gmail.com>
- * @since 2.0
  */
 class AssetManager extends Component
 {
@@ -57,6 +54,8 @@ class AssetManager extends Component
      * ]
      * ```
      */
+    use ConnectionContextTrait;
+
     public $bundles = [];
     /**
      * @var string the root directory storing the published asset files.

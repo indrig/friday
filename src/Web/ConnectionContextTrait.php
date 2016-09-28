@@ -60,4 +60,14 @@ trait ConnectionContextTrait {
     public function getSession(){
         return $this->_connectionContext->getSession();
     }
+
+
+    /**
+     * @return AssetManager
+     *
+     * @throws InvalidConfigException
+     */
+    public function getAssetManager(){
+        return $this->_connectionContext->getAssetsManager();
+    }
 }

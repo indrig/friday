@@ -66,6 +66,18 @@ class ConnectionContext extends ServiceLocator implements ContextInterface
      */
     private $_session;
 
+
+    /**
+     * @var View
+     */
+    private $_view;
+
+
+    /**
+     * @var AssetManager
+     */
+    private $_assetManager;
+
     /**
      * @var
      */
@@ -152,13 +164,12 @@ class ConnectionContext extends ServiceLocator implements ContextInterface
 
             $this->setController($controller);
 
-
             $this->task(function () use ($deferred, $controller, $actionID, $params) {
                 $deferred->result($controller->runAction($actionID, $params));
             });
         } else {
             $this->task(function () use ($deferred, $route) {
-                $deferred->result(new InvalidRouteException("Unable to resolve the request '{$route}'."));
+                $deferred->exception(new InvalidRouteException("Unable to resolve the request '{$route}'."));
             });
         }
 
@@ -276,11 +287,42 @@ class ConnectionContext extends ServiceLocator implements ContextInterface
             $this->_session = Friday::createObject([
                 'class' => 'Friday/Web/Session'
             ]);
+            $this->_session->setConnectionContext($this);
+
         }
 
         return $this->_session;
     }
 
+    /**
+     * @return View
+     */
+    public function getView(){
+
+        if($this->_view === null){
+            $this->_view = Friday::createObject([
+                'class' => 'Friday\Web\View'
+            ]);
+            $this->_view->setConnectionContext($this);
+        }
+
+        return $this->_view;
+    }
+
+    /**
+     * @return AssetManager
+     */
+    public function getAssetsManager(){
+
+        if($this->_assetManager === null){
+            $this->_assetManager = Friday::createObject([
+                'class' => 'Friday\Web\AssetManager'
+            ]);
+            $this->_assetManager->setConnectionContext($this);
+        }
+
+        return $this->_assetManager;
+    }
 
     public function finish(){
 
@@ -307,6 +349,15 @@ class ConnectionContext extends ServiceLocator implements ContextInterface
 
         if($this->_session !== null){
             unset($this->_session);
+        }
+
+
+        if($this->_view !== null){
+            unset($this->_view);
+        }
+
+        if($this->_assetManager !== null){
+            unset($this->_assetManager);
         }
     }
 

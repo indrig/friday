@@ -15,9 +15,7 @@ use Friday\Helper\Url;
  *
  * An asset bundle can depend on other asset bundles. When registering an asset bundle
  * with a view, all its dependent asset bundles will be automatically registered.
- *
- * @author Qiang Xue <qiang.xue@gmail.com>
- * @since 2.0
+
  */
 class AssetBundle extends BaseObject
 {

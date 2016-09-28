@@ -3,6 +3,7 @@ namespace Friday\Helper;
 
 use Friday;
 use Friday\Base\Exception\InvalidArgumentException;
+use Friday\Base\Model;
 use Friday\Web\Request;
 
 

@@ -58,6 +58,8 @@ class ErrorHandler extends AbstractErrorHandler{
      */
     protected function renderException($exception)
     {
+
+
         if(null !== $currentContext = Friday::$app->getContext()){
             $response   = $currentContext->response;
             $request    = $currentContext->request;
@@ -106,7 +108,6 @@ class ErrorHandler extends AbstractErrorHandler{
             $response->send();
             return;
         }
-
 
         if ($exception instanceof Exception && !FRIDAY_DEBUG) {
             $message = $this->formatMessage($exception->getName() . ': ') . $exception->getMessage();

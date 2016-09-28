@@ -2,6 +2,7 @@
 namespace Friday\Web;
 
 use Friday;
+use Friday\Asset\JqueryAsset;
 use Friday\Helper\AliasHelper;
 use Friday\Helper\ArrayHelper;
 use Friday\Helper\Html;
@@ -34,6 +35,8 @@ use Friday\Base\View as BaseView;
  */
 class View extends BaseView
 {
+    use ConnectionContextTrait;
+
     /**
      * @event Event an event that is triggered by [[beginBody()]].
      */
@@ -207,23 +210,6 @@ class View extends BaseView
         return ob_get_clean();
     }
 
-    /**
-     * Registers the asset manager being used by this view object.
-     * @return \Friday\Web\AssetManager the asset manager. Defaults to the "assetManager" application component.
-     */
-    public function getAssetManager()
-    {
-        return $this->_assetManager ?: Friday::$app->getAssetManager();
-    }
-
-    /**
-     * Sets the asset manager.
-     * @param \Friday\Web\AssetManager $value the asset manager
-     */
-    public function setAssetManager($value)
-    {
-        $this->_assetManager = $value;
-    }
 
     /**
      * Clears up the registered meta tags, link tags, css/js scripts and files.
