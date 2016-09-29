@@ -10,10 +10,12 @@ use Friday\Base\Exception\InvalidArgumentException;
 use Friday\Base\Exception\InvalidConfigException;
 use Friday\Base\Exception\RuntimeException;
 use Friday\Base\ResultOrExceptionWrapperInterface;
+use Friday\Helper\FileHelper;
 use Friday\Helper\Url;
 use Friday\Promise\PromiseInterface;
 use Friday\SocketServer\Connection;
 use Friday\Stream\Stream;
+use Friday\Web\HttpException\HttpException;
 use Throwable;
 use Friday\SocketServer\Event\ErrorEvent as SocketServerErrorEvent;
 /**
@@ -545,8 +547,8 @@ class Response extends Component
                     if ($pos + $chunkSize > $end) {
                         $chunkSize = $end - $pos + 1;
                     }
-                    echo fread($handle, $chunkSize);
-                    flush(); // Free up memory. Otherwise large files will trigger PHP's memory limit.
+                    $this->write(fread($handle, $chunkSize));
+                    //flush(); // Free up memory. Otherwise large files will trigger PHP's memory limit.
                 }
                 fclose($handle);
                 $deferred->result();
@@ -570,6 +572,8 @@ class Response extends Component
                     $this->stream->on(Stream::EVENT_ERROR, function () use ($deferred) {
                         $deferred->exception(new RuntimeException('Stream error'));
                     });
+                } else {
+                    $deferred->exception(new BadMethodCallException('I do not understand the answer configuration.'));
                 }
             } else {
                 $deferred->exception(new BadMethodCallException('I do not understand the answer configuration.'));
@@ -777,6 +781,153 @@ class Response extends Component
         }
 
         $this->setStatusCode($statusCode);
+
+        return $this;
+    }
+
+    /**
+     * Determines the HTTP range given in the request.
+     * @param integer $fileSize the size of the file that will be used to validate the requested HTTP range.
+     * @return array|boolean the range (begin, end), or false if the range request is invalid.
+     */
+    protected function getHttpRange($fileSize)
+    {
+        $range = $this->getRequest()->getHeaders()->get('range');
+        if ($range === null || $range === '-') {
+            return [0, $fileSize - 1];
+        }
+        if (!preg_match('/^bytes=(\d*)-(\d*)$/', $range, $matches)) {
+            return false;
+        }
+        if ($matches[1] === '') {
+            $start = $fileSize - $matches[2];
+            $end = $fileSize - 1;
+        } elseif ($matches[2] !== '') {
+            $start = $matches[1];
+            $end = $matches[2];
+            if ($end >= $fileSize) {
+                $end = $fileSize - 1;
+            }
+        } else {
+            $start = $matches[1];
+            $end = $fileSize - 1;
+        }
+        if ($start < 0 || $start > $end) {
+            return false;
+        } else {
+            return [$start, $end];
+        }
+    }
+
+    /**
+     * Sets a default set of HTTP headers for file downloading purpose.
+     * @param string $attachmentName the attachment file name
+     * @param string $mimeType the MIME type for the response. If null, `Content-Type` header will NOT be set.
+     * @param boolean $inline whether the browser should open the file within the browser window. Defaults to false,
+     * meaning a download dialog will pop up.
+     * @param integer $contentLength the byte length of the file being downloaded. If null, `Content-Length` header will NOT be set.
+     * @return $this the response object itself
+     */
+    public function setDownloadHeaders($attachmentName, $mimeType = null, $inline = false, $contentLength = null)
+    {
+        $headers = $this->getHeaders();
+
+        $disposition = $inline ? 'inline' : 'attachment';
+        $headers->setDefault('Pragma', 'public')
+            ->setDefault('Accept-Ranges', 'bytes')
+            ->setDefault('Expires', '0')
+            ->setDefault('Cache-Control', 'must-revalidate, post-check=0, pre-check=0')
+            ->setDefault('Content-Disposition', "$disposition; filename=\"$attachmentName\"");
+
+        if ($mimeType !== null) {
+            $headers->setDefault('Content-Type', $mimeType);
+        }
+
+        if ($contentLength !== null) {
+            $headers->setDefault('Content-Length', $contentLength);
+        }
+
+        return $this;
+    }
+
+    /**
+     * Sends the specified stream as a file to the browser.
+     *
+     * Note that this method only prepares the response for file sending. The file is not sent
+     * until [[send()]] is called explicitly or implicitly. The latter is done after you return from a controller action.
+     *
+     * @param resource $handle the handle of the stream to be sent.
+     * @param string $attachmentName the file name shown to the user.
+     * @param array $options additional options for sending the file. The following options are supported:
+     *
+     *  - `mimeType`: the MIME type of the content. Defaults to 'application/octet-stream'.
+     *  - `inline`: boolean, whether the browser should open the file within the browser window. Defaults to false,
+     *    meaning a download dialog will pop up.
+     *  - `fileSize`: the size of the content to stream this is useful when size of the content is known
+     *    and the content is not seekable. Defaults to content size using `ftell()`.
+     *    This option is available since version 2.0.4.
+     *
+     * @return $this the response object itself
+     * @throws HttpException if the requested range cannot be satisfied.
+     */
+    public function sendStreamAsFile($handle, $attachmentName, $options = [])
+    {
+        $headers = $this->getHeaders();
+        if (isset($options['fileSize'])) {
+            $fileSize = $options['fileSize'];
+        } else {
+            fseek($handle, 0, SEEK_END);
+            $fileSize = ftell($handle);
+        }
+
+        $range = $this->getHttpRange($fileSize);
+        if ($range === false) {
+            $headers->set('Content-Range', "bytes */$fileSize");
+            throw new HttpException(416, 'Requested range not satisfiable');
+        }
+
+        list($begin, $end) = $range;
+        if ($begin != 0 || $end != $fileSize - 1) {
+            $this->setStatusCode(206);
+            $headers->set('Content-Range', "bytes $begin-$end/$fileSize");
+        } else {
+            $this->setStatusCode(200);
+        }
+
+        $mimeType = isset($options['mimeType']) ? $options['mimeType'] : 'application/octet-stream';
+        $this->setDownloadHeaders($attachmentName, $mimeType, !empty($options['inline']), $end - $begin + 1);
+
+        $this->format = self::FORMAT_RAW;
+        $this->stream = [$handle, $begin, $end];
+
+        return $this;
+    }
+    /**
+     * Sends a file to the browser.
+     *
+     * Note that this method only prepares the response for file sending. The file is not sent
+     * until [[send()]] is called explicitly or implicitly. The latter is done after you return from a controller action.
+     *
+     * @param string $filePath the path of the file to be sent.
+     * @param string $attachmentName the file name shown to the user. If null, it will be determined from `$filePath`.
+     * @param array $options additional options for sending the file. The following options are supported:
+     *
+     *  - `mimeType`: the MIME type of the content. If not set, it will be guessed based on `$filePath`
+     *  - `inline`: boolean, whether the browser should open the file within the browser window. Defaults to false,
+     *    meaning a download dialog will pop up.
+     *
+     * @return $this the response object itself
+     */
+    public function sendFile($filePath, $attachmentName = null, $options = [])
+    {
+        if (!isset($options['mimeType'])) {
+            $options['mimeType'] = FileHelper::getMimeTypeByExtension($filePath);
+        }
+        if ($attachmentName === null) {
+            $attachmentName = basename($filePath);
+        }
+        $handle = fopen($filePath, 'rb');
+        $this->sendStreamAsFile($handle, $attachmentName, $options);
 
         return $this;
     }

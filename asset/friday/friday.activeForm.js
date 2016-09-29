@@ -1,23 +1,17 @@
 /**
- * Yii form widget.
+ * Friday form widget.
  *
- * This is the JavaScript widget used by the yii\widgets\ActiveForm widget.
- *
- * @link http://www.yiiframework.com/
- * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
- * @author Qiang Xue <qiang.xue@gmail.com>
- * @since 2.0
+ * This is the JavaScript widget used by the Friday\Widget\ActiveForm widget.
  */
 (function ($) {
 
-    $.fn.yiiActiveForm = function (method) {
+    $.fn.fridayActiveForm = function (method) {
         if (methods[method]) {
             return methods[method].apply(this, Array.prototype.slice.call(arguments, 1));
         } else if (typeof method === 'object' || !method) {
             return methods.init.apply(this, arguments);
         } else {
-            $.error('Method ' + method + ' does not exist on jQuery.yiiActiveForm');
+            $.error('Method ' + method + ' does not exist on jQuery.fridayActiveForm');
             return false;
         }
     };
@@ -103,7 +97,7 @@
         ajaxComplete: 'ajaxComplete'
     };
 
-    // NOTE: If you change any of these defaults, make sure you update yii\widgets\ActiveForm::getClientOptions() as well
+    // NOTE: If you change any of these defaults, make sure you update Friday\Widget\ActiveForm::getClientOptions() as well
     var defaults = {
         // whether to encode the error summary
         encodeErrorSummary: true,
@@ -127,7 +121,7 @@
         scrollToError: true
     };
 
-    // NOTE: If you change any of these defaults, make sure you update yii\widgets\ActiveField::getClientOptions() as well
+    // NOTE: If you change any of these defaults, make sure you update Friday\Widget\ActiveField::getClientOptions() as well
     var attributeDefaults = {
         // a unique ID identifying an attribute (e.g. "loginform-username") in a form
         id: undefined,
@@ -166,15 +160,15 @@
 
     var setSubmitFinalizeDefer = function($form) {
         submitDefer = $.Deferred();
-        $form.data('yiiSubmitFinalizePromise', submitDefer.promise());
+        $form.data('fridaySubmitFinalizePromise', submitDefer.promise());
     };
 
-    // finalize yii.js $form.submit
+    // finalize friday.js $form.submit
     var submitFinalize = function($form) {
         if(submitDefer) {
             submitDefer.resolve();
             submitDefer = undefined;
-            $form.removeData('yiiSubmitFinalizePromise');
+            $form.removeData('fridaySubmitFinalizePromise');
         }
     };
 
@@ -183,7 +177,7 @@
         init: function (attributes, options) {
             return this.each(function () {
                 var $form = $(this);
-                if ($form.data('yiiActiveForm')) {
+                if ($form.data('fridayActiveForm')) {
                     return;
                 }
 
@@ -197,7 +191,7 @@
                     watchAttribute($form, attributes[i]);
                 });
 
-                $form.data('yiiActiveForm', {
+                $form.data('fridayActiveForm', {
                     settings: settings,
                     attributes: attributes,
                     submitting: false,
@@ -209,13 +203,13 @@
                  * Clean up error status when the form is reset.
                  * Note that $form.on('reset', ...) does work because the "reset" event does not bubble on IE.
                  */
-                $form.bind('reset.yiiActiveForm', methods.resetForm);
+                $form.bind('reset.fridayActiveForm', methods.resetForm);
 
                 if (settings.validateOnSubmit) {
-                    $form.on('mouseup.yiiActiveForm keyup.yiiActiveForm', ':submit', function () {
-                        $form.data('yiiActiveForm').submitObject = $(this);
+                    $form.on('mouseup.fridayActiveForm keyup.fridayActiveForm', ':submit', function () {
+                        $form.data('fridayActiveForm').submitObject = $(this);
                     });
-                    $form.on('submit.yiiActiveForm', methods.submitForm);
+                    $form.on('submit.fridayActiveForm', methods.submitForm);
                 }
             });
         },
@@ -225,14 +219,14 @@
         add: function (attribute) {
             var $form = $(this);
             attribute = $.extend({value: getValue($form, attribute)}, attributeDefaults, attribute);
-            $form.data('yiiActiveForm').attributes.push(attribute);
+            $form.data('fridayActiveForm').attributes.push(attribute);
             watchAttribute($form, attribute);
         },
 
         // remove the attribute with the specified ID from the form
         remove: function (id) {
             var $form = $(this),
-                attributes = $form.data('yiiActiveForm').attributes,
+                attributes = $form.data('fridayActiveForm').attributes,
                 index = -1,
                 attribute = undefined;
             $.each(attributes, function (i) {
@@ -259,7 +253,7 @@
 
         // find an attribute config based on the specified attribute ID
         find: function (id) {
-            var attributes = $(this).data('yiiActiveForm').attributes,
+            var attributes = $(this).data('fridayActiveForm').attributes,
                 result = undefined;
             $.each(attributes, function (i) {
                 if (attributes[i]['id'] == id) {
@@ -272,19 +266,19 @@
 
         destroy: function () {
             return this.each(function () {
-                $(this).unbind('.yiiActiveForm');
-                $(this).removeData('yiiActiveForm');
+                $(this).unbind('.fridayActiveForm');
+                $(this).removeData('fridayActiveForm');
             });
         },
 
         data: function () {
-            return this.data('yiiActiveForm');
+            return this.data('fridayActiveForm');
         },
 
         // validate all applicable inputs in the form
         validate: function () {
             var $form = $(this),
-                data = $form.data('yiiActiveForm'),
+                data = $form.data('fridayActiveForm'),
                 needAjaxValidation = false,
                 messages = {},
                 deferreds = deferredArray(),
@@ -382,7 +376,7 @@
 
         submitForm: function () {
             var $form = $(this),
-                data = $form.data('yiiActiveForm');
+                data = $form.data('fridayActiveForm');
 
             if (data.validated) {
                 // Second submit's call (from validate/updateInputs)
@@ -397,7 +391,7 @@
                 updateHiddenButton($form);
                 return true;   // continue submitting the form since validation passes
             } else {
-                // First submit's call (from yii.js/handleAction) - execute validating
+                // First submit's call (from friday.js/handleAction) - execute validating
                 setSubmitFinalizeDefer($form);
 
                 if (data.settings.timer !== undefined) {
@@ -411,7 +405,7 @@
 
         resetForm: function () {
             var $form = $(this);
-            var data = $form.data('yiiActiveForm');
+            var data = $form.data('fridayActiveForm');
             // Because we bind directly to a form reset event instead of a reset button (that may not exist),
             // when this function is executed form input values have not been reset yet.
             // Therefore we do the actual reset work through setTimeout.
@@ -440,7 +434,7 @@
          */
         updateMessages: function (messages, summary) {
             var $form = $(this);
-            var data = $form.data('yiiActiveForm');
+            var data = $form.data('fridayActiveForm');
             $.each(data.attributes, function () {
                 updateInput($form, this, messages);
             });
@@ -469,19 +463,19 @@
     var watchAttribute = function ($form, attribute) {
         var $input = findInput($form, attribute);
         if (attribute.validateOnChange) {
-            $input.on('change.yiiActiveForm', function () {
+            $input.on('change.fridayActiveForm', function () {
                 validateAttribute($form, attribute, false);
             });
         }
         if (attribute.validateOnBlur) {
-            $input.on('blur.yiiActiveForm', function () {
+            $input.on('blur.fridayActiveForm', function () {
                 if (attribute.status == 0 || attribute.status == 1) {
                     validateAttribute($form, attribute, true);
                 }
             });
         }
         if (attribute.validateOnType) {
-            $input.on('keyup.yiiActiveForm', function (e) {
+            $input.on('keyup.fridayActiveForm', function (e) {
                 if ($.inArray(e.which, [16, 17, 18, 37, 38, 39, 40]) !== -1 ) {
                     return;
                 }
@@ -493,11 +487,11 @@
     };
 
     var unwatchAttribute = function ($form, attribute) {
-        findInput($form, attribute).off('.yiiActiveForm');
+        findInput($form, attribute).off('.fridayActiveForm');
     };
 
     var validateAttribute = function ($form, attribute, forceValidate, validationDelay) {
-        var data = $form.data('yiiActiveForm');
+        var data = $form.data('fridayActiveForm');
 
         if (forceValidate) {
             attribute.status = 2;
@@ -549,7 +543,7 @@
      * @param submitting whether this method is called after validation triggered by form submission
      */
     var updateInputs = function ($form, messages, submitting) {
-        var data = $form.data('yiiActiveForm');
+        var data = $form.data('fridayActiveForm');
 
         if (submitting) {
             var errorAttributes = [];
@@ -600,7 +594,7 @@
      * @param $form the form jQuery object.
      */
     var updateHiddenButton = function ($form) {
-        var data = $form.data('yiiActiveForm');
+        var data = $form.data('fridayActiveForm');
         var $button = data.submitObject || $form.find(':submit:first');
         // TODO: if the submission is caused by "change" event, it will not work
         if ($button.length && $button.attr('type') == 'submit' && $button.attr('name')) {
@@ -626,7 +620,7 @@
      * @return boolean whether there is a validation error for the specified attribute
      */
     var updateInput = function ($form, attribute, messages) {
-        var data = $form.data('yiiActiveForm'),
+        var data = $form.data('fridayActiveForm'),
             $input = findInput($form, attribute),
             hasError = false;
 
@@ -664,7 +658,7 @@
      * @param messages array the validation error messages
      */
     var updateSummary = function ($form, messages) {
-        var data = $form.data('yiiActiveForm'),
+        var data = $form.data('fridayActiveForm'),
             $summary = $form.find(data.settings.errorSummary),
             $ul = $summary.find('ul').empty();
 

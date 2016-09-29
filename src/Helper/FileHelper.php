@@ -161,7 +161,7 @@ class FileHelper
      */
     public static function getMimeTypeByExtension($file, $magicFile = null)
     {
-        $mimeTypes = static::loadMimeTypes($magicFile);
+        $mimeTypes = Friday\Base\MineType::$types;
 
         if (($ext = pathinfo($file, PATHINFO_EXTENSION)) !== '') {
             $ext = strtolower($ext);
@@ -183,29 +183,10 @@ class FileHelper
      */
     public static function getExtensionsByMimeType($mimeType, $magicFile = null)
     {
-        $mimeTypes = static::loadMimeTypes($magicFile);
+        $mimeTypes = Friday\Base\MineType::$types;
         return array_keys($mimeTypes, mb_strtolower($mimeType, 'UTF-8'), true);
     }
 
-    private static $_mimeTypes = [];
-
-    /**
-     * Loads MIME types from the specified file.
-     * @param string $magicFile the path (or alias) of the file that contains all available MIME type information.
-     * If this is not set, the file specified by [[mimeMagicFile]] will be used.
-     * @return array the mapping from file extensions to MIME types
-     */
-    protected static function loadMimeTypes($magicFile)
-    {
-        if ($magicFile === null) {
-            $magicFile = static::$mimeMagicFile;
-        }
-        $magicFile = AliasHelper::getAlias($magicFile);
-        if (!isset(self::$_mimeTypes[$magicFile])) {
-            self::$_mimeTypes[$magicFile] = require($magicFile);
-        }
-        return self::$_mimeTypes[$magicFile];
-    }
 
     /**
      * Copies a whole directory as another one.

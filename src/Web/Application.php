@@ -5,6 +5,9 @@ use Friday;
 use Friday\Base\Awaitable;
 use Friday\Base\Exception\InvalidRouteException;
 use Friday\Base\ResultOrExceptionWrapperInterface;
+use Friday\Helper\AliasHelper;
+use Friday\Helper\FileHelper;
+use Friday\Stream\Stream;
 use Friday\Web\Event\ConnectionContextErrorEvent;
 use Friday\Web\Event\ConnectionContextEvent;
 use Friday\Web\Event\RequestEvent;
@@ -91,6 +94,25 @@ class Application extends AbstractApplication
         ]));
 
         $this->setContext($connectionContent);
+
+        $path = $connectionContent->getRequest()->getPath();
+        if($webRoot = AliasHelper::getAlias('@webroot', false)){
+            if($realpath = @realpath($webRoot . $path)) {
+
+                if(substr(str_replace('\\', '/', $realpath), strlen($webRoot)) === $path){
+                    if(is_file($realpath)) {
+                        $response = $connectionContent->getResponse();
+                        try {
+                            $response->sendFile($realpath)->send();
+
+                        }catch (Throwable $throwable){
+                            Friday::$app->errorHandler->handleException($throwable);
+                        }
+                        return;
+                    }
+                }
+            }
+        }
 
         $event->request->resolve()->await(
         //Success

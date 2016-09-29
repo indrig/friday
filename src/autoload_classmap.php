@@ -41,6 +41,7 @@ return [
 'Friday\Base\FutureTickQueue' => __DIR__ . '/Base/FutureTickQueue.php',
 'Friday\Base\InlineAction' => __DIR__ . '/Base/InlineAction.php',
 'Friday\Base\Looper' => __DIR__ . '/Base/Looper.php',
+'Friday\Base\MineType' => __DIR__ . '/Base/MineType.php',
 'Friday\Base\Model' => __DIR__ . '/Base/Model.php',
 'Friday\Base\Module' => __DIR__ . '/Base/Module.php',
 'Friday\Base\NextTickQueue' => __DIR__ . '/Base/NextTickQueue.php',
