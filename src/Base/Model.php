@@ -119,7 +119,7 @@ class Model extends Component implements IteratorAggregate, ArrayAccess, Arrayab
      * can be accessed as `$this->$attribute`. Note the `$` before `attribute`; this is taking the value of the variable
      * `$attribute` and using it as the name of the property to access.
      *
-     * Yii also provides a set of [[Validator::builtInValidators|built-in validators]].
+     * Friday also provides a set of [[Validator::builtInValidators|built-in validators]].
      * Each one has an alias name which can be used when specifying a validation rule.
      *
      * Below are some examples:
@@ -223,7 +223,7 @@ class Model extends Component implements IteratorAggregate, ArrayAccess, Arrayab
     /**
      * Returns the form name that this model class should use.
      *
-     * The form name is mainly used by [[\yii\widgets\ActiveForm]] to determine how to name
+     * The form name is mainly used by [[\Friday\Widget\ActiveForm]] to determine how to name
      * the input fields for the attributes in a model. If the form name is "A" and an attribute
      * name is "b", then the corresponding input name would be "A[b]". If the form name is
      * an empty string, then the input name would be "b".
@@ -406,7 +406,7 @@ class Model extends Component implements IteratorAggregate, ArrayAccess, Arrayab
      * $model->validators[] = $newValidator;
      * ```
      *
-     * @return ArrayObject|\yii\validators\Validator[] all the validators declared in the model.
+     * @return ArrayObject|\Friday\Validator\Validator[] all the validators declared in the model.
      */
     public function getValidators()
     {
@@ -459,11 +459,11 @@ class Model extends Component implements IteratorAggregate, ArrayAccess, Arrayab
     /**
      * Returns a value indicating whether the attribute is required.
      * This is determined by checking if the attribute is associated with a
-     * [[\yii\validators\RequiredValidator|required]] validation rule in the
+     * [[\Friday\Validator\RequiredValidator|required]] validation rule in the
      * current [[scenario]].
      *
      * Note that when the validator has a conditional validation applied using
-     * [[\yii\validators\RequiredValidator::$when|$when]] this method will return
+     * [[\Friday\Validator\RequiredValidator::$when|$when]] this method will return
      * `false` regardless of the `when` condition because it may be called be
      * before the model is loaded with data.
      *

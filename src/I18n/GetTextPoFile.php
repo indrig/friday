@@ -1,21 +1,11 @@
 <?php
-/**
- * @link http://www.yiiframework.com/
- * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
- */
+namespace Friday\I18n;
 
-namespace yii\i18n;
-
-use Yii;
 
 /**
  * GettextPoFile represents a PO Gettext message file.
- *
- * @author Qiang Xue <qiang.xue@gmail.com>
- * @since 2.0
  */
-class GettextPoFile extends GettextFile
+class GetTextPoFile extends GetTextFile
 {
     /**
      * Loads messages from a PO file.

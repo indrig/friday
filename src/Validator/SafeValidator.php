@@ -1,11 +1,5 @@
 <?php
-/**
- * @link http://www.yiiframework.com/
- * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
- */
-
-namespace yii\validators;
+namespace Friday\Validator;
 
 /**
  * SafeValidator serves as a dummy validator whose main purpose is to mark the attributes to be safe for massive assignment.
@@ -17,9 +11,6 @@ namespace yii\validators;
  * unless a validation rule exists for the property, which in most cases it will. Sometimes, however, an item is safe for massive assigment but
  * does not have a validation rule associated with it - for instance, due to no validation being performed, in which case, you use this class
  * as a validation rule for that property. Although it has no functionality, it allows Yii to determine that the property is safe to copy.
- *
- * @author Qiang Xue <qiang.xue@gmail.com>
- * @since 2.0
  */
 class SafeValidator extends Validator
 {

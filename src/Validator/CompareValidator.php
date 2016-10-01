@@ -1,15 +1,10 @@
 <?php
-/**
- * @link http://www.yiiframework.com/
- * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
- */
+namespace Friday\Validator;
+use Friday;
+use Friday\Asset\ValidationAsset;
+use Friday\Base\Exception\InvalidConfigException;
+use Friday\Helper\Html;
 
-namespace yii\validators;
-
-use Yii;
-use yii\base\InvalidConfigException;
-use yii\helpers\Html;
 
 /**
  * CompareValidator compares the specified attribute value with another value.
@@ -23,9 +18,6 @@ use yii\helpers\Html;
  *
  * CompareValidator supports different comparison operators, specified
  * via the [[operator]] property.
- *
- * @author Qiang Xue <qiang.xue@gmail.com>
- * @since 2.0
  */
 class CompareValidator extends Validator
 {
@@ -88,28 +80,28 @@ class CompareValidator extends Validator
         if ($this->message === null) {
             switch ($this->operator) {
                 case '==':
-                    $this->message = Yii::t('yii', '{attribute} must be equal to "{compareValueOrAttribute}".');
+                    $this->message = Friday::t('app',  '{attribute} must be equal to "{compareValueOrAttribute}".');
                     break;
                 case '===':
-                    $this->message = Yii::t('yii', '{attribute} must be equal to "{compareValueOrAttribute}".');
+                    $this->message = Friday::t('app',  '{attribute} must be equal to "{compareValueOrAttribute}".');
                     break;
                 case '!=':
-                    $this->message = Yii::t('yii', '{attribute} must not be equal to "{compareValueOrAttribute}".');
+                    $this->message = Friday::t('app',  '{attribute} must not be equal to "{compareValueOrAttribute}".');
                     break;
                 case '!==':
-                    $this->message = Yii::t('yii', '{attribute} must not be equal to "{compareValueOrAttribute}".');
+                    $this->message = Friday::t('app',  '{attribute} must not be equal to "{compareValueOrAttribute}".');
                     break;
                 case '>':
-                    $this->message = Yii::t('yii', '{attribute} must be greater than "{compareValueOrAttribute}".');
+                    $this->message = Friday::t('app',  '{attribute} must be greater than "{compareValueOrAttribute}".');
                     break;
                 case '>=':
-                    $this->message = Yii::t('yii', '{attribute} must be greater than or equal to "{compareValueOrAttribute}".');
+                    $this->message = Friday::t('app',  '{attribute} must be greater than or equal to "{compareValueOrAttribute}".');
                     break;
                 case '<':
-                    $this->message = Yii::t('yii', '{attribute} must be less than "{compareValueOrAttribute}".');
+                    $this->message = Friday::t('app',  '{attribute} must be less than "{compareValueOrAttribute}".');
                     break;
                 case '<=':
-                    $this->message = Yii::t('yii', '{attribute} must be less than or equal to "{compareValueOrAttribute}".');
+                    $this->message = Friday::t('app',  '{attribute} must be less than or equal to "{compareValueOrAttribute}".');
                     break;
                 default:
                     throw new InvalidConfigException("Unknown operator: {$this->operator}");
@@ -124,7 +116,7 @@ class CompareValidator extends Validator
     {
         $value = $model->$attribute;
         if (is_array($value)) {
-            $this->addError($model, $attribute, Yii::t('yii', '{attribute} is invalid.'));
+            $this->addError($model, $attribute, Friday::t('app',  '{attribute} is invalid.'));
 
             return;
         }
@@ -227,15 +219,15 @@ class CompareValidator extends Validator
             $options['skipOnEmpty'] = 1;
         }
 
-        $options['message'] = Yii::$app->getI18n()->format($this->message, [
+        $options['message'] = Friday::$app->getI18n()->format($this->message, [
             'attribute' => $model->getAttributeLabel($attribute),
             'compareAttribute' => $compareLabel,
             'compareValue' => $compareValue,
             'compareValueOrAttribute' => $compareValueOrAttribute,
-        ], Yii::$app->language);
+        ], Friday::$app->language);
 
         ValidationAsset::register($view);
 
-        return 'yii.validation.compare(value, messages, ' . json_encode($options, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . ');';
+        return 'friday.validation.compare(value, messages, ' . json_encode($options, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . ');';
     }
 }

@@ -1,19 +1,11 @@
 <?php
-/**
- * @link http://www.yiiframework.com/
- * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
- */
+namespace Friday\Validator;
 
-namespace yii\validators;
-
-use Yii;
+use Friday;
+use Friday\Asset\ValidationAsset;
 
 /**
  * RequiredValidator validates that the specified attribute does not have null or empty value.
- *
- * @author Qiang Xue <qiang.xue@gmail.com>
- * @since 2.0
  */
 class RequiredValidator extends Validator
 {
@@ -57,8 +49,8 @@ class RequiredValidator extends Validator
     {
         parent::init();
         if ($this->message === null) {
-            $this->message = $this->requiredValue === null ? Yii::t('yii', '{attribute} cannot be blank.')
-                : Yii::t('yii', '{attribute} must be "{requiredValue}".');
+            $this->message = $this->requiredValue === null ? Friday::t('app', '{attribute} cannot be blank.')
+                : Friday::t('app', '{attribute} must be "{requiredValue}".');
         }
     }
 
@@ -90,9 +82,9 @@ class RequiredValidator extends Validator
     {
         $options = [];
         if ($this->requiredValue !== null) {
-            $options['message'] = Yii::$app->getI18n()->format($this->message, [
+            $options['message'] = Friday::$app->getI18n()->format($this->message, [
                 'requiredValue' => $this->requiredValue,
-            ], Yii::$app->language);
+            ], Friday::$app->language);
             $options['requiredValue'] = $this->requiredValue;
         } else {
             $options['message'] = $this->message;
@@ -101,9 +93,9 @@ class RequiredValidator extends Validator
             $options['strict'] = 1;
         }
 
-        $options['message'] = Yii::$app->getI18n()->format($options['message'], [
+        $options['message'] = Friday::$app->getI18n()->format($options['message'], [
             'attribute' => $model->getAttributeLabel($attribute),
-        ], Yii::$app->language);
+        ], Friday::$app->language);
 
         ValidationAsset::register($view);
 

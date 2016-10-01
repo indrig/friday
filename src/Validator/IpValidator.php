@@ -1,18 +1,12 @@
 <?php
-/**
- * @link http://www.yiiframework.com/
- * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
- */
+namespace Friday\Validator;
+use Friday;
+use Friday\Asset\ValidationAsset;
+use Friday\Base\Exception\InvalidConfigException;
+use Friday\Helper\Html;
+use Friday\Helper\Json;
+use Friday\Web\JsExpression;
 
-namespace yii\validators;
-
-use Yii;
-use yii\base\InvalidConfigException;
-use yii\helpers\Html;
-use yii\helpers\Json;
-use yii\helpers\StringHelper;
-use yii\web\JsExpression;
 
 /**
  * The validator checks if the attribute value is a valid IPv4/IPv6 address or subnet.
@@ -34,9 +28,6 @@ use yii\web\JsExpression;
  *
  * @property array $ranges The IPv4 or IPv6 ranges that are allowed or forbidden. See [[setRanges()]] for
  * detailed description.
- *
- * @author Dmitry Naumenko <d.naumenko.a@gmail.com>
- * @since 2.0.7
  */
 class IpValidator extends Validator
 {
@@ -228,25 +219,25 @@ class IpValidator extends Validator
         }
 
         if ($this->message === null) {
-            $this->message = Yii::t('yii', '{attribute} must be a valid IP address.');
+            $this->message = Friday::t('app', '{attribute} must be a valid IP address.');
         }
         if ($this->ipv6NotAllowed === null) {
-            $this->ipv6NotAllowed = Yii::t('yii', '{attribute} must not be an IPv6 address.');
+            $this->ipv6NotAllowed = Friday::t('app', '{attribute} must not be an IPv6 address.');
         }
         if ($this->ipv4NotAllowed === null) {
-            $this->ipv4NotAllowed = Yii::t('yii', '{attribute} must not be an IPv4 address.');
+            $this->ipv4NotAllowed = Friday::t('app', '{attribute} must not be an IPv4 address.');
         }
         if ($this->wrongCidr === null) {
-            $this->wrongCidr = Yii::t('yii', '{attribute} contains wrong subnet mask.');
+            $this->wrongCidr = Friday::t('app', '{attribute} contains wrong subnet mask.');
         }
         if ($this->noSubnet === null) {
-            $this->noSubnet = Yii::t('yii', '{attribute} must be an IP address with specified subnet.');
+            $this->noSubnet = Friday::t('app', '{attribute} must be an IP address with specified subnet.');
         }
         if ($this->hasSubnet === null) {
-            $this->hasSubnet = Yii::t('yii', '{attribute} must not be a subnet.');
+            $this->hasSubnet = Friday::t('app', '{attribute} must not be a subnet.');
         }
         if ($this->notInRange === null) {
-            $this->notInRange = Yii::t('yii', '{attribute} is not in the allowed range.');
+            $this->notInRange = Friday::t('app', '{attribute} is not in the allowed range.');
         }
     }
 
@@ -598,9 +589,9 @@ class IpValidator extends Validator
             'hasSubnet' => $this->hasSubnet,
         ];
         foreach ($messages as &$message) {
-            $message = Yii::$app->getI18n()->format($message, [
+            $message = Friday::$app->getI18n()->format($message, [
                 'attribute' => $model->getAttributeLabel($attribute),
-            ], Yii::$app->language);
+            ], Friday::$app->language);
         }
 
         $options = [
@@ -619,6 +610,6 @@ class IpValidator extends Validator
 
         ValidationAsset::register($view);
 
-        return 'yii.validation.ip(value, messages, ' . Json::htmlEncode($options) . ');';
+        return 'friday.validation.ip(value, messages, ' . Json::htmlEncode($options) . ');';
     }
 }

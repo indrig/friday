@@ -1,5 +1,5 @@
 <?php
-namespace Friday\I18n;
+namespace Friday\I18n\Event;
 use Friday\Base\Event\Event;
 
 

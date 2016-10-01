@@ -1,15 +1,9 @@
 <?php
-/**
- * @link http://www.yiiframework.com/
- * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
- */
-
-namespace yii\validators;
-
-use yii\base\InvalidConfigException;
-use Yii;
-use yii\base\Model;
+namespace Friday\Validator;
+use Friday;
+use Friday\Base\Exception\InvalidConfigException;
+use Friday\Base\Model;
+use yii\validators\FilterValidator;
 
 /**
  * EachValidator validates an array by checking each of its elements against an embedded validation rule.
@@ -31,9 +25,6 @@ use yii\base\Model;
  *
  * > Note: This validator will not work with inline validation rules in case of usage outside the model scope,
  *   e.g. via [[validate()]] method.
- *
- * @author Paul Klimov <klimov.paul@gmail.com>
- * @since 2.0.4
  */
 class EachValidator extends Validator
 {
@@ -71,7 +62,7 @@ class EachValidator extends Validator
     {
         parent::init();
         if ($this->message === null) {
-            $this->message = Yii::t('yii', '{attribute} is invalid.');
+            $this->message = Friday::t('app', '{attribute} is invalid.');
         }
     }
 
@@ -91,7 +82,7 @@ class EachValidator extends Validator
     /**
      * Creates validator object based on the validation rule specified in [[rule]].
      * @param Model|null $model model in which context validator should be created.
-     * @throws \yii\base\InvalidConfigException
+     * @throws InvalidConfigException
      * @return Validator validator instance
      */
     private function createEmbeddedValidator($model)

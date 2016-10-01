@@ -53,8 +53,8 @@ class View extends Component
      *
      * ```php
      * [
-     *     'tpl' => ['class' => 'yii\smarty\ViewRenderer'],
-     *     'twig' => ['class' => 'yii\twig\ViewRenderer'],
+     *     'tpl' => ['class' => 'Friday\Smarty\ViewRenderer'],
+     *     'twig' => ['class' => 'Friday\Twig\ViewRenderer'],
      * ]
      * ```
      *
@@ -335,7 +335,7 @@ class View extends Component
     {
         if (!empty($this->cacheStack)) {
             $n = count($this->dynamicPlaceholders);
-            $placeholder = "<![CDATA[YII-DYNAMIC-$n]]>";
+            $placeholder = "<![CDATA[FRIDAY-DYNAMIC-$n]]>";
             $this->addDynamicPlaceholder($placeholder, $statements);
 
             return $placeholder;

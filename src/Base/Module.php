@@ -345,7 +345,7 @@ class Module extends ServiceLocator
             if ($this->_modules[$id] instanceof Module) {
                 return $this->_modules[$id];
             } elseif ($load) {
-                //Yii::trace("Loading module: $id", __METHOD__);
+                //Friday::trace("Loading module: $id", __METHOD__);
                 /* @var $module Module */
                 $module = Friday::createObject($this->_modules[$id], [$id, $this]);
                 $module->setInstance($module);
@@ -404,7 +404,7 @@ class Module extends ServiceLocator
      *
      * Each sub-module should be specified as a name-value pair, where
      * name refers to the ID of the module and value the module or a configuration
-     * array that can be used to create the module. In the latter case, [[Yii::createObject()]]
+     * array that can be used to create the module. In the latter case, [[Friday::createObject()]]
      * will be used to create the module.
      *
      * If a new sub-module has the same ID as an existing one, the existing one will be overwritten silently.

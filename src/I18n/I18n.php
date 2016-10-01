@@ -2,6 +2,7 @@
 namespace Friday\I18n;
 use Friday;
 use Friday\Base\Component;
+use Friday\Base\Exception\InvalidConfigException;
 
 
 /**
@@ -14,7 +15,7 @@ use Friday\Base\Component;
  * message format. Note that the type of this property differs in getter and setter. See
  * [[getMessageFormatter()]] and [[setMessageFormatter()]] for details.
  */
-class I18N extends Component
+class I18n extends Component
 {
     /**
      * @var array list of [[MessageSource]] configurations or objects. The array keys are message
@@ -163,7 +164,7 @@ class I18N extends Component
             if ($source instanceof MessageSource) {
                 return $source;
             } else {
-                return $this->translations[$category] = Yii::createObject($source);
+                return $this->translations[$category] = Friday::createObject($source);
             }
         } else {
             // try wildcard matching
@@ -172,7 +173,7 @@ class I18N extends Component
                     if ($source instanceof MessageSource) {
                         return $source;
                     } else {
-                        return $this->translations[$category] = $this->translations[$pattern] = Yii::createObject($source);
+                        return $this->translations[$category] = $this->translations[$pattern] = Friday::createObject($source);
                     }
                 }
             }
@@ -182,7 +183,7 @@ class I18N extends Component
                 if ($source instanceof MessageSource) {
                     return $source;
                 } else {
-                    return $this->translations[$category] = $this->translations['*'] = Yii::createObject($source);
+                    return $this->translations[$category] = $this->translations['*'] = Friday::createObject($source);
                 }
             }
         }

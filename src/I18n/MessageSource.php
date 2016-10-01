@@ -2,6 +2,7 @@
 namespace Friday\I18n;
 use Friday;
 use Friday\Base\Component;
+use Friday\I18n\Event\MissingTranslationEvent;
 
 /**
  * MessageSource is the base class for message translation repository classes.

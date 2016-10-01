@@ -1,13 +1,7 @@
 <?php
-/**
- * @link http://www.yiiframework.com/
- * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
- */
+namespace Friday\I18n;
+use Friday\Base\Exception\RuntimeException;
 
-namespace yii\i18n;
-
-use yii\base\Exception;
 
 /**
  * GettextMoFile represents an MO Gettext message file.
@@ -37,11 +31,8 @@ use yii\base\Exception;
  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * @author Qiang Xue <qiang.xue@gmail.com>
- * @since 2.0
  */
-class GettextMoFile extends GettextFile
+class GetTextMoFile extends GetTextFile
 {
     /**
      * @var boolean whether to use big-endian when reading and writing an integer.
@@ -55,15 +46,15 @@ class GettextMoFile extends GettextFile
      * @param string $context message context
      * @return array message translations. Array keys are source messages and array values are translated messages:
      * source message => translated message.
-     * @throws Exception if unable to read the MO file
+     * @throws RuntimeException if unable to read the MO file
      */
     public function load($filePath, $context)
     {
         if (false === ($fileHandle = @fopen($filePath, 'rb'))) {
-            throw new Exception('Unable to read file "' . $filePath . '".');
+            throw new RuntimeException('Unable to read file "' . $filePath . '".');
         }
         if (false === @flock($fileHandle, LOCK_SH)) {
-            throw new Exception('Unable to lock file "' . $filePath . '" for reading.');
+            throw new RuntimeException('Unable to lock file "' . $filePath . '" for reading.');
         }
 
         // magic
@@ -74,13 +65,13 @@ class GettextMoFile extends GettextFile
         } elseif ($magic == -107) {
             $this->useBigEndian = true;
         } else {
-            throw new Exception('Invalid MO file: ' . $filePath . ' (magic: ' . $magic . ').');
+            throw new RuntimeException('Invalid MO file: ' . $filePath . ' (magic: ' . $magic . ').');
         }
 
         // revision
         $revision = $this->readInteger($fileHandle);
         if ($revision !== 0) {
-            throw new Exception('Invalid MO file revision: ' . $revision . '.');
+            throw new RuntimeException('Invalid MO file revision: ' . $revision . '.');
         }
 
         $count = $this->readInteger($fileHandle);
@@ -131,15 +122,15 @@ class GettextMoFile extends GettextFile
      * @param array $messages message translations. Array keys are source messages and array values are
      * translated messages: source message => translated message. Note if the message has a context,
      * the message ID must be prefixed with the context with chr(4) as the separator.
-     * @throws Exception if unable to save the MO file
+     * @throws RuntimeException if unable to save the MO file
      */
     public function save($filePath, $messages)
     {
         if (false === ($fileHandle = @fopen($filePath, 'wb'))) {
-            throw new Exception('Unable to write file "' . $filePath . '".');
+            throw new RuntimeException('Unable to write file "' . $filePath . '".');
         }
         if (false === @flock($fileHandle, LOCK_EX)) {
-            throw new Exception('Unable to lock file "' . $filePath . '" for reading.');
+            throw new RuntimeException('Unable to lock file "' . $filePath . '" for reading.');
         }
 
         // magic

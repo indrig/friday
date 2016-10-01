@@ -137,7 +137,7 @@ class RequestHeaderParser extends Request
                                 $paramValue = mb_substr($part, $partHeaderEndPosition+4, -2, '8bit');
                                 if(isset($disposition['filename'])) {
                                     //Это файил
-                                    $file = new File();
+                                    $file = new UploadedFile();
                                     $file->filename = $disposition['filename'];
                                     if(isset($headers['content-type'])) {
                                         $contentType = static::parseHeaderValue($headers['content-type']);

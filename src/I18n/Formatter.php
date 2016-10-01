@@ -1,11 +1,5 @@
 <?php
-/**
- * @link http://www.yiiframework.com/
- * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
- */
-
-namespace yii\i18n;
+namespace Friday\I18n;
 
 use DateInterval;
 use DateTime;
@@ -15,7 +9,9 @@ use Friday;
 use Friday\Base\Component;
 use Friday\Base\Exception\InvalidArgumentException;
 use Friday\Base\Exception\InvalidConfigException;
+use Friday\Helper\FormatConverter;
 use Friday\Helper\Html;
+use Friday\Helper\HtmlPurifier;
 use IntlDateFormatter;
 use NumberFormatter;
 
@@ -385,7 +381,7 @@ class Formatter extends Component
         if ($value === null) {
             return $this->nullDisplay;
         }
-        return HTMLPurifier::p($value, $config);
+        return HtmlPurifier::process($value, $config);
     }
 
     /**
@@ -474,7 +470,7 @@ class Formatter extends Component
      * PHP [date()](http://php.net/manual/en/function.date.php)-function.
      *
      * @return string the formatted result.
-     * @throws InvalidParamException if the input value can not be evaluated as a date value.
+     * @throws InvalidArgumentException if the input value can not be evaluated as a date value.
      * @throws InvalidConfigException if the date format is invalid.
      * @see dateFormat
      */
@@ -506,7 +502,7 @@ class Formatter extends Component
      * PHP [date()](http://php.net/manual/en/function.date.php)-function.
      *
      * @return string the formatted result.
-     * @throws InvalidParamException if the input value can not be evaluated as a date value.
+     * @throws InvalidArgumentException if the input value can not be evaluated as a date value.
      * @throws InvalidConfigException if the date format is invalid.
      * @see timeFormat
      */
@@ -538,7 +534,7 @@ class Formatter extends Component
      * PHP [date()](http://php.net/manual/en/function.date.php)-function.
      *
      * @return string the formatted result.
-     * @throws InvalidParamException if the input value can not be evaluated as a date value.
+     * @throws InvalidArgumentException if the input value can not be evaluated as a date value.
      * @throws InvalidConfigException if the date format is invalid.
      * @see datetimeFormat
      */
@@ -621,6 +617,10 @@ class Formatter extends Component
             } else {
                 $format = FormatConverter::convertDateIcuToPhp($format, $type, $this->locale);
             }
+
+            /**
+             * @var DateTime $timestamp
+             */
             if ($timeZone != null) {
                 if ($timestamp instanceof \DateTimeImmutable) {
                     $timestamp = $timestamp->setTimezone(new DateTimeZone($timeZone));
@@ -628,6 +628,7 @@ class Formatter extends Component
                     $timestamp->setTimezone(new DateTimeZone($timeZone));
                 }
             }
+
             return $timestamp->format($format);
         }
     }
@@ -648,10 +649,9 @@ class Formatter extends Component
      * timestamp and the second a boolean indicating whether the timestamp has time information or it is just a date value.
      * This parameter is available since version 2.0.1.
      * @return DateTime|array the normalized datetime value.
-     * Since version 2.0.1 this may also return an array if `$checkTimeInfo` is true.
      * The first element of the array is the normalized timestamp and the second is a boolean indicating whether
      * the timestamp has time information or it is just a date value.
-     * @throws InvalidParamException if the input value can not be evaluated as a date value.
+     * @throws InvalidArgumentException if the input value can not be evaluated as a date value.
      */
     protected function normalizeDatetimeValue($value, $checkTimeInfo = false)
     {
@@ -683,7 +683,7 @@ class Formatter extends Component
                 return new DateTime($value, new DateTimeZone($this->defaultTimeZone));
             }
         } catch (\Exception $e) {
-            throw new InvalidParamException("'$value' is not a valid date time value: " . $e->getMessage()
+            throw new InvalidArgumentException("'$value' is not a valid date time value: " . $e->getMessage()
                 . "\n" . print_r(DateTime::getLastErrors(), true), $e->getCode(), $e);
         }
     }
@@ -730,7 +730,7 @@ class Formatter extends Component
      * @param integer|string|DateTime $referenceTime if specified the value is used as a reference time instead of `now`
      * when `$value` is not a `DateInterval` object.
      * @return string the formatted result.
-     * @throws InvalidParamException if the input value can not be evaluated as a date value.
+     * @throws InvalidArgumentException if the input value can not be evaluated as a date value.
      */
     public function asRelativeTime($value, $referenceTime = null)
     {
@@ -763,7 +763,9 @@ class Formatter extends Component
                 }
 
                 $dateThen = $timestamp->setTimezone($timeZone);
-
+                /**
+                 * @var DateTime $dateThen
+                 */
                 $interval = $dateThen->diff($dateNow);
             }
         }

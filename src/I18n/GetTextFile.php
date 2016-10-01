@@ -1,21 +1,11 @@
 <?php
-/**
- * @link http://www.yiiframework.com/
- * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
- */
-
-namespace yii\i18n;
-
-use yii\base\Component;
+namespace Friday\I18n;
+use Friday\Base\Component;
 
 /**
  * GettextFile is the base class for representing a Gettext message file.
- *
- * @author Qiang Xue <qiang.xue@gmail.com>
- * @since 2.0
  */
-abstract class GettextFile extends Component
+abstract class GetTextFile extends Component
 {
     /**
      * Loads messages from a file.

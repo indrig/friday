@@ -5,7 +5,6 @@ use Friday;
 use Friday\Base\Exception\InvalidArgumentException;
 use Friday\Base\Exception\InvalidConfigException;
 use Friday\Helper\AliasHelper;
-use Friday\EventLoop\LoopInterface;
 
 /**
  * Class AbstractApplication
@@ -13,11 +12,13 @@ use Friday\EventLoop\LoopInterface;
  *
  * @property Security $security
  * @property Friday\Db\Adapter $db
+ * @property Friday\I18n\I18n
  * @property AbstractErrorHandler $errorHandler
  * @property \Friday\Cache\AbstractCache $cache
  *
  * @property Friday\Web\ConnectionContext|ContextInterface|null $currentContext
- *
+ * @property string $timeZone
+ * @property Friday\I18n\Formatter $formatter
  */
 class AbstractApplication extends Module {
     /**
@@ -217,8 +218,8 @@ class AbstractApplication extends Module {
     {
         $this->_vendorPath = AliasHelper::getAlias($path);
         AliasHelper::setAlias('@vendor', $this->_vendorPath);
-        AliasHelper::setAlias('@bower', $this->_vendorPath . DIRECTORY_SEPARATOR . 'bower');
-        AliasHelper::setAlias('@npm', $this->_vendorPath . DIRECTORY_SEPARATOR . 'npm');
+      //  AliasHelper::setAlias('@bower', $this->_vendorPath . DIRECTORY_SEPARATOR . 'bower');
+      //  AliasHelper::setAlias('@npm', $this->_vendorPath . DIRECTORY_SEPARATOR . 'npm');
     }
 
     /**
@@ -255,6 +256,8 @@ class AbstractApplication extends Module {
         return [
             'security' => ['class' => 'Friday\Base\Security'],
             'log' => ['class' => 'Friday\Log\Dispatcher'],
+            'i18n' => ['class' => 'Friday\I18n\I18n'],
+            'formatter' => ['class' => 'Friday\I18n\Formatter'],
         ];
     }
 
@@ -340,6 +343,7 @@ class AbstractApplication extends Module {
     public function getSecurity(){
         return $this->get('security');
     }
+
     /**
      * @return Friday\Db\Adapter
      */
@@ -353,6 +357,7 @@ class AbstractApplication extends Module {
     public function getCache(){
         return $this->get('cache');
     }
+
     /**
      * @return Looper
      */
@@ -361,6 +366,20 @@ class AbstractApplication extends Module {
             $this->_looper = new Looper();
         }
         return $this->_looper;
+    }
+
+    /**
+     * @return Friday\I18n\I18n
+     */
+    public function getI18n(){
+        return $this->get('i18n');
+    }
+
+    /**
+     * @return Friday\I18n\Formatter
+     */
+    public function getFormatter(){
+        return $this->get('formatter');
     }
 
     /**

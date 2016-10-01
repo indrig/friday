@@ -227,23 +227,32 @@ class Validator extends Component
      *
      * @return Awaitable
      */
-    public function validateAttributes($model, $attributes = null) : Awaitable
+    public function validateAttributes($model, $attributes = null)
     {
         if (is_array($attributes)) {
-            $attributes = array_intersect($this->attributes, $attributes);
+            $newAttributes = [];
+            foreach ($attributes as $attribute) {
+                if (in_array($attribute, $this->attributes) || in_array('!' . $attribute, $this->attributes)) {
+                    $newAttributes[] = $attribute;
+                }
+            }
+            $attributes = $newAttributes;
         } else {
-            $attributes = $this->attributes;
+            $attributes = [];
+            foreach ($this->attributes as $attribute) {
+                $attributes[] = $attribute[0] === '!' ? substr($attribute, 1) : $attribute;
+            }
         }
+
         $validators = [];
         foreach ($attributes as $attribute) {
             $skip = $this->skipOnError && $model->hasErrors($attribute)
                 || $this->skipOnEmpty && $this->isEmpty($model->$attribute);
             if (!$skip) {
                 if ($this->when === null || call_user_func($this->when, $model, $attribute)) {
-                    $validator = $this->validateAttribute($model, $attribute);
-
-                    if($validator instanceof Awaitable) {
-                        $validators[] = $validator;
+                    $validateAttribute = $this->validateAttribute($model, $attribute);
+                    if($validateAttribute instanceof Awaitable) {
+                        $validators[] = $validateAttribute;
                     }
                 }
             }
@@ -258,18 +267,27 @@ class Validator extends Component
      * @param \Friday\Base\Model $model the data model to be validated
      * @param string $attribute the name of the attribute to be validated.
      *
-     * @return Awaitable
+     * @return Awaitable|null
      */
-    public function validateAttribute($model, $attribute) : Awaitable
+    public function validateAttribute($model, $attribute)
     {
         $deferred = new Deferred();
-        $this->validateValue($model->$attribute)->await(function ($result) use ($deferred, $model, &$attribute){
+        $afterValidateValue = $this->validateValue($model->$attribute);
+        if($afterValidateValue instanceof Awaitable) {
+            $afterValidateValue->await(function ($result) use ($deferred, $model, &$attribute){
+                if (!empty($result)) {
+                    $this->addError($model, $attribute, $result[0], $result[1]);
+                }
+
+                $deferred->result();
+            });
+        } else {
+            $result = $this->validateValue($model->$attribute);
             if (!empty($result)) {
                 $this->addError($model, $attribute, $result[0], $result[1]);
             }
+        }
 
-            $deferred->result();
-        });
         return $deferred->awaitable();
     }
 
@@ -278,36 +296,59 @@ class Validator extends Component
      * You may use this method to validate a value out of the context of a data model.
      * @param mixed $value the data value to be validated.
      * @param string $error the error message to be returned, if the validation fails.
-     * @return Awaitable boolean whether the data is valid.
+     * @return Awaitable|boolean whether the data is valid.
      */
-    public function validate($value, &$error = null) : Awaitable
+    public function validate($value, &$error = null)
     {
-        $deferred = new Deferred();
-        $this->validateValue($value)->await(function ($result) use ($deferred, &$value, &$error){
+        $afterValidateValue =  $this->validateValue($value);
+
+        if($afterValidateValue instanceof Awaitable) {
+            $deferred = new Deferred();
+            $afterValidateValue->await(function ($result) use ($deferred, &$value, &$error){
+                if (empty($result)) {
+                    $deferred->result(true);
+                } else {
+                    list($message, $params) = $result;
+                    $params['attribute'] = Friday::t('app', 'the input value');
+                    $params['value'] = is_array($value) ? 'array()' : $value;
+
+                    $error = Friday::$app->getI18n()->format($message, $params, Friday::$app->language);
+
+                    $deferred->result(false);
+                }
+            });
+            return $deferred->awaitable();
+        } else {
+            $result = $this->validateValue($value);
             if (empty($result)) {
-                $deferred->result(true);
-            } else {
-                list($message, $params) = $result;
-                $params['attribute'] = Friday::t('app', 'the input value');
-                $params['value'] = is_array($value) ? 'array()' : $value;
-
-                $error = Friday::$app->getI18n()->format($message, $params, Friday::$app->language);
-
-                $deferred->result(false);
+                return true;
             }
-        });
-        return $deferred->awaitable();
+
+            list($message, $params) = $result;
+            $params['attribute'] = Friday::t('yii', 'the input value');
+            if (is_array($value)) {
+                $params['value'] = 'array()';
+            } elseif (is_object($value)) {
+                $params['value'] = 'object';
+            } else {
+                $params['value'] = $value;
+            }
+            $error = Friday::$app->getI18n()->format($message, $params, Friday::$app->language);
+
+            return false;
+        }
+
     }
 
     /**
      * Validates a value.
      * A validator class can implement this method to support data validation out of the context of a data model.
      * @param mixed $value the data value to be validated.
-     * @return Awaitable array|null the error message and the parameters to be inserted into the error message.
+     * @return Awaitable|array|null the error message and the parameters to be inserted into the error message.
      * Null should be returned if the data is valid.
      * @throws NotSupportedException if the validator does not supporting data validation without a model
      */
-    protected function validateValue($value) : Awaitable
+    protected function validateValue($value)
     {
         throw new NotSupportedException(get_class($this) . ' does not support validateValue().');
     }

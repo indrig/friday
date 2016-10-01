@@ -1,17 +1,12 @@
 <?php
-/**
- * @link http://www.yiiframework.com/
- * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
- */
-
-namespace yii\validators;
+namespace Friday\Validator;
 
 use DateTime;
+use Friday;
+use Friday\Base\Exception\InvalidConfigException;
+use Friday\Helper\FormatConverter;
 use IntlDateFormatter;
 use Yii;
-use yii\base\InvalidConfigException;
-use yii\helpers\FormatConverter;
 
 /**
  * DateValidator verifies if the attribute represents a date, time or datetime in a proper [[format]].
@@ -23,10 +18,6 @@ use yii\helpers\FormatConverter;
  *
  * Additional to validating the date it can also export the parsed timestamp as a machine readable format
  * which can be configured using [[timestampAttribute]].
- *
- * @author Qiang Xue <qiang.xue@gmail.com>
- * @author Carsten Brandt <mail@cebe.cc>
- * @since 2.0
  */
 class DateValidator extends Validator
 {
@@ -162,22 +153,22 @@ class DateValidator extends Validator
     {
         parent::init();
         if ($this->message === null) {
-            $this->message = Yii::t('yii', 'The format of {attribute} is invalid.');
+            $this->message = Friday::t('app', 'The format of {attribute} is invalid.');
         }
         if ($this->format === null) {
-            $this->format = Yii::$app->formatter->dateFormat;
+            $this->format = Friday::$app->formatter->dateFormat;
         }
         if ($this->locale === null) {
-            $this->locale = Yii::$app->language;
+            $this->locale = Friday::$app->language;
         }
         if ($this->timeZone === null) {
-            $this->timeZone = Yii::$app->timeZone;
+            $this->timeZone = Friday::$app->timeZone;
         }
         if ($this->min !== null && $this->tooSmall === null) {
-            $this->tooSmall = Yii::t('yii', '{attribute} must be no less than {min}.');
+            $this->tooSmall = Friday::t('app', '{attribute} must be no less than {min}.');
         }
         if ($this->max !== null && $this->tooBig === null) {
-            $this->tooBig = Yii::t('yii', '{attribute} must be no greater than {max}.');
+            $this->tooBig = Friday::t('app', '{attribute} must be no greater than {max}.');
         }
         if ($this->maxString === null) {
             $this->maxString = (string) $this->max;
@@ -287,7 +278,7 @@ class DateValidator extends Validator
         // See https://github.com/yiisoft/yii2/issues/5962 and https://bugs.php.net/bug.php?id=68528
         $parsePos = 0;
         $parsedDate = @$formatter->parse($value, $parsePos);
-        if ($parsedDate === false || $parsePos !== mb_strlen($value, Yii::$app ? Yii::$app->charset : 'UTF-8')) {
+        if ($parsedDate === false || $parsePos !== mb_strlen($value, Friday::$app ? Friday::$app->charset : 'UTF-8')) {
             return false;
         }
 

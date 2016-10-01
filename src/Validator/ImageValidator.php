@@ -1,20 +1,13 @@
 <?php
-/**
- * @link http://www.yiiframework.com/
- * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
- */
+namespace Friday\Validator;
+use Friday;
+use Friday\Asset\ValidationAsset;
+use yii\validators\FileValidator;
 
-namespace yii\validators;
-
-use Yii;
-use yii\web\UploadedFile;
 
 /**
  * ImageValidator verifies if an attribute is receiving a valid image.
- *
- * @author Taras Gudz <gudz.taras@gmail.com>
- * @since 2.0
+
  */
 class ImageValidator extends FileValidator
 {
@@ -96,19 +89,19 @@ class ImageValidator extends FileValidator
         parent::init();
 
         if ($this->notImage === null) {
-            $this->notImage = Yii::t('yii', 'The file "{file}" is not an image.');
+            $this->notImage = Friday::t('yii', 'The file "{file}" is not an image.');
         }
         if ($this->underWidth === null) {
-            $this->underWidth = Yii::t('yii', 'The image "{file}" is too small. The width cannot be smaller than {limit, number} {limit, plural, one{pixel} other{pixels}}.');
+            $this->underWidth = Friday::t('yii', 'The image "{file}" is too small. The width cannot be smaller than {limit, number} {limit, plural, one{pixel} other{pixels}}.');
         }
         if ($this->underHeight === null) {
-            $this->underHeight = Yii::t('yii', 'The image "{file}" is too small. The height cannot be smaller than {limit, number} {limit, plural, one{pixel} other{pixels}}.');
+            $this->underHeight = Friday::t('yii', 'The image "{file}" is too small. The height cannot be smaller than {limit, number} {limit, plural, one{pixel} other{pixels}}.');
         }
         if ($this->overWidth === null) {
-            $this->overWidth = Yii::t('yii', 'The image "{file}" is too large. The width cannot be larger than {limit, number} {limit, plural, one{pixel} other{pixels}}.');
+            $this->overWidth = Friday::t('yii', 'The image "{file}" is too large. The width cannot be larger than {limit, number} {limit, plural, one{pixel} other{pixels}}.');
         }
         if ($this->overHeight === null) {
-            $this->overHeight = Yii::t('yii', 'The image "{file}" is too large. The height cannot be larger than {limit, number} {limit, plural, one{pixel} other{pixels}}.');
+            $this->overHeight = Friday::t('yii', 'The image "{file}" is too large. The height cannot be larger than {limit, number} {limit, plural, one{pixel} other{pixels}}.');
         }
     }
 
@@ -166,7 +159,7 @@ class ImageValidator extends FileValidator
     {
         ValidationAsset::register($view);
         $options = $this->getClientOptions($model, $attribute);
-        return 'yii.validation.image(attribute, messages, ' . json_encode($options, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . ', deferred);';
+        return 'friday.validation.image(attribute, messages, ' . json_encode($options, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . ', deferred);';
     }
 
     /**
@@ -179,41 +172,41 @@ class ImageValidator extends FileValidator
         $label = $model->getAttributeLabel($attribute);
 
         if ($this->notImage !== null) {
-            $options['notImage'] = Yii::$app->getI18n()->format($this->notImage, [
+            $options['notImage'] = Friday::$app->getI18n()->format($this->notImage, [
                 'attribute' => $label
-            ], Yii::$app->language);
+            ], Friday::$app->language);
         }
 
         if ($this->minWidth !== null) {
             $options['minWidth'] = $this->minWidth;
-            $options['underWidth'] = Yii::$app->getI18n()->format($this->underWidth, [
+            $options['underWidth'] = Friday::$app->getI18n()->format($this->underWidth, [
                 'attribute' => $label,
                 'limit' => $this->minWidth
-            ], Yii::$app->language);
+            ], Friday::$app->language);
         }
 
         if ($this->maxWidth !== null) {
             $options['maxWidth'] = $this->maxWidth;
-            $options['overWidth'] = Yii::$app->getI18n()->format($this->overWidth, [
+            $options['overWidth'] = Friday::$app->getI18n()->format($this->overWidth, [
                 'attribute' => $label,
                 'limit' => $this->maxWidth
-            ], Yii::$app->language);
+            ], Friday::$app->language);
         }
 
         if ($this->minHeight !== null) {
             $options['minHeight'] = $this->minHeight;
-            $options['underHeight'] = Yii::$app->getI18n()->format($this->underHeight, [
+            $options['underHeight'] = Friday::$app->getI18n()->format($this->underHeight, [
                 'attribute' => $label,
                 'limit' => $this->minHeight
-            ], Yii::$app->language);
+            ], Friday::$app->language);
         }
 
         if ($this->maxHeight !== null) {
             $options['maxHeight'] = $this->maxHeight;
-            $options['overHeight'] = Yii::$app->getI18n()->format($this->overHeight, [
+            $options['overHeight'] = Friday::$app->getI18n()->format($this->overHeight, [
                 'attribute' => $label,
                 'limit' => $this->maxHeight
-            ], Yii::$app->language);
+            ], Friday::$app->language);
         }
 
         return $options;

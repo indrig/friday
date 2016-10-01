@@ -1,22 +1,15 @@
 <?php
-/**
- * @link http://www.yiiframework.com/
- * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
- */
+namespace Friday\Validator;
+use Friday;
+use Friday\Asset\ValidationAsset;
+use Friday\Base\Exception\InvalidConfigException;
+use Friday\Helper\Json;
+use Friday\Validator\Asset\PunycodeAsset;
+use Friday\Web\JsExpression;
 
-namespace yii\validators;
-
-use Yii;
-use yii\base\InvalidConfigException;
-use yii\web\JsExpression;
-use yii\helpers\Json;
 
 /**
  * EmailValidator validates that the attribute value is a valid email address.
- *
- * @author Qiang Xue <qiang.xue@gmail.com>
- * @since 2.0
  */
 class EmailValidator extends Validator
 {
@@ -61,7 +54,7 @@ class EmailValidator extends Validator
             throw new InvalidConfigException('In order to use IDN validation intl extension must be installed and enabled.');
         }
         if ($this->message === null) {
-            $this->message = Yii::t('yii', '{attribute} is not a valid email address.');
+            $this->message = Friday::t('app', '{attribute} is not a valid email address.');
         }
     }
 
@@ -113,9 +106,9 @@ class EmailValidator extends Validator
             'pattern' => new JsExpression($this->pattern),
             'fullPattern' => new JsExpression($this->fullPattern),
             'allowName' => $this->allowName,
-            'message' => Yii::$app->getI18n()->format($this->message, [
+            'message' => Friday::$app->getI18n()->format($this->message, [
                 'attribute' => $model->getAttributeLabel($attribute),
-            ], Yii::$app->language),
+            ], Friday::$app->language),
             'enableIDN' => (bool)$this->enableIDN,
         ];
         if ($this->skipOnEmpty) {
@@ -127,6 +120,6 @@ class EmailValidator extends Validator
             PunycodeAsset::register($view);
         }
 
-        return 'yii.validation.email(value, messages, ' . Json::htmlEncode($options) . ');';
+        return 'friday.validation.email(value, messages, ' . Json::htmlEncode($options) . ');';
     }
 }

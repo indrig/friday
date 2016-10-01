@@ -1,15 +1,10 @@
 <?php
-/**
- * @link http://www.yiiframework.com/
- * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
- */
+namespace Friday\Validator;
+use Friday;
+use Friday\Asset\ValidationAsset;
+use Friday\Helper\FileHelper;
+use Friday\Web\UploadedFile;
 
-namespace yii\validators;
-
-use Yii;
-use yii\web\UploadedFile;
-use yii\helpers\FileHelper;
 
 /**
  * FileValidator verifies if an attribute is receiving a valid uploaded file.
@@ -17,9 +12,6 @@ use yii\helpers\FileHelper;
  * Note that you should enable `fileinfo` PHP extension.
  *
  * @property integer $sizeLimit The size limit for uploaded files. This property is read-only.
- *
- * @author Qiang Xue <qiang.xue@gmail.com>
- * @since 2.0
  */
 class FileValidator extends Validator
 {
@@ -142,22 +134,22 @@ class FileValidator extends Validator
     {
         parent::init();
         if ($this->message === null) {
-            $this->message = Yii::t('yii', 'File upload failed.');
+            $this->message = Friday::t('app', 'File upload failed.');
         }
         if ($this->uploadRequired === null) {
-            $this->uploadRequired = Yii::t('yii', 'Please upload a file.');
+            $this->uploadRequired = Friday::t('app', 'Please upload a file.');
         }
         if ($this->tooMany === null) {
-            $this->tooMany = Yii::t('yii', 'You can upload at most {limit, number} {limit, plural, one{file} other{files}}.');
+            $this->tooMany = Friday::t('app', 'You can upload at most {limit, number} {limit, plural, one{file} other{files}}.');
         }
         if ($this->wrongExtension === null) {
-            $this->wrongExtension = Yii::t('yii', 'Only files with these extensions are allowed: {extensions}.');
+            $this->wrongExtension = Friday::t('app', 'Only files with these extensions are allowed: {extensions}.');
         }
         if ($this->tooBig === null) {
-            $this->tooBig = Yii::t('yii', 'The file "{file}" is too big. Its size cannot exceed {formattedLimit}.');
+            $this->tooBig = Friday::t('app', 'The file "{file}" is too big. Its size cannot exceed {formattedLimit}.');
         }
         if ($this->tooSmall === null) {
-            $this->tooSmall = Yii::t('yii', 'The file "{file}" is too small. Its size cannot be smaller than {formattedLimit}.');
+            $this->tooSmall = Friday::t('app', 'The file "{file}" is too small. Its size cannot be smaller than {formattedLimit}.');
         }
         if (!is_array($this->extensions)) {
             $this->extensions = preg_split('/[\s,]+/', strtolower($this->extensions), -1, PREG_SPLIT_NO_EMPTY);
@@ -165,7 +157,7 @@ class FileValidator extends Validator
             $this->extensions = array_map('strtolower', $this->extensions);
         }
         if ($this->wrongMimeType === null) {
-            $this->wrongMimeType = Yii::t('yii', 'Only files with these MIME types are allowed: {mimeTypes}.');
+            $this->wrongMimeType = Friday::t('app', 'Only files with these MIME types are allowed: {mimeTypes}.');
         }
         if (!is_array($this->mimeTypes)) {
             $this->mimeTypes = preg_split('/[\s,]+/', strtolower($this->mimeTypes), -1, PREG_SPLIT_NO_EMPTY);
@@ -222,6 +214,9 @@ class FileValidator extends Validator
             return [$this->uploadRequired, []];
         }
 
+        /**
+         * @var UploadedFile
+         */
         switch ($file->error) {
             case UPLOAD_ERR_OK:
                 if ($this->maxSize !== null && $file->size > $this->getSizeLimit()) {
@@ -230,7 +225,7 @@ class FileValidator extends Validator
                         [
                             'file' => $file->name,
                             'limit' => $this->getSizeLimit(),
-                            'formattedLimit' => Yii::$app->formatter->asShortSize($this->getSizeLimit())
+                            'formattedLimit' => Friday::$app->formatter->asShortSize($this->getSizeLimit())
                         ]
                     ];
                 } elseif ($this->minSize !== null && $file->size < $this->minSize) {
@@ -239,7 +234,7 @@ class FileValidator extends Validator
                         [
                             'file' => $file->name,
                             'limit' => $this->minSize,
-                            'formattedLimit' => Yii::$app->formatter->asShortSize($this->minSize)
+                            'formattedLimit' => Friday::$app->formatter->asShortSize($this->minSize)
                         ]
                     ];
                 } elseif (!empty($this->extensions) && !$this->validateExtension($file)) {
@@ -254,19 +249,19 @@ class FileValidator extends Validator
                 return [$this->tooBig, [
                     'file' => $file->name,
                     'limit' => $this->getSizeLimit(),
-                    'formattedLimit' => Yii::$app->formatter->asShortSize($this->getSizeLimit())
+                    'formattedLimit' => Friday::$app->formatter->asShortSize($this->getSizeLimit())
                 ]];
             case UPLOAD_ERR_PARTIAL:
-                Yii::warning('File was only partially uploaded: ' . $file->name, __METHOD__);
+                Friday::warning('File was only partially uploaded: ' . $file->name, __METHOD__);
                 break;
             case UPLOAD_ERR_NO_TMP_DIR:
-                Yii::warning('Missing the temporary folder to store the uploaded file: ' . $file->name, __METHOD__);
+                Friday::warning('Missing the temporary folder to store the uploaded file: ' . $file->name, __METHOD__);
                 break;
             case UPLOAD_ERR_CANT_WRITE:
-                Yii::warning('Failed to write the uploaded file to disk: ' . $file->name, __METHOD__);
+                Friday::warning('Failed to write the uploaded file to disk: ' . $file->name, __METHOD__);
                 break;
             case UPLOAD_ERR_EXTENSION:
-                Yii::warning('File upload was stopped by some PHP extension: ' . $file->name, __METHOD__);
+                Friday::warning('File upload was stopped by some PHP extension: ' . $file->name, __METHOD__);
                 break;
             default:
                 break;
@@ -292,7 +287,7 @@ class FileValidator extends Validator
         $limit = $this->sizeToBytes(ini_get('upload_max_filesize'));
         $postLimit = $this->sizeToBytes(ini_get('post_max_size'));
         if ($postLimit > 0 && $postLimit < $limit) {
-            Yii::warning('PHP.ini\'s \'post_max_size\' is less than \'upload_max_filesize\'.', __METHOD__);
+            Friday::warning('PHP.ini\'s \'post_max_size\' is less than \'upload_max_filesize\'.', __METHOD__);
             $limit = $postLimit;
         }
         if ($this->maxSize !== null && $limit > 0 && $this->maxSize < $limit) {
@@ -379,7 +374,7 @@ class FileValidator extends Validator
 
     /**
      * Returns the client side validation options.
-     * @param \yii\base\Model $model the model being validated
+     * @param \Friday\Base\Model $model the model being validated
      * @param string $attribute the attribute name being validated
      * @return array the client side validation options
      */
@@ -389,59 +384,59 @@ class FileValidator extends Validator
 
         $options = [];
         if ($this->message !== null) {
-            $options['message'] = Yii::$app->getI18n()->format($this->message, [
+            $options['message'] = Friday::$app->getI18n()->format($this->message, [
                 'attribute' => $label,
-            ], Yii::$app->language);
+            ], Friday::$app->language);
         }
 
         $options['skipOnEmpty'] = $this->skipOnEmpty;
 
         if (!$this->skipOnEmpty) {
-            $options['uploadRequired'] = Yii::$app->getI18n()->format($this->uploadRequired, [
+            $options['uploadRequired'] = Friday::$app->getI18n()->format($this->uploadRequired, [
                 'attribute' => $label,
-            ], Yii::$app->language);
+            ], Friday::$app->language);
         }
 
         if ($this->mimeTypes !== null) {
             $options['mimeTypes'] = $this->mimeTypes;
-            $options['wrongMimeType'] = Yii::$app->getI18n()->format($this->wrongMimeType, [
+            $options['wrongMimeType'] = Friday::$app->getI18n()->format($this->wrongMimeType, [
                 'attribute' => $label,
                 'mimeTypes' => implode(', ', $this->mimeTypes),
-            ], Yii::$app->language);
+            ], Friday::$app->language);
         }
 
         if ($this->extensions !== null) {
             $options['extensions'] = $this->extensions;
-            $options['wrongExtension'] = Yii::$app->getI18n()->format($this->wrongExtension, [
+            $options['wrongExtension'] = Friday::$app->getI18n()->format($this->wrongExtension, [
                 'attribute' => $label,
                 'extensions' => implode(', ', $this->extensions),
-            ], Yii::$app->language);
+            ], Friday::$app->language);
         }
 
         if ($this->minSize !== null) {
             $options['minSize'] = $this->minSize;
-            $options['tooSmall'] = Yii::$app->getI18n()->format($this->tooSmall, [
+            $options['tooSmall'] = Friday::$app->getI18n()->format($this->tooSmall, [
                 'attribute' => $label,
                 'limit' => $this->minSize,
-                'formattedLimit' => Yii::$app->formatter->asShortSize($this->minSize),
-            ], Yii::$app->language);
+                'formattedLimit' => Friday::$app->formatter->asShortSize($this->minSize),
+            ], Friday::$app->language);
         }
 
         if ($this->maxSize !== null) {
             $options['maxSize'] = $this->maxSize;
-            $options['tooBig'] = Yii::$app->getI18n()->format($this->tooBig, [
+            $options['tooBig'] = Friday::$app->getI18n()->format($this->tooBig, [
                 'attribute' => $label,
                 'limit' => $this->getSizeLimit(),
-                'formattedLimit' => Yii::$app->formatter->asShortSize($this->getSizeLimit()),
-            ], Yii::$app->language);
+                'formattedLimit' => Friday::$app->formatter->asShortSize($this->getSizeLimit()),
+            ], Friday::$app->language);
         }
 
         if ($this->maxFiles !== null) {
             $options['maxFiles'] = $this->maxFiles;
-            $options['tooMany'] = Yii::$app->getI18n()->format($this->tooMany, [
+            $options['tooMany'] = Friday::$app->getI18n()->format($this->tooMany, [
                 'attribute' => $label,
                 'limit' => $this->maxFiles,
-            ], Yii::$app->language);
+            ], Friday::$app->language);
         }
 
         return $options;

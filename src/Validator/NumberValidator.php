@@ -1,15 +1,10 @@
 <?php
-/**
- * @link http://www.yiiframework.com/
- * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
- */
+namespace Friday\Validator;
+use Friday;
+use Friday\Asset\ValidationAsset;
+use Friday\Helper\Json;
+use Friday\Web\JsExpression;
 
-namespace yii\validators;
-
-use Yii;
-use yii\web\JsExpression;
-use yii\helpers\Json;
 
 /**
  * NumberValidator validates that the attribute value is a number.
@@ -17,9 +12,6 @@ use yii\helpers\Json;
  * The format of the number must match the regular expression specified in [[integerPattern]] or [[numberPattern]].
  * Optionally, you may configure the [[max]] and [[min]] properties to ensure the number
  * is within certain range.
- *
- * @author Qiang Xue <qiang.xue@gmail.com>
- * @since 2.0
  */
 class NumberValidator extends Validator
 {
@@ -63,14 +55,14 @@ class NumberValidator extends Validator
     {
         parent::init();
         if ($this->message === null) {
-            $this->message = $this->integerOnly ? Yii::t('yii', '{attribute} must be an integer.')
-                : Yii::t('yii', '{attribute} must be a number.');
+            $this->message = $this->integerOnly ? Friday::t('app', '{attribute} must be an integer.')
+                : Friday::t('app', '{attribute} must be a number.');
         }
         if ($this->min !== null && $this->tooSmall === null) {
-            $this->tooSmall = Yii::t('yii', '{attribute} must be no less than {min}.');
+            $this->tooSmall = Friday::t('app', '{attribute} must be no less than {min}.');
         }
         if ($this->max !== null && $this->tooBig === null) {
-            $this->tooBig = Yii::t('yii', '{attribute} must be no greater than {max}.');
+            $this->tooBig = Friday::t('app', '{attribute} must be no greater than {max}.');
         }
     }
 
@@ -102,7 +94,7 @@ class NumberValidator extends Validator
     protected function validateValue($value)
     {
         if (is_array($value)) {
-            return [Yii::t('yii', '{attribute} is invalid.'), []];
+            return [Friday::t('app', '{attribute} is invalid.'), []];
         }
         $pattern = $this->integerOnly ? $this->integerPattern : $this->numberPattern;
         if (!preg_match($pattern, "$value")) {
@@ -125,28 +117,28 @@ class NumberValidator extends Validator
 
         $options = [
             'pattern' => new JsExpression($this->integerOnly ? $this->integerPattern : $this->numberPattern),
-            'message' => Yii::$app->getI18n()->format($this->message, [
+            'message' => Friday::$app->getI18n()->format($this->message, [
                 'attribute' => $label,
-            ], Yii::$app->language),
+            ], Friday::$app->language),
         ];
 
         if ($this->min !== null) {
             // ensure numeric value to make javascript comparison equal to PHP comparison
             // https://github.com/yiisoft/yii2/issues/3118
             $options['min'] = is_string($this->min) ? (float) $this->min : $this->min;
-            $options['tooSmall'] = Yii::$app->getI18n()->format($this->tooSmall, [
+            $options['tooSmall'] = Friday::$app->getI18n()->format($this->tooSmall, [
                 'attribute' => $label,
                 'min' => $this->min,
-            ], Yii::$app->language);
+            ], Friday::$app->language);
         }
         if ($this->max !== null) {
             // ensure numeric value to make javascript comparison equal to PHP comparison
             // https://github.com/yiisoft/yii2/issues/3118
             $options['max'] = is_string($this->max) ? (float) $this->max : $this->max;
-            $options['tooBig'] = Yii::$app->getI18n()->format($this->tooBig, [
+            $options['tooBig'] = Friday::$app->getI18n()->format($this->tooBig, [
                 'attribute' => $label,
                 'max' => $this->max,
-            ], Yii::$app->language);
+            ], Friday::$app->language);
         }
         if ($this->skipOnEmpty) {
             $options['skipOnEmpty'] = 1;
@@ -154,6 +146,6 @@ class NumberValidator extends Validator
 
         ValidationAsset::register($view);
 
-        return 'yii.validation.number(value, messages, ' . Json::htmlEncode($options) . ');';
+        return 'friday.validation.number(value, messages, ' . Json::htmlEncode($options) . ');';
     }
 }

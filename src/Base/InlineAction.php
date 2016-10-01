@@ -42,8 +42,8 @@ class InlineAction extends Action
     {
         $args = $this->controller->bindActionParams($this, $params);
         Friday::trace('Running action: ' . get_class($this->controller) . '::' . $this->actionMethod . '()', __METHOD__);
-       // if (Yii::$app->requestedParams === null) {
-        //    Yii::$app->requestedParams = $args;
+       // if (Friday::$app->requestedParams === null) {
+        //    Friday::$app->requestedParams = $args;
         //}
 
         return call_user_func_array([$this->controller, $this->actionMethod], $args);

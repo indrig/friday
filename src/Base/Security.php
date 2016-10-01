@@ -34,7 +34,7 @@ class Security extends Component
      *
      * > Warning: All OpenSSL ciphers that we recommend are in the default value, i.e. AES in CBC mode.
      *
-     * > Note: Yii's encryption protocol uses the same size for cipher key, HMAC signature key and key
+     * > Note: Friday's encryption protocol uses the same size for cipher key, HMAC signature key and key
      * derivation salt.
      */
     public $allowedCiphers = [
@@ -562,11 +562,11 @@ class Security extends Component
      *
      * ```php
      * // generates the hash (usually done during user registration or when the password is changed)
-     * $hash = Yii::$app->getSecurity()->generatePasswordHash($password);
+     * $hash = Friday::$app->getSecurity()->generatePasswordHash($password);
      * // ...save $hash in database...
      *
      * // during login, validate if the password entered is correct using $hash fetched from database
-     * if (Yii::$app->getSecurity()->validatePassword($password, $hash) {
+     * if (Friday::$app->getSecurity()->validatePassword($password, $hash) {
      *     // password is good
      * } else {
      *     // password is bad

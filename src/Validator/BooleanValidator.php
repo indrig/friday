@@ -1,12 +1,8 @@
 <?php
-/**
- * @link http://www.yiiframework.com/
- * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
- */
+namespace Friday\Validator;
 
-namespace yii\validators;
-
+use Friday;
+use Friday\Asset\ValidationAsset;
 use Yii;
 
 /**
@@ -14,9 +10,6 @@ use Yii;
  *
  * Possible boolean values can be configured via the [[trueValue]] and [[falseValue]] properties.
  * And the comparison can be either [[strict]] or not.
- *
- * @author Qiang Xue <qiang.xue@gmail.com>
- * @since 2.0
  */
 class BooleanValidator extends Validator
 {
@@ -43,7 +36,7 @@ class BooleanValidator extends Validator
     {
         parent::init();
         if ($this->message === null) {
-            $this->message = Yii::t('yii', '{attribute} must be either "{true}" or "{false}".');
+            $this->message = Friday::t('app', '{attribute} must be either "{true}" or "{false}".');
         }
     }
 
@@ -72,11 +65,11 @@ class BooleanValidator extends Validator
         $options = [
             'trueValue' => $this->trueValue,
             'falseValue' => $this->falseValue,
-            'message' => Yii::$app->getI18n()->format($this->message, [
+            'message' => Friday::$app->getI18n()->format($this->message, [
                 'attribute' => $model->getAttributeLabel($attribute),
                 'true' => $this->trueValue,
                 'false' => $this->falseValue,
-            ], Yii::$app->language),
+            ], Friday::$app->language),
         ];
         if ($this->skipOnEmpty) {
             $options['skipOnEmpty'] = 1;

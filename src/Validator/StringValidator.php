@@ -1,21 +1,13 @@
 <?php
-/**
- * @link http://www.yiiframework.com/
- * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
- */
+namespace Friday\Validator;
 
-namespace yii\validators;
-
-use Yii;
+use Friday;
+use Friday\Asset\ValidationAsset;
 
 /**
  * StringValidator validates that the attribute value is of certain length.
  *
  * Note, this validator should only be used with string-typed attributes.
- *
- * @author Qiang Xue <qiang.xue@gmail.com>
- * @since 2.0
  */
 class StringValidator extends Validator
 {
@@ -82,19 +74,19 @@ class StringValidator extends Validator
             $this->length = null;
         }
         if ($this->encoding === null) {
-            $this->encoding = Yii::$app->charset;
+            $this->encoding = Friday::$app->charset;
         }
         if ($this->message === null) {
-            $this->message = Yii::t('yii', '{attribute} must be a string.');
+            $this->message = Friday::t('app', '{attribute} must be a string.');
         }
         if ($this->min !== null && $this->tooShort === null) {
-            $this->tooShort = Yii::t('yii', '{attribute} should contain at least {min, number} {min, plural, one{character} other{characters}}.');
+            $this->tooShort = Friday::t('app', '{attribute} should contain at least {min, number} {min, plural, one{character} other{characters}}.');
         }
         if ($this->max !== null && $this->tooLong === null) {
-            $this->tooLong = Yii::t('yii', '{attribute} should contain at most {max, number} {max, plural, one{character} other{characters}}.');
+            $this->tooLong = Friday::t('app', '{attribute} should contain at most {max, number} {max, plural, one{character} other{characters}}.');
         }
         if ($this->length !== null && $this->notEqual === null) {
-            $this->notEqual = Yii::t('yii', '{attribute} should contain {length, number} {length, plural, one{character} other{characters}}.');
+            $this->notEqual = Friday::t('app', '{attribute} should contain {length, number} {length, plural, one{character} other{characters}}.');
         }
     }
 
@@ -156,31 +148,31 @@ class StringValidator extends Validator
         $label = $model->getAttributeLabel($attribute);
 
         $options = [
-            'message' => Yii::$app->getI18n()->format($this->message, [
+            'message' => Friday::$app->getI18n()->format($this->message, [
                 'attribute' => $label,
-            ], Yii::$app->language),
+            ], Friday::$app->language),
         ];
 
         if ($this->min !== null) {
             $options['min'] = $this->min;
-            $options['tooShort'] = Yii::$app->getI18n()->format($this->tooShort, [
+            $options['tooShort'] = Friday::$app->getI18n()->format($this->tooShort, [
                 'attribute' => $label,
                 'min' => $this->min,
-            ], Yii::$app->language);
+            ], Friday::$app->language);
         }
         if ($this->max !== null) {
             $options['max'] = $this->max;
-            $options['tooLong'] = Yii::$app->getI18n()->format($this->tooLong, [
+            $options['tooLong'] = Friday::$app->getI18n()->format($this->tooLong, [
                 'attribute' => $label,
                 'max' => $this->max,
-            ], Yii::$app->language);
+            ], Friday::$app->language);
         }
         if ($this->length !== null) {
             $options['is'] = $this->length;
-            $options['notEqual'] = Yii::$app->getI18n()->format($this->notEqual, [
+            $options['notEqual'] = Friday::$app->getI18n()->format($this->notEqual, [
                 'attribute' => $label,
                 'length' => $this->length,
-            ], Yii::$app->language);
+            ], Friday::$app->language);
         }
         if ($this->skipOnEmpty) {
             $options['skipOnEmpty'] = 1;
@@ -188,6 +180,6 @@ class StringValidator extends Validator
 
         ValidationAsset::register($view);
 
-        return 'yii.validation.string(value, messages, ' . json_encode($options, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . ');';
+        return 'friday.validation.string(value, messages, ' . json_encode($options, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . ');';
     }
 }

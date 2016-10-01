@@ -1,13 +1,8 @@
 <?php
-/**
- * @link http://www.yiiframework.com/
- * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
- */
+namespace Friday\I18n;
 
-namespace yii\i18n;
-
-use Yii;
+use Friday;
+use Friday\Helper\AliasHelper;
 
 /**
  * GettextMessageSource represents a message source that is based on GNU Gettext.
@@ -22,11 +17,8 @@ use Yii;
  * Translations in one language are kept as MO or PO files under an individual
  * subdirectory whose name is the language ID. The file name is specified via
  * [[catalog]] property, which defaults to 'messages'.
- *
- * @author Qiang Xue <qiang.xue@gmail.com>
- * @since 2.0
  */
-class GettextMessageSource extends MessageSource
+class GetTextMessageSource extends MessageSource
 {
     const MO_FILE_EXT = '.mo';
     const PO_FILE_EXT = '.po';
@@ -78,7 +70,7 @@ class GettextMessageSource extends MessageSource
             $messages = $this->loadFallbackMessages($category, $this->sourceLanguage, $messages, $messageFile);
         } else {
             if ($messages === null) {
-                Yii::error("The message file for category '$category' does not exist: $messageFile", __METHOD__);
+                Friday::error("The message file for category '$category' does not exist: $messageFile", __METHOD__);
             }
         }
 
@@ -104,7 +96,7 @@ class GettextMessageSource extends MessageSource
         $fallbackMessages = $this->loadMessagesFromFile($fallbackMessageFile, $category);
 
         if ($messages === null && $fallbackMessages === null && $fallbackLanguage !== $this->sourceLanguage) {
-            Yii::error("The message file for category '$category' does not exist: $originalMessageFile "
+            Friday::error("The message file for category '$category' does not exist: $originalMessageFile "
                 . "Fallback file does not exist as well: $fallbackMessageFile", __METHOD__);
         } elseif (empty($messages)) {
             return $fallbackMessages;
@@ -127,7 +119,7 @@ class GettextMessageSource extends MessageSource
      */
     protected function getMessageFilePath($language)
     {
-        $messageFile = Yii::getAlias($this->basePath) . '/' . $language . '/' . $this->catalog;
+        $messageFile = AliasHelper::getAlias($this->basePath) . '/' . $language . '/' . $this->catalog;
         if ($this->useMoFile) {
             $messageFile .= self::MO_FILE_EXT;
         } else {
@@ -148,11 +140,11 @@ class GettextMessageSource extends MessageSource
     {
         if (is_file($messageFile)) {
             if ($this->useMoFile) {
-                $gettextFile = new GettextMoFile(['useBigEndian' => $this->useBigEndian]);
+                $getTextFile = new GetTextMoFile(['useBigEndian' => $this->useBigEndian]);
             } else {
-                $gettextFile = new GettextPoFile();
+                $getTextFile = new GetTextPoFile();
             }
-            $messages = $gettextFile->load($messageFile, $category);
+            $messages = $getTextFile->load($messageFile, $category);
             if (!is_array($messages)) {
                 $messages = [];
             }

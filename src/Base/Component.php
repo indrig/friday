@@ -85,7 +85,7 @@ use Friday\Base\Exception\UnknownPropertyException;
  * ]
  * ```
  *
- * where `as tree` stands for attaching a behavior named `tree`, and the array will be passed to [[\Yii::createObject()]]
+ * where `as tree` stands for attaching a behavior named `tree`, and the array will be passed to [[\Friday::createObject()]]
  * to create the behavior object.
  *
  * @property Behavior[] $behaviors List of behaviors attached to this component. This property is read-only.
