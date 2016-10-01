@@ -1,14 +1,13 @@
 <?php
-/**
- * @link http://www.yiiframework.com/
- * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
- */
+namespace Friday\Validator;
 
-namespace yii\validators;
-
-use Yii;
-use yii\db\ActiveRecordInterface;
+use Friday;
+use Friday\Base\Awaitable;
+use Friday\Base\Deferred;
+use Friday\Base\Exception\RuntimeException;
+use Friday\Db\ActiveRecordInterface;
+use Friday\Helper\AwaitableHelper;
+use Throwable;
 
 /**
  * UniqueValidator validates that the attribute value is unique in the specified database table.
@@ -30,9 +29,6 @@ use yii\db\ActiveRecordInterface;
  * // a1 needs to be unique by checking the uniqueness of both a2 and a3 (using a1 value)
  * ['a1', 'unique', 'targetAttribute' => ['a2', 'a1' => 'a3']]
  * ```
- *
- * @author Qiang Xue <qiang.xue@gmail.com>
- * @since 2.0
  */
 class UniqueValidator extends Validator
 {
@@ -67,15 +63,16 @@ class UniqueValidator extends Validator
     {
         parent::init();
         if ($this->message === null) {
-            $this->message = Yii::t('yii', '{attribute} "{value}" has already been taken.');
+            $this->message = Friday::t('{attribute} "{value}" has already been taken.');
         }
     }
 
     /**
      * @inheritdoc
      */
-    public function validateAttribute($model, $attribute)
+    public function validateAttribute($model, $attribute) : Awaitable
     {
+
         /* @var $targetClass ActiveRecordInterface */
         $targetClass = $this->targetClass === null ? get_class($model) : $this->targetClass;
         $targetAttribute = $this->targetAttribute === null ? $attribute : $this->targetAttribute;
@@ -91,9 +88,9 @@ class UniqueValidator extends Validator
 
         foreach ($params as $value) {
             if (is_array($value)) {
-                $this->addError($model, $attribute, Yii::t('yii', '{attribute} is invalid.'));
+                $this->addError($model, $attribute, Friday::t('{attribute} is invalid.'));
 
-                return;
+                return AwaitableHelper::result();
             }
         }
 
@@ -105,35 +102,70 @@ class UniqueValidator extends Validator
         } elseif ($this->filter !== null) {
             $query->andWhere($this->filter);
         }
-
+        /**
+         * @var Friday\Base\BaseObject $targetClass
+         */
+        $deferred = new Deferred();
         if (!$model instanceof ActiveRecordInterface || $model->getIsNewRecord() || $model->className() !== $targetClass::className()) {
             // if current $model isn't in the database yet then it's OK just to call exists()
             // also there's no need to run check based on primary keys, when $targetClass is not the same as $model's class
-            $exists = $query->exists();
+            $query->exists()->await(function ($exists) use($deferred, $model, &$attribute) {
+                if($exists instanceof Throwable){
+                    $deferred->exception($exists);
+                } else {
+                    if ($exists) {
+                        $this->addError($model, $attribute, $this->message);
+                    }
+                    $deferred->result();
+                }
+            });
         } else {
+            /**
+             * @var ActiveRecordInterface $targetClass
+             */
             // if current $model is in the database already we can't use exists()
             /* @var $models ActiveRecordInterface[] */
-            $models = $query->limit(2)->all();
-            $n = count($models);
-            if ($n === 1) {
-                $keys = array_keys($params);
-                $pks = $targetClass::primaryKey();
-                sort($keys);
-                sort($pks);
-                if ($keys === $pks) {
-                    // primary key is modified and not unique
-                    $exists = $model->getOldPrimaryKey() != $model->getPrimaryKey();
+            $query->limit(2)->all()->await(function ($models) use ($deferred, &$params, $targetClass, $model, &$attribute){
+                if($models instanceof Throwable){
+                    $deferred->exception($models);
+                } elseif(is_array($models)) {
+                    $n = count($models);
+                    if ($n === 1) {
+                        $targetClass::primaryKey()->await(function ($primaryKeys) use ($deferred, $model, $models, &$attribute, &$params){
+                            if($primaryKeys instanceof Throwable){
+                                $deferred->exception($primaryKeys);
+                            } elseif(is_array($primaryKeys)) {
+                                $keys = array_keys($params);
+                                sort($keys);
+                                sort($primaryKeys);
+                                if ($keys === $primaryKeys) {
+                                    // primary key is modified and not unique
+                                    if ($model->getOldPrimaryKey() != $model->getPrimaryKey()) {
+                                        $this->addError($model, $attribute, $this->message);
+                                    }
+                                } else {
+                                    // non-primary key, need to exclude the current record based on PK
+                                    if ($models[0]->getPrimaryKey() != $model->getOldPrimaryKey()) {
+                                        $this->addError($model, $attribute, $this->message);
+                                    }
+                                }
+                                $deferred->result();
+                            } else {
+                                $deferred->exception(new RuntimeException("Unexpected result type."));
+                            }
+
+                        });
+                    } elseif($n > 1) {
+                        $this->addError($model, $attribute, $this->message);
+                        $deferred->result();
+                    }
                 } else {
-                    // non-primary key, need to exclude the current record based on PK
-                    $exists = $models[0]->getPrimaryKey() != $model->getOldPrimaryKey();
+                    $deferred->exception(new RuntimeException("Unexpected result type."));
                 }
-            } else {
-                $exists = $n > 1;
-            }
+            });
+
         }
 
-        if ($exists) {
-            $this->addError($model, $attribute, $this->message);
-        }
+        return $deferred->awaitable();
     }
 }

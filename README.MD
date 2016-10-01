@@ -8,6 +8,6 @@ Represent asynchronous web server application to provide all feature this librar
  - Routing
  - Asynchronous DataBase (mysqli driver needed)
  - Asynchronous Cacheing (redis) or synchronous (Array or FileSystem for test and development)
- - i18l support
+ - i18n support
  - Connection context feature can fast switch between connection and permit use one socket connection to different tasks.
   

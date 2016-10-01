@@ -240,7 +240,11 @@ class Validator extends Component
                 || $this->skipOnEmpty && $this->isEmpty($model->$attribute);
             if (!$skip) {
                 if ($this->when === null || call_user_func($this->when, $model, $attribute)) {
-                    $validators[] = $this->validateAttribute($model, $attribute);
+                    $validator = $this->validateAttribute($model, $attribute);
+
+                    if($validator instanceof Awaitable) {
+                        $validators[] = $validator;
+                    }
                 }
             }
         }
