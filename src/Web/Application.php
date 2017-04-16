@@ -48,6 +48,8 @@ class Application extends AbstractApplication
         parent::init();
 
         $this->_contexts = new SplObjectStorage();
+
+
     }
 
     /**

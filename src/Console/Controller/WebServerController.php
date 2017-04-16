@@ -18,20 +18,17 @@ class WebServerController extends Controller{
          * @var Friday\Base\ChildProcess $process
          */
         $process = Friday::createObject([
-            'class' => Friday\Base\ChildProcess::class,
-            'cmd'   => 'ping ya.ru'
+            'class' => Friday\Base\InnerChildProcess::class,
+            'cmd'   => 'php '  . Friday\Helper\AliasHelper::getAlias('@root/test.php')
         ]);
 
 
         $process->on('exit', function(Friday\Base\Event\ExitEvent $event) {
-            echo "Child exit\n";
+            echo "Child exit {$event->code}, {$event->termSignal}\n";
         });
 
         Friday::$app->getLooper()->task(function () use ($process){
             $process->start();
-            $process->stdout->on(Friday\Stream\Stream::EVENT_CONTENT, function(ContentEvent $event) {
-                echo "Child script says: " . $event->content;
-            });
         });
 
         return Friday::$app->getLooper();

@@ -5,6 +5,7 @@ use Friday;
 use Friday\Base\Exception\InvalidArgumentException;
 use Friday\Base\Exception\InvalidConfigException;
 use Friday\Helper\AliasHelper;
+use Friday\Stream\Stream;
 
 /**
  * Class AbstractApplication
@@ -72,6 +73,18 @@ class AbstractApplication extends Module {
      */
     protected $_context;
 
+    /**
+     * @var Friday\Stream\Stream|null
+     */
+    protected $_stdIn;
+    /**
+     * @var Friday\Stream\Stream|null
+     */
+    protected $_stdOut;
+    /**
+     * @var Friday\Stream\Stream|null
+     */
+    protected $_stdErr;
     /**
      * @var string
      */
@@ -171,6 +184,25 @@ class AbstractApplication extends Module {
     public function init()
     {
         $this->bootstrap();
+
+        $this->_stdIn = Friday::createObject([
+            'class' => Stream::class,
+            'stream' => fopen('php://stdin', 'r')
+        ]);
+
+        $this->_stdOut = Friday::createObject([
+            'class' => Stream::class,
+            'stream' => fopen('php://stdout', 'w')
+        ]);
+
+        $this->_stdErr = Friday::createObject([
+            'class' => Stream::class,
+            'stream' => fopen('php://stderr', 'w')
+        ]);
+
+        /*$this->getLooper()->taskPeriodic(function (){
+            $this->commandCall('date', ['r']);
+        }, 5);*/
     }
     /**
      * Returns the directory that stores runtime files.
@@ -398,5 +430,32 @@ class AbstractApplication extends Module {
     public function getContext()
     {
         return $this->_context;
+    }
+
+
+    protected $_rpcCommands = [];
+
+    public function commandCall($method, $params){
+        $deferred = new Deferred();
+        if($this->_stdOut === null){
+            throw new Friday\Base\Exception\RuntimeException('Std out not exists.');
+        }
+
+        do{
+            $id = $this->getSecurity()->generateGuid();
+        }while(isset($this->_rpcCommands[$id]));
+
+        $json = Friday\Helper\Json::encode([
+            'id'        => $id,
+            'method'    => $method,
+            'params'    => $params,
+
+        ]);
+        $microtime = microtime(true);
+        $this->_rpcCommands[$id] = [$deferred, $microtime];
+
+        $this->_stdOut->write($json);
+
+        return $deferred->awaitable();
     }
 }
