@@ -44,14 +44,14 @@ class Tasks
     }
 
     /**
-     * @param Task $timer
+     * @param Task $task
      */
-    public function add(Task $timer)
+    public function add(Task $task)
     {
-        $interval = $timer->getInterval();
+        $interval = $task->getInterval();
         $scheduledAt = $interval + $this->getTime();
-        $this->tasks->attach($timer, $scheduledAt);
-        $this->scheduler->insert($timer, -$scheduledAt);
+        $this->tasks->attach($task, $scheduledAt);
+        $this->scheduler->insert($task, -$scheduledAt);
     }
 
     /**

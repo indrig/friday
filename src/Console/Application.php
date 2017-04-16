@@ -5,6 +5,7 @@ use Friday\Base\AbstractApplication;
 use Friday\Base\Exception\Exception;
 use Friday\Base\Exception\ExitException;
 use Friday\Base\Exception\InvalidRouteException;
+use Friday\Base\Looper;
 
 class Application extends AbstractApplication{
     /**
@@ -83,6 +84,7 @@ class Application extends AbstractApplication{
     public function init()
     {
         parent::init();
+
         if ($this->enableCoreCommands) {
             foreach ($this->coreCommands() as $id => $command) {
                 if (!isset($this->controllerMap[$id])) {
@@ -165,6 +167,13 @@ class Application extends AbstractApplication{
 
         if ($result instanceof Response) {
             return $result;
+        } elseif ($result instanceof Looper){
+            $result->loop();
+
+            $response = $this->getResponse();
+            $response->exitStatus = 0;
+
+            return $response;
         } else {
             $response = $this->getResponse();
             $response->exitStatus = $result;

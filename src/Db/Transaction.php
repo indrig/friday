@@ -1,5 +1,5 @@
 <?php
-namespace Fridat\Db;
+namespace Friday\Db;
 
 use Exception;
 use Friday;

@@ -90,9 +90,6 @@ abstract class ErrorHandler extends Component
 
         // set preventive HTTP status code to 500 in case error handling somehow fails and headers are sent
         // HTTP exceptions will override this value in renderException()
-        if (PHP_SAPI !== 'cli') {
-            http_response_code(500);
-        }
 
         try {
             $this->logException($exception);

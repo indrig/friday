@@ -1,7 +1,7 @@
 <?php
 namespace Friday\Db\Mysqli;
 
-use Fridat\Db\Transaction;
+use Friday\Db\Transaction;
 use Friday;
 use Friday\Base\Exception\InvalidArgumentException;
 use Friday\Db\AbstractConnection;

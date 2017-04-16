@@ -26,6 +26,7 @@ class ErrorHandler extends \Friday\Base\ErrorHandler
      */
     protected function renderException($exception)
     {
+
         if ($exception instanceof Exception && ($exception instanceof UserException || !FRIDAY_DEBUG)) {
             $message = $this->formatMessage($exception->getName() . ': ') . $exception->getMessage();
         } elseif (FRIDAY_DEBUG) {
