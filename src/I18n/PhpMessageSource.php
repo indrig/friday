@@ -1,13 +1,8 @@
 <?php
-/**
- * @link http://www.yiiframework.com/
- * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
- */
+namespace Friday\I18n;
 
-namespace yii\i18n;
-
-use Yii;
+use Friday;
+use Friday\Helper\AliasHelper;
 
 /**
  * PhpMessageSource represents a message source that stores translated messages in PHP scripts.
@@ -27,9 +22,6 @@ use Yii;
  * ```
  *
  * You may use [[fileMap]] to customize the association between category names and the file names.
- *
- * @author Qiang Xue <qiang.xue@gmail.com>
- * @since 2.0
  */
 class PhpMessageSource extends MessageSource
 {
@@ -80,7 +72,7 @@ class PhpMessageSource extends MessageSource
             $messages = $this->loadFallbackMessages($category, $this->sourceLanguage, $messages, $messageFile);
         } else {
             if ($messages === null) {
-                Yii::error("The message file for category '$category' does not exist: $messageFile", __METHOD__);
+                Friday::error("The message file for category '$category' does not exist: $messageFile", __METHOD__);
             }
         }
 
@@ -106,7 +98,7 @@ class PhpMessageSource extends MessageSource
         $fallbackMessages = $this->loadMessagesFromFile($fallbackMessageFile);
 
         if ($messages === null && $fallbackMessages === null && $fallbackLanguage !== $this->sourceLanguage) {
-            Yii::error("The message file for category '$category' does not exist: $originalMessageFile "
+            Friday::error("The message file for category '$category' does not exist: $originalMessageFile "
                 . "Fallback file does not exist as well: $fallbackMessageFile", __METHOD__);
         } elseif (empty($messages)) {
             return $fallbackMessages;
@@ -130,7 +122,7 @@ class PhpMessageSource extends MessageSource
      */
     protected function getMessageFilePath($category, $language)
     {
-        $messageFile = Yii::getAlias($this->basePath) . "/$language/";
+        $messageFile = AliasHelper::getAlias($this->basePath) . "/$language/";
         if (isset($this->fileMap[$category])) {
             $messageFile .= $this->fileMap[$category];
         } else {

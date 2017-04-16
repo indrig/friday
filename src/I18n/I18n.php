@@ -47,7 +47,7 @@ class I18n extends Component
     {
         parent::init();
         if (!isset($this->translations['friday']) && !isset($this->translations['friday*'])) {
-            $this->translations['yii'] = [
+            $this->translations['friday'] = [
                 'class' => 'Friday\I18n\PhpMessageSource',
                 'sourceLanguage' => 'en-US',
                 'basePath' => '@friday/messages',

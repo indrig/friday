@@ -538,7 +538,6 @@ class Module extends ServiceLocator
      */
     public function createControllerByID($id)
     {
-        var_dump($id);
         $pos = strrpos($id, '/');
         if ($pos === false) {
             $prefix = '';

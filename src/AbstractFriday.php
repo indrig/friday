@@ -64,7 +64,7 @@ abstract class AbstractFriday{
     public static $classMap = [];
 
     /**
-     * @var \Friday\Web\Application
+     * @var \Friday\Web\Application|\Friday\Console\Application
      */
     public static $app;
 
