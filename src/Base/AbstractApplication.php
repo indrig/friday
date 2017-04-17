@@ -5,6 +5,7 @@ use Friday;
 use Friday\Base\Exception\InvalidArgumentException;
 use Friday\Base\Exception\InvalidConfigException;
 use Friday\Helper\AliasHelper;
+use Friday\Helper\Json;
 use Friday\Stream\Stream;
 
 /**
@@ -200,9 +201,7 @@ class AbstractApplication extends Module {
             'stream' => fopen('php://stderr', 'w')
         ]);
 
-        /*$this->getLooper()->taskPeriodic(function (){
-            $this->commandCall('date', ['r']);
-        }, 5);*/
+        $this->_stdIn->on(Stream::EVENT_CONTENT, [$this, 'onInContent']);
     }
     /**
      * Returns the directory that stores runtime files.
@@ -445,7 +444,7 @@ class AbstractApplication extends Module {
             $id = $this->getSecurity()->generateGuid();
         }while(isset($this->_rpcCommands[$id]));
 
-        $json = Friday\Helper\Json::encode([
+        $json = Json::encode([
             'id'        => $id,
             'method'    => $method,
             'params'    => $params,
@@ -455,7 +454,34 @@ class AbstractApplication extends Module {
         $this->_rpcCommands[$id] = [$deferred, $microtime];
 
         $this->_stdOut->write($json);
-
         return $deferred->awaitable();
+    }
+
+    /**
+     * @param Friday\Stream\Event\ContentEvent $contentEvent
+     */
+    public function onInContent(Friday\Stream\Event\ContentEvent $contentEvent){
+        try{
+            $result = Json::decode($contentEvent->content);
+            if(is_array($result) && isset($result['id']) && (is_int($result['id']) || is_string($result['id']))){
+                $id = $result['id'];
+
+                if($this->_rpcCommands[$id]){
+                    /**
+                     * @var Deferred $deferred
+                     * @var float $microtime
+                     */
+                    list($deferred, $microtime) = $this->_rpcCommands[$id];
+
+                    if(isset($result['result'])) {
+                        $deferred->result($result['result']);
+                    } else {
+                        $deferred->exception(array_key_exists('error', $result) ? $result['error'] : null);
+                    }
+                }
+            }
+        }catch (InvalidArgumentException $exception){
+            Friday::error($exception);
+        }
     }
 }

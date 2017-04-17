@@ -122,11 +122,13 @@ class ChildProcess extends Component{
             'stream' => $this->pipes[0]
         ]);
         $this->stdin->pause();
+
         $this->stdout = Friday::createObject([
             'class' => Stream::class,
             'stream' => $this->pipes[1]
         ]);
         $this->stdout->on('close', $streamCloseHandler);
+
         $this->stderr = Friday::createObject([
             'class' => Stream::class,
             'stream' => $this->pipes[2]

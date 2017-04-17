@@ -9,26 +9,19 @@ use Friday\Stream\Stream;
 use Throwable;
 
 class InnerChildProcess extends ChildProcess{
-    public function init()
-    {
-        $this->on(Stream::EVENT_CONTENT, [$this, 'onContent']);
-    }
-
-    public function onContent(ContentEvent $event){
-
-    }
 
     public function start(Looper $loop = null, $interval = 0.1)
     {
         parent::start($loop, $interval);
 
         $this->stdout->on(Stream::EVENT_CONTENT, function(ContentEvent $event) {
-
             try {
                 $command = Json::decode($event->content);
             }catch (InvalidArgumentException $exception) {
+                echo $event->content;
                 return;
             }
+
 
             if(is_array($command) && isset($command['id']) && isset($command['method'])) {
                 if(!isset($command['params'])) {
@@ -40,6 +33,7 @@ class InnerChildProcess extends ChildProcess{
 
                 $id = $command['id'];
                 try {
+
                     $result = call_user_func_array($command['method'], $params);
                     $this->commandResult($id, $result);
                     echo "Command {$id} - result\n";
