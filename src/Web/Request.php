@@ -549,7 +549,7 @@ class Request extends Component implements ReadableStreamInterface
     }
 
     public function getBaseUrl (){
-        return '/';
+        return '';
     }
 
     public function getScriptUrl(){
