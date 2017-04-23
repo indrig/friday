@@ -186,7 +186,7 @@ class AbstractApplication extends Module {
     {
         $this->bootstrap();
 
-        $this->_stdIn = Friday::createObject([
+      /*  $this->_stdIn = Friday::createObject([
             'class' => Stream::class,
             'stream' => fopen('php://stdin', 'r')
         ]);
@@ -201,7 +201,7 @@ class AbstractApplication extends Module {
             'stream' => fopen('php://stderr', 'w')
         ]);
 
-        $this->_stdIn->on(Stream::EVENT_CONTENT, [$this, 'onInContent']);
+        $this->_stdIn->on(Stream::EVENT_CONTENT, [$this, 'onInContent']);*/
     }
     /**
      * Returns the directory that stores runtime files.

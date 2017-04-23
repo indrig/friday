@@ -85,7 +85,6 @@ class Application extends AbstractApplication
      */
     public function handleRequest(RequestEvent $event)
     {
-
         $connectionContent = ConnectionContext::create($event->request, $event->response);
 
 
@@ -207,9 +206,9 @@ class Application extends AbstractApplication
     public function coreComponents()
     {
         return array_merge(parent::coreComponents(), [
-            'server' => ['class' => 'Friday\Web\Server'],
-            'urlManager' => ['class' => 'Friday\Web\UrlManager'],
-            'errorHandler' => ['class' => 'Friday\Web\ErrorHandler'],
+            'server'        => ['class' => 'Friday\Web\Server'],
+            'urlManager'    => ['class' => 'Friday\Web\UrlManager'],
+            'errorHandler'   => ['class' => 'Friday\Web\ErrorHandler'],
         ]);
     }
 

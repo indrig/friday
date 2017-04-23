@@ -12,6 +12,6 @@ class JqueryAsset extends AssetBundle
 
     public function init()
     {
-        $this->js[] = FRIDAY_DEBUG ? 'jquery.js' : 'jquery.min.js';
+        $this->js[] = FRIDAY_DEBUG ? 'jquery-3.2.1.js' : 'jquery-3.2.1.min.js';
     }
 }
