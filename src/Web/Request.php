@@ -529,7 +529,7 @@ class Request extends Component implements ReadableStreamInterface
 
                     $deferred->result([$route, $this->_get]);
                 } else {
-                    $deferred->exception(new NotFoundHttpException(Friday::t('Page not found.')));
+                    $deferred->exception(new NotFoundHttpException(Friday::t('friday','Page not found.')));
                 }
             }catch (Throwable $e) {
                 $deferred->exception($e);
