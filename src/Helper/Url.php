@@ -88,6 +88,7 @@ class Url
     public static function toRoute($route, $scheme = false)
     {
         $route = (array) $route;
+
         $route[0] = static::normalizeRoute($route[0]);
 
         if ($scheme) {
@@ -121,6 +122,7 @@ class Url
         $route = AliasHelper::getAlias((string) $route);
         if (strncmp($route, '/', 1) === 0) {
             // absolute route
+
             return ltrim($route, '/');
         }
 

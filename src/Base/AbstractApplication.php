@@ -119,12 +119,12 @@ class AbstractApplication extends Module {
         static::setInstance($this);
 
        // $this->state = self::STATE_BEGIN;
-
         $this->preInit($config);
 
         $this->registerErrorHandler($config);
 
         Component::__construct($config);
+
     }
 
     /**
@@ -295,7 +295,7 @@ class AbstractApplication extends Module {
 
     /**
      * Returns the error handler component.
-     * @return \Friday\Web\ErrorHandler|\Friday\Console\ErrorHandler the error handler application component.
+     * @return \Friday\Web\ErrorHandler|\Friday\Console\ErrorHandler|Component the error handler application component.
      */
     public function getErrorHandler()
     {
@@ -369,21 +369,21 @@ class AbstractApplication extends Module {
     }
 
     /**
-     * @return Security
+     * @return Security|Component
      */
     public function getSecurity(){
         return $this->get('security');
     }
 
     /**
-     * @return Friday\Db\Adapter
+     * @return Friday\Db\Adapter|Component
      */
     public function getDb(){
         return $this->get('db');
     }
 
     /**
-     * @return Friday\Cache\AbstractCache
+     * @return Friday\Cache\AbstractCache|Component
      */
     public function getCache(){
         return $this->get('cache');
@@ -400,14 +400,14 @@ class AbstractApplication extends Module {
     }
 
     /**
-     * @return Friday\I18n\I18n
+     * @return Friday\I18n\I18n|Component
      */
     public function getI18n(){
         return $this->get('i18n');
     }
 
     /**
-     * @return Friday\I18n\Formatter
+     * @return Friday\I18n\Formatter|Component
      */
     public function getFormatter(){
         return $this->get('formatter');
@@ -483,5 +483,15 @@ class AbstractApplication extends Module {
         }catch (InvalidArgumentException $exception){
             Friday::error($exception);
         }
+    }
+
+    /**
+     * Returns an ID that uniquely identifies this module among all modules within the current application.
+     * Since this is an application instance, it will always return an empty string.
+     * @return string the unique ID of the module.
+     */
+    public function getUniqueId()
+    {
+        return '';
     }
 }

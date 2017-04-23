@@ -71,11 +71,6 @@ class Application extends AbstractApplication
             ->on(Server::EVENT_REQUEST, [$this, 'handleRequest'])
             ->run();
 
-
-       // $looper->taskPeriodic(function () {
-       //     Friday\Helper\Console::stdout('memory_usage: ' . number_format(memory_get_usage(true), 0, '.', ' ') . "b\n");
-       // }, 2);
-
         $looper->loop();
 
     }
