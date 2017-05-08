@@ -12,12 +12,10 @@ use Friday\Base\Exception\RuntimeException;
 use Friday\Base\ResultOrExceptionWrapperInterface;
 use Friday\Helper\FileHelper;
 use Friday\Helper\Url;
-use Friday\Promise\PromiseInterface;
 use Friday\SocketServer\Connection;
 use Friday\Stream\Stream;
 use Friday\Web\HttpException\HttpException;
 use Throwable;
-use Friday\SocketServer\Event\ErrorEvent as SocketServerErrorEvent;
 /**
  * Class Response
  * @package Friday\Web
@@ -183,7 +181,7 @@ class Response extends Component
             $this->close();
         });
 
-        $this->_connection->on(Connection::EVENT_ERROR, function (SocketServerErrorEvent $event) {
+        $this->_connection->on(Connection::EVENT_ERROR, function ($event) {
             $this->trigger(static::EVENT_ERROR, $event);
             $this->close();
         });
@@ -307,27 +305,38 @@ class Response extends Component
     {
         $deferred = new Deferred();
 
-        $this->connectionContext->task(function () use ($deferred, $finishAfterSend) {
-            if ($this->_isSent) {
-                $deferred->exception(new RuntimeException('Response already sended.'));
-            } else {
-                $this->_isSent = true;
+        if($this->connectionContext === null){
+            $deferred->exception(new RuntimeException('Connection content is NULL.'));
+        } else {
+            $this->connectionContext->task(function () use ($deferred, $finishAfterSend) {
+                if ($this->_isSent) {
+                    $deferred->exception(new RuntimeException('Response already sanded.'));
+                } else {
+                    $this->_isSent = true;
 
-                try {
-                    $this->trigger(self::EVENT_BEFORE_SEND);
-                    $this->prepare()
-                        ->await(function (ResultOrExceptionWrapperInterface $result) use ($deferred, $finishAfterSend){
-                        if($result->isSucceeded()) {
-                            $this->trigger(self::EVENT_AFTER_PREPARE);
-
-                            $this->sendHeaders()->await(function (ResultOrExceptionWrapperInterface $result) use ($deferred, $finishAfterSend) {
+                    try {
+                        $this->trigger(self::EVENT_BEFORE_SEND);
+                        $this->prepare()
+                            ->await(function (ResultOrExceptionWrapperInterface $result) use ($deferred, $finishAfterSend){
                                 if($result->isSucceeded()) {
-                                    $this->sendContent()->await(function (ResultOrExceptionWrapperInterface $result) use ($deferred, $finishAfterSend) {
+                                    $this->trigger(self::EVENT_AFTER_PREPARE);
+
+                                    $this->sendHeaders()->await(function (ResultOrExceptionWrapperInterface $result) use ($deferred, $finishAfterSend) {
                                         if($result->isSucceeded()) {
-                                            if ($finishAfterSend) {
-                                                $this->connectionContext->finish();
-                                            }
-                                            $deferred->result();
+                                            $this->sendContent()->await(function (ResultOrExceptionWrapperInterface $result) use ($deferred, $finishAfterSend) {
+                                                if($result->isSucceeded()) {
+                                                    if ($finishAfterSend) {
+                                                        $this->connectionContext->finish();
+                                                    }
+                                                    $deferred->result();
+                                                } else {
+                                                    if ($finishAfterSend) {
+                                                        $this->connectionContext->finish();
+                                                    }
+
+                                                    $deferred->exception($result->getException());
+                                                }
+                                            }, true) ;
                                         } else {
                                             if ($finishAfterSend) {
                                                 $this->connectionContext->finish();
@@ -335,7 +344,7 @@ class Response extends Component
 
                                             $deferred->exception($result->getException());
                                         }
-                                    }, true) ;
+                                    }, true);
                                 } else {
                                     if ($finishAfterSend) {
                                         $this->connectionContext->finish();
@@ -344,23 +353,17 @@ class Response extends Component
                                     $deferred->exception($result->getException());
                                 }
                             }, true);
-                        } else {
-                            if ($finishAfterSend) {
-                                $this->connectionContext->finish();
-                            }
-
-                            $deferred->exception($result->getException());
+                    } catch (Throwable $throwable) {
+                        if ($finishAfterSend) {
+                            $this->connectionContext->finish();
                         }
-                    }, true);
-                } catch (Throwable $throwable) {
-                    if ($finishAfterSend) {
-                        $this->connectionContext->finish();
-                    }
 
-                    $deferred->exception($throwable);
+                        $deferred->exception($throwable);
+                    }
                 }
-            }
-        });
+            });
+        }
+
 
         return $deferred->awaitable();
     }
@@ -596,6 +599,8 @@ class Response extends Component
      * @param integer $value the status code
      * @param string $text the status text. If not set, it will be set automatically based on the status code.
      * @throws InvalidArgumentException if the status code is invalid.
+     *
+     * @return static
      */
     public function setStatusCode($value, $text = null)
     {
@@ -611,6 +616,8 @@ class Response extends Component
         } else {
             $this->statusText = $text;
         }
+
+        return $this;
     }
 
     /**
@@ -832,12 +839,15 @@ class Response extends Component
     {
         $headers = $this->getHeaders();
 
-        $disposition = $inline ? 'inline' : 'attachment';
-        $headers->setDefault('Pragma', 'public')
-            ->setDefault('Accept-Ranges', 'bytes')
-            ->setDefault('Expires', '0')
-            ->setDefault('Cache-Control', 'must-revalidate, post-check=0, pre-check=0')
-            ->setDefault('Content-Disposition', "$disposition; filename=\"$attachmentName\"");
+        if($attachmentName !== false){
+            $disposition = $inline ? 'inline' : 'attachment';
+            $headers->setDefault('Pragma', 'public')
+                ->setDefault('Accept-Ranges', 'bytes')
+                ->setDefault('Expires', '0')
+                ->setDefault('Cache-Control', 'must-revalidate, post-check=0, pre-check=0')
+                ->setDefault('Content-Disposition', "$disposition; filename=\"$attachmentName\"");
+
+        }
 
         if ($mimeType !== null) {
             $headers->setDefault('Content-Type', $mimeType);
@@ -895,7 +905,9 @@ class Response extends Component
         }
 
         $mimeType = isset($options['mimeType']) ? $options['mimeType'] : 'application/octet-stream';
+
         $this->setDownloadHeaders($attachmentName, $mimeType, !empty($options['inline']), $end - $begin + 1);
+
 
         $this->format = self::FORMAT_RAW;
         $this->stream = [$handle, $begin, $end];

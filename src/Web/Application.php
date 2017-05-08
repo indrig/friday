@@ -1,4 +1,5 @@
 <?php
+
 namespace Friday\Web;
 
 use Friday;
@@ -91,17 +92,43 @@ class Application extends AbstractApplication
 
         $this->setContext($connectionContent);
 
-        $path = $connectionContent->getRequest()->getPath();
-        if($webRoot = AliasHelper::getAlias('@webroot', false)){
-            if($realpath = @realpath($webRoot . $path)) {
+        $request = $connectionContent->getRequest();
+        $response = $connectionContent->getResponse();
+        $path = $request->getPath();
 
-                if(substr(str_replace('\\', '/', $realpath), strlen($webRoot)) === $path){
-                    if(is_file($realpath)) {
+        if (false !== $assetFileInfo = AssetManager::getPublishedAssetFileInfo($path)) {
+            if ($realPath = @realpath($assetFileInfo['path'])) {
+
+                if($request->getHeaders()->get(' If-None-Match') === $assetFileInfo['tag']){
+                    $response->setStatusCode(304)->send();
+                    return;
+                }
+
+                if (is_file($realPath)) {
+                    $response->getHeaders()
+                        ->add('Cache-Control', 'public, max-age=31536000')
+                        ->add('Last-Modified', date('r', $assetFileInfo['time']))
+                        ->add('ETag', $assetFileInfo['tag']);
+                    try {
+                        $response->sendFile($realPath, false)->send();
+                    } catch (Throwable $throwable) {
+                        Friday::$app->errorHandler->handleException($throwable);
+                    }
+                    return;
+                }
+
+            }
+        }
+
+
+        if ($webRoot = AliasHelper::getAlias('@webroot', false)) {
+            if ($realPath = @realpath($webRoot . $path)) {
+                if (substr(str_replace('\\', '/', $realPath), strlen($webRoot)) === $path) {
+                    if (is_file($realPath)) {
                         $response = $connectionContent->getResponse();
                         try {
-                            $response->sendFile($realpath)->send();
-
-                        }catch (Throwable $throwable){
+                            $response->sendFile($realPath)->send();
+                        } catch (Throwable $throwable) {
                             Friday::$app->errorHandler->handleException($throwable);
                         }
                         return;
@@ -133,9 +160,9 @@ class Application extends AbstractApplication
                                 $result = $result->getResult();
                                 if ($result instanceof Awaitable) {
                                     $result->await(function ($result) use ($connectionContent) {
-                                        if($result instanceof Throwable){
+                                        if ($result instanceof Throwable) {
                                             Friday::$app->errorHandler->handleException($result);
-                                        }elseif ($result instanceof Response) {
+                                        } elseif ($result instanceof Response) {
                                             $response = $result;
                                             $response->send();
                                         } else {
@@ -201,12 +228,11 @@ class Application extends AbstractApplication
     public function coreComponents()
     {
         return array_merge(parent::coreComponents(), [
-            'server'        => ['class' => 'Friday\Web\Server'],
-            'urlManager'    => ['class' => 'Friday\Web\UrlManager'],
-            'errorHandler'   => ['class' => 'Friday\Web\ErrorHandler'],
+            'server' => ['class' => 'Friday\Web\Server'],
+            'urlManager' => ['class' => 'Friday\Web\UrlManager'],
+            'errorHandler' => ['class' => 'Friday\Web\ErrorHandler'],
         ]);
     }
-
 
 
     /**
@@ -289,7 +315,8 @@ class Application extends AbstractApplication
     /**
      * @return Friday\Base\Component|null
      */
-    public function getView(){
+    public function getView()
+    {
         return $this->getContext()->getView();
     }
 }

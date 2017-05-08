@@ -13,7 +13,10 @@ use Friday\Stream\Event\ContentEvent;
  * @return integer
  */
 class WebServerController extends Controller{
-    public function actionIndex($address = '127.0.0.1'){
+
+    public $defaultAction = 'start';
+
+    public function actionStart($address = '127.0.0.1'){
         /**
          * @var Friday\Base\ChildProcess $process
          */
