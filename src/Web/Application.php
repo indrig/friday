@@ -6,8 +6,6 @@ use Friday\Base\Awaitable;
 use Friday\Base\Exception\InvalidRouteException;
 use Friday\Base\ResultOrExceptionWrapperInterface;
 use Friday\Helper\AliasHelper;
-use Friday\Helper\FileHelper;
-use Friday\Stream\Stream;
 use Friday\Web\Event\ConnectionContextErrorEvent;
 use Friday\Web\Event\ConnectionContextEvent;
 use Friday\Web\Event\RequestEvent;
