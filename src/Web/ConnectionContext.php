@@ -91,7 +91,7 @@ class ConnectionContext extends ServiceLocator implements ContextInterface
     }
 
     /**
-     * @return Request
+     * @return Request|Friday\Base\Component
      */
     public function getRequest()
     {
@@ -99,7 +99,7 @@ class ConnectionContext extends ServiceLocator implements ContextInterface
     }
 
     /**
-     * @return Response
+     * @return Response|Friday\Base\Component
      */
     public function getResponse()
     {
@@ -271,7 +271,7 @@ class ConnectionContext extends ServiceLocator implements ContextInterface
     }
 
     /**
-     * @return User
+     * @return User|Friday\Base\Component
      */
     public function getUser(){
         return $this->get('user');

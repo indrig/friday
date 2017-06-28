@@ -10,9 +10,7 @@ use Friday\Helper\AliasHelper;
  * AssetConverter supports conversion of several popular script formats into JS or CSS scripts.
  *
  * It is used by [[AssetManager]] to convert files after they have been published.
- *
- * @author Qiang Xue <qiang.xue@gmail.com>
- * @since 2.0
+
  */
 class AssetConverter extends Component implements AssetConverterInterface
 {

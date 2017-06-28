@@ -92,7 +92,6 @@ class UrlRule extends BaseObject implements UrlRuleInterface
      *
      * @see parseRequest()
      * @see createUrl()
-     * @since 2.0.7
      */
     protected $placeholders = [];
 
@@ -359,8 +358,6 @@ class UrlRule extends BaseObject implements UrlRuleInterface
     /**
      * Returns list of regex for matching parameter.
      * @return array parameter keys and regexp rules.
-     *
-     * @since 2.0.6
      */
     protected function getParamRules()
     {
@@ -375,7 +372,6 @@ class UrlRule extends BaseObject implements UrlRuleInterface
      * @param array $matches result of `preg_match()` call
      * @return array input array with replaced placeholder keys
      * @see placeholders
-     * @since 2.0.7
      */
     protected function substitutePlaceholderNames(array $matches)
     {

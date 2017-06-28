@@ -123,6 +123,7 @@ class AbstractApplication extends Module {
         $this->registerErrorHandler($config);
 
         Component::__construct($config);
+
     }
 
     /**
@@ -184,7 +185,7 @@ class AbstractApplication extends Module {
     {
         $this->bootstrap();
 
-        $this->_stdIn = Friday::createObject([
+      /*  $this->_stdIn = Friday::createObject([
             'class' => Stream::class,
             'stream' => fopen('php://stdin', 'r')
         ]);
@@ -199,7 +200,7 @@ class AbstractApplication extends Module {
             'stream' => fopen('php://stderr', 'w')
         ]);
 
-        $this->_stdIn->on(Stream::EVENT_CONTENT, [$this, 'onInContent']);
+        $this->_stdIn->on(Stream::EVENT_CONTENT, [$this, 'onInContent']);*/
     }
     /**
      * Returns the directory that stores runtime files.
@@ -480,5 +481,15 @@ class AbstractApplication extends Module {
         }catch (InvalidArgumentException $exception){
             Friday::error($exception);
         }
+    }
+
+    /**
+     * Returns an ID that uniquely identifies this module among all modules within the current application.
+     * Since this is an application instance, it will always return an empty string.
+     * @return string the unique ID of the module.
+     */
+    public function getUniqueId()
+    {
+        return '';
     }
 }

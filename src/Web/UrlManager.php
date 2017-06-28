@@ -1,6 +1,7 @@
 <?php
 namespace Friday\Web;
 
+use Composer\Cache;
 use Friday;
 use Friday\Base\Component;
 use Friday\Base\Exception\InvalidConfigException;
@@ -8,8 +9,8 @@ use Friday\Base\Exception\InvalidConfigException;
 /**
  * UrlManager handles HTTP request parsing and creation of URLs based on a set of rules.
  *
- * UrlManager is configured as an application component in [[\yii\base\Application]] by default.
- * You can access that instance via `Yii::$app->urlManager`.
+ * UrlManager is configured as an application component in [[\Friday\Web\Application]] by default.
+ * You can access that instance via `Friday::$app->urlManager`.
  *
  * You can modify its configuration by adding an array to your application config under `components`
  * as it is shown in the following example:
@@ -29,29 +30,18 @@ use Friday\Base\Exception\InvalidConfigException;
  * [[createAbsoluteUrl()]] to prepend to created URLs.
  * @property string $scriptUrl The entry script URL that is used by [[createUrl()]] to prepend to created
  * URLs.
-
  */
 class UrlManager extends Component
 {
     /**
-     * @var boolean whether to enable pretty URLs. Instead of putting all parameters in the query
-     * string part of a URL, pretty URLs allow using path info to represent some of the parameters
-     * and can thus produce more user-friendly URLs, such as "/news/Yii-is-released", instead of
-     * "/index.php?r=news%2Fview&id=100".
-     */
-    public $enablePrettyUrl = true;
-    /**
      * @var boolean whether to enable strict parsing. If strict parsing is enabled, the incoming
      * requested URL must match at least one of the [[rules]] in order to be treated as a valid request.
      * Otherwise, the path info part of the request will be treated as the requested route.
-     * This property is used only when [[enablePrettyUrl]] is true.
      */
     public $enableStrictParsing = false;
+
     /**
-     * @var array the rules for creating and parsing URLs when [[enablePrettyUrl]] is true.
-     * This property is used only if [[enablePrettyUrl]] is true. Each element in the array
-     * is the configuration array for creating a single URL rule. The configuration will
-     * be merged with [[ruleConfig]] first before it is used for creating the rule object.
+     * @var array the rules for creating and parsing URLs.
      *
      * A special shortcut format can be used if a rule only specifies [[UrlRule::pattern|pattern]]
      * and [[UrlRule::route|route]]: `'pattern' => 'route'`. That is, instead of using a configuration
@@ -90,32 +80,18 @@ class UrlManager extends Component
     /**
      * @var string the URL suffix used when in 'path' format.
      * For example, ".html" can be used so that the URL looks like pointing to a static HTML page.
-     * This property is used only if [[enablePrettyUrl]] is true.
      */
     public $suffix;
 
-    /**
-     * @var string the GET parameter name for route. This property is used only if [[enablePrettyUrl]] is false.
-     */
-    public $routeParam = 'r';
-    /**
-     * @var Cache|string the cache object or the application component ID of the cache object.
-     * Compiled URL rules will be cached through this cache object, if it is available.
-     *
-     * After the UrlManager object is created, if you want to change this property,
-     * you should only assign it with a cache object.
-     * Set this property to false if you do not want to cache the URL rules.
-     */
-    public $cache = 'cache';
+
     /**
      * @var array the default configuration of URL rules. Individual rule configurations
      * specified via [[rules]] will take precedence when the same property of the rule is configured.
      */
-    public $ruleConfig = ['class' => 'Friday\Web\UrlRule'];
+    public $ruleConfig = ['class' => UrlRule::class];
 
     /**
      * @var string the cache key for cached rules
-     * @since 2.0.8
      */
     protected $cacheKey = __CLASS__;
 
@@ -125,7 +101,7 @@ class UrlManager extends Component
     private $_ruleCache;
 
 
-
+    public $routeParam = 'r';
     /**
      * Initializes UrlManager.
      */
@@ -133,25 +109,11 @@ class UrlManager extends Component
     {
         parent::init();
 
-        if (!$this->enablePrettyUrl || empty($this->rules)) {
+        if (empty($this->rules)) {
             return;
         }
 
-        if (is_string($this->cache)) {
-            $this->cache = Friday::$app->get($this->cache, false);
-        }
-        /* if ($this->cache instanceof Cache) {
-             $cacheKey = $this->cacheKey;
-             $hash = md5(json_encode($this->rules));
-             if (($data = $this->cache->get($cacheKey)) !== false && isset($data[1]) && $data[1] === $hash) {
-                 $this->rules = $data[0];
-             } else {
-                 $this->rules = $this->buildRules($this->rules);
-                 $this->cache->set($cacheKey, [$this->rules, $hash]);
-             }
-         } else {*/
         $this->rules = $this->buildRules($this->rules);
-        //}
     }
 
     /**
@@ -160,17 +122,12 @@ class UrlManager extends Component
      * This method will call [[buildRules()]] to parse the given rule declarations and then append or insert
      * them to the existing [[rules]].
      *
-     * Note that if [[enablePrettyUrl]] is false, this method will do nothing.
-     *
      * @param array $rules the new rules to be added. Each array element represents a single rule declaration.
      * Please refer to [[rules]] for the acceptable rule format.
      * @param boolean $append whether to add the new rules by appending them to the end of the existing rules.
      */
     public function addRules($rules, $append = true)
     {
-        if (!$this->enablePrettyUrl) {
-            return;
-        }
         $rules = $this->buildRules($rules);
         if ($append) {
             $this->rules = array_merge($this->rules, $rules);
@@ -284,7 +241,7 @@ class UrlManager extends Component
      *
      * The URL created is a relative one. Use [[createAbsoluteUrl()]] to create an absolute URL.
      *
-     * Note that unlike [[\yii\helpers\Url::toRoute()]], this method always treats the given route
+     * Note that unlike [[\Friday\Helper\Url::toRoute()]], this method always treats the given route
      * as an absolute route.
      *
      * @param string|array $params use a string to represent a route (e.g. `site/index`),
@@ -295,68 +252,60 @@ class UrlManager extends Component
     {
         $params = (array)$params;
         $anchor = isset($params['#']) ? '#' . $params['#'] : '';
-        unset($params['#'], $params[$this->routeParam]);
+        unset($params['#']);
 
         $route = trim($params[0], '/');
         unset($params[0]);
 
-        $baseUrl = $this->getScriptUrl();
+        $baseUrl = $this->getBaseUrl();
 
-        if ($this->enablePrettyUrl) {
-            $cacheKey = $route . '?';
-            foreach ($params as $key => $value) {
-                if ($value !== null) {
-                    $cacheKey .= $key . '&';
-                }
+        $cacheKey = $route . '?';
+        foreach ($params as $key => $value) {
+            if ($value !== null) {
+                $cacheKey .= $key . '&';
             }
-
-            $url = $this->getUrlFromCache($cacheKey, $route, $params);
-
-            if ($url === false) {
-                $cacheable = true;
-                foreach ($this->rules as $rule) {
-                    /* @var $rule UrlRule */
-                    if (!empty($rule->defaults) && $rule->mode !== UrlRule::PARSING_ONLY) {
-                        // if there is a rule with default values involved, the matching result may not be cached
-                        $cacheable = false;
-                    }
-                    if (($url = $rule->createUrl($this, $route, $params)) !== false) {
-                        if ($cacheable) {
-                            $this->setRuleToCache($cacheKey, $rule);
-                        }
-                        break;
-                    }
-                }
-            }
-
-            if ($url !== false) {
-                if (strpos($url, '://') !== false) {
-                    if ($baseUrl !== '' && ($pos = strpos($url, '/', 8)) !== false) {
-                        return substr($url, 0, $pos) . $baseUrl . substr($url, $pos) . $anchor;
-                    } else {
-                        return $url . $baseUrl . $anchor;
-                    }
-                } else {
-                    return "$baseUrl/{$url}{$anchor}";
-                }
-            }
-
-            if ($this->suffix !== null) {
-                $route .= $this->suffix;
-            }
-            if (!empty($params) && ($query = http_build_query($params)) !== '') {
-                $route .= '?' . $query;
-            }
-
-            return "$baseUrl/{$route}{$anchor}";
-        } else {
-            $url = "$baseUrl?{$this->routeParam}=" . urlencode($route);
-            if (!empty($params) && ($query = http_build_query($params)) !== '') {
-                $url .= '&' . $query;
-            }
-
-            return $url . $anchor;
         }
+
+        $url = $this->getUrlFromCache($cacheKey, $route, $params);
+
+        if ($url === false) {
+            $cacheable = true;
+            foreach ($this->rules as $rule) {
+                /* @var $rule UrlRule */
+                if (!empty($rule->defaults) && $rule->mode !== UrlRule::PARSING_ONLY) {
+                    // if there is a rule with default values involved, the matching result may not be cached
+                    $cacheable = false;
+                }
+                if (($url = $rule->createUrl($this, $route, $params)) !== false) {
+                    if ($cacheable) {
+                        $this->setRuleToCache($cacheKey, $rule);
+                    }
+                    break;
+                }
+            }
+        }
+
+        if ($url !== false) {
+            if (strpos($url, '://') !== false) {
+                if ($baseUrl !== '' && ($pos = strpos($url, '/', 8)) !== false) {
+                    return substr($url, 0, $pos) . $baseUrl . substr($url, $pos) . $anchor;
+                } else {
+                    return $url . $baseUrl . $anchor;
+                }
+            } else {
+                return "$baseUrl/{$url}{$anchor}";
+            }
+        }
+
+        if ($this->suffix !== null) {
+            $route .= $this->suffix;
+        }
+        if (!empty($params) && ($query = http_build_query($params)) !== '') {
+            $route .= '?' . $query;
+        }
+
+        return "$baseUrl/{$route}{$anchor}";
+
     }
 
     /**
@@ -366,7 +315,6 @@ class UrlManager extends Component
      * @param array $params rule params.
      * @return boolean|string the created URL
      * @see createUrl()
-     * @since 2.0.8
      */
     protected function getUrlFromCache($cacheKey, $route, $params)
     {
@@ -399,7 +347,7 @@ class UrlManager extends Component
      *
      * This method prepends the URL created by [[createUrl()]] with the [[hostInfo]].
      *
-     * Note that unlike [[\yii\helpers\Url::toRoute()]], this method always treats the given route
+     * Note that unlike [[\Friday\Helper\Url::toRoute()]], this method always treats the given route
      * as an absolute route.
      *
      * @param string|array $params use a string to represent a route (e.g. `site/index`),

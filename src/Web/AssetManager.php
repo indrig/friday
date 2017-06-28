@@ -8,6 +8,7 @@ use Friday\Base\Exception\InvalidArgumentException;
 use Friday\Helper\AliasHelper;
 use Friday\Helper\FileHelper;
 use Friday\Helper\Url;
+use SplFileInfo;
 
 /**
  * AssetManager manages asset bundle configuration and loading.
@@ -192,6 +193,10 @@ class AssetManager extends Component
 
     private $_dummyBundles = [];
 
+    /**
+     * @var array
+     */
+    protected static $pathCache = [];
 
     /**
      * Initializes the component.
@@ -256,9 +261,9 @@ class AssetManager extends Component
         }
         /* @var $bundle AssetBundle */
         $bundle = Friday::createObject($config);
-        if ($publish) {
-            $bundle->publish($this);
-        }
+        //if ($publish) {
+        //    $bundle->publish($this);
+       // }
         return $bundle;
     }
 
@@ -293,8 +298,8 @@ class AssetManager extends Component
         if (($actualAsset = $this->resolveAsset($bundle, $asset)) !== false) {
             if (strncmp($actualAsset, '@web/', 5) === 0) {
                 $asset = substr($actualAsset, 5);
-                $basePath = AliasHelper::getAlias('@webroot');
-                $baseUrl = AliasHelper::getAlias('@web');
+                $basePath   = AliasHelper::getAlias('@webroot');
+                $baseUrl    = AliasHelper::getAlias('@web');
             } else {
                 $asset = AliasHelper::getAlias($actualAsset);
                 $basePath = $this->basePath;
@@ -308,11 +313,36 @@ class AssetManager extends Component
         if (!Url::isRelative($asset) || strncmp($asset, '/', 1) === 0) {
             return $asset;
         }
+        $bundle->sourcePath;
+        $sourcePath = AliasHelper::getAlias($bundle->sourcePath);
+        try {
+            $file = new SplFileInfo("{$sourcePath}/{$asset}");
 
-        if ($this->appendTimestamp && ($timestamp = @filemtime("$basePath/$asset")) > 0) {
-            return "$baseUrl/$asset?v=$timestamp";
+            $path = $file->getRealPath();
+
+            $url = $baseUrl . '/asset/' . $this->hash($path) . '.' . $file->getExtension();
+
+
+            $mTime  = $file->getMTime();
+            if(!isset(static::$pathCache[$path]) || static::$pathCache[$path]['time'] <= $mTime){
+
+                $tag    = base_convert(sprintf('%x', crc32($url . ',' . $mTime)), 16,36);
+
+                static::$pathCache[$url] = [
+                    'path' => $path,
+                    'tag'  => $tag,
+                    'time' => $mTime
+                ];
+            }
+
+        }catch (\RuntimeException $exception){
+            return $asset;
+        }
+
+        if ($this->appendTimestamp) {
+            return "$url?t=" . $mTime;
         } else {
-            return "$baseUrl/$asset";
+            return "$url";
         }
     }
 
@@ -356,6 +386,9 @@ class AssetManager extends Component
         return false;
     }
 
+    /**
+     * @var AssetConverterInterface|null
+     */
     private $_converter;
 
     /**
@@ -388,200 +421,6 @@ class AssetManager extends Component
     }
 
     /**
-     * @var array published assets
-     */
-    private $_published = [];
-
-    /**
-     * Publishes a file or a directory.
-     *
-     * This method will copy the specified file or directory to [[basePath]] so that
-     * it can be accessed via the Web server.
-     *
-     * If the asset is a file, its file modification time will be checked to avoid
-     * unnecessary file copying.
-     *
-     * If the asset is a directory, all files and subdirectories under it will be published recursively.
-     * Note, in case $forceCopy is false the method only checks the existence of the target
-     * directory to avoid repetitive copying (which is very expensive).
-     *
-     * By default, when publishing a directory, subdirectories and files whose name starts with a dot "."
-     * will NOT be published. If you want to change this behavior, you may specify the "beforeCopy" option
-     * as explained in the `$options` parameter.
-     *
-     * Note: On rare scenario, a race condition can develop that will lead to a
-     * one-time-manifestation of a non-critical problem in the creation of the directory
-     * that holds the published assets. This problem can be avoided altogether by 'requesting'
-     * in advance all the resources that are supposed to trigger a 'publish()' call, and doing
-     * that in the application deployment phase, before system goes live. See more in the following
-     * discussion: http://code.google.com/p/yii/issues/detail?id=2579
-     *
-     * @param string $path the asset (file or directory) to be published
-     * @param array $options the options to be applied when publishing a directory.
-     * The following options are supported:
-     *
-     * - only: array, list of patterns that the file paths should match if they want to be copied.
-     * - except: array, list of patterns that the files or directories should match if they want to be excluded from being copied.
-     * - caseSensitive: boolean, whether patterns specified at "only" or "except" should be case sensitive. Defaults to true.
-     * - beforeCopy: callback, a PHP callback that is called before copying each sub-directory or file.
-     *   This overrides [[beforeCopy]] if set.
-     * - afterCopy: callback, a PHP callback that is called after a sub-directory or file is successfully copied.
-     *   This overrides [[afterCopy]] if set.
-     * - forceCopy: boolean, whether the directory being published should be copied even if
-     *   it is found in the target directory. This option is used only when publishing a directory.
-     *   This overrides [[forceCopy]] if set.
-     *
-     * @return array the path (directory or file path) and the URL that the asset is published as.
-     * @throws InvalidArgumentException if the asset to be published does not exist.
-     */
-    public function publish($path, $options = [])
-    {
-        $path = AliasHelper::getAlias($path);
-
-        if (isset($this->_published[$path])) {
-            return $this->_published[$path];
-        }
-
-        if (!is_string($path) || ($src = realpath($path)) === false) {
-            throw new InvalidArgumentException("The file or directory to be published does not exist: $path");
-        }
-
-        if (is_file($src)) {
-            return $this->_published[$path] = $this->publishFile($src);
-        } else {
-            return $this->_published[$path] = $this->publishDirectory($src, $options);
-        }
-    }
-
-    /**
-     * Publishes a file.
-     * @param string $src the asset file to be published
-     * @return array the path and the URL that the asset is published as.
-     * @throws InvalidArgumentException if the asset to be published does not exist.
-     */
-    protected function publishFile($src)
-    {
-        $dir = $this->hash($src);
-        $fileName = basename($src);
-        $dstDir = $this->basePath . DIRECTORY_SEPARATOR . $dir;
-        $dstFile = $dstDir . DIRECTORY_SEPARATOR . $fileName;
-
-        if (!is_dir($dstDir)) {
-            FileHelper::createDirectory($dstDir, $this->dirMode, true);
-        }
-
-        if ($this->linkAssets) {
-            if (!is_file($dstFile)) {
-                symlink($src, $dstFile);
-            }
-        } elseif (@filemtime($dstFile) < @filemtime($src)) {
-            copy($src, $dstFile);
-            if ($this->fileMode !== null) {
-                @chmod($dstFile, $this->fileMode);
-            }
-        }
-
-        return [$dstFile, $this->baseUrl . "/$dir/$fileName"];
-    }
-
-    /**
-     * Publishes a directory.
-     * @param string $src the asset directory to be published
-     * @param array $options the options to be applied when publishing a directory.
-     * The following options are supported:
-     *
-     * - only: array, list of patterns that the file paths should match if they want to be copied.
-     * - except: array, list of patterns that the files or directories should match if they want to be excluded from being copied.
-     * - caseSensitive: boolean, whether patterns specified at "only" or "except" should be case sensitive. Defaults to true.
-     * - beforeCopy: callback, a PHP callback that is called before copying each sub-directory or file.
-     *   This overrides [[beforeCopy]] if set.
-     * - afterCopy: callback, a PHP callback that is called after a sub-directory or file is successfully copied.
-     *   This overrides [[afterCopy]] if set.
-     * - forceCopy: boolean, whether the directory being published should be copied even if
-     *   it is found in the target directory. This option is used only when publishing a directory.
-     *   This overrides [[forceCopy]] if set.
-     *
-     * @return array the path directory and the URL that the asset is published as.
-     * @throws InvalidArgumentException if the asset to be published does not exist.
-     */
-    protected function publishDirectory($src, $options)
-    {
-        $dir = $this->hash($src);
-        $dstDir = $this->basePath . DIRECTORY_SEPARATOR . $dir;
-        if ($this->linkAssets) {
-            if (!is_dir($dstDir)) {
-                FileHelper::createDirectory(dirname($dstDir), $this->dirMode, true);
-                symlink($src, $dstDir);
-            }
-        } elseif (!empty($options['forceCopy']) || ($this->forceCopy && !isset($options['forceCopy'])) || !is_dir($dstDir)) {
-            $opts = array_merge(
-                $options,
-                [
-                    'dirMode' => $this->dirMode,
-                    'fileMode' => $this->fileMode,
-                ]
-            );
-            if (!isset($opts['beforeCopy'])) {
-                if ($this->beforeCopy !== null) {
-                    $opts['beforeCopy'] = $this->beforeCopy;
-                } else {
-                    $opts['beforeCopy'] = function ($from, $to) {
-                        return strncmp(basename($from), '.', 1) !== 0;
-                    };
-                }
-            }
-            if (!isset($opts['afterCopy']) && $this->afterCopy !== null) {
-                $opts['afterCopy'] = $this->afterCopy;
-            }
-            FileHelper::copyDirectory($src, $dstDir, $opts);
-        }
-
-        return [$dstDir, $this->baseUrl . '/' . $dir];
-    }
-
-    /**
-     * Returns the published path of a file path.
-     * This method does not perform any publishing. It merely tells you
-     * if the file or directory is published, where it will go.
-     * @param string $path directory or file path being published
-     * @return string|false string the published file path. False if the file or directory does not exist
-     */
-    public function getPublishedPath($path)
-    {
-        $path = AliasHelper::getAlias($path);
-
-        if (isset($this->_published[$path])) {
-            return $this->_published[$path][0];
-        }
-        if (is_string($path) && ($path = realpath($path)) !== false) {
-            return $this->basePath . DIRECTORY_SEPARATOR . $this->hash($path) . (is_file($path) ? DIRECTORY_SEPARATOR . basename($path) : '');
-        } else {
-            return false;
-        }
-    }
-
-    /**
-     * Returns the URL of a published file path.
-     * This method does not perform any publishing. It merely tells you
-     * if the file path is published, what the URL will be to access it.
-     * @param string $path directory or file path being published
-     * @return string|false string the published URL for the file or directory. False if the file or directory does not exist.
-     */
-    public function getPublishedUrl($path)
-    {
-        $path = AliasHelper::getAlias($path);
-
-        if (isset($this->_published[$path])) {
-            return $this->_published[$path][1];
-        }
-        if (is_string($path) && ($path = realpath($path)) !== false) {
-            return $this->baseUrl . '/' . $this->hash($path) . (is_file($path) ? '/' . basename($path) : '');
-        } else {
-            return false;
-        }
-    }
-
-    /**
      * Generate a CRC32 hash for the directory path. Collisions are higher
      * than MD5 but generates a much smaller hash string.
      * @param string $path string to be hashed.
@@ -592,7 +431,19 @@ class AssetManager extends Component
         if (is_callable($this->hashCallback)) {
             return call_user_func($this->hashCallback, $path);
         }
-        $path = (is_file($path) ? dirname($path) : $path) . filemtime($path);
-        return sprintf('%x', crc32($path . Friday::getVersion()));
+
+        return base_convert(md5($path), 16, 36);
+    }
+
+    /**
+     * @param $url
+     * @return bool|mixed
+     */
+    public static function getPublishedAssetFileInfo($url){
+        if(isset(static::$pathCache[$url])){
+            return static::$pathCache[$url];
+        }
+
+        return false;
     }
 }

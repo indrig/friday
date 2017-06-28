@@ -1,4 +1,5 @@
 <?php
+
 namespace Friday\Web;
 
 use Friday;
@@ -69,11 +70,6 @@ class Application extends AbstractApplication
             ->on(Server::EVENT_REQUEST, [$this, 'handleRequest'])
             ->run();
 
-
-       // $looper->taskPeriodic(function () {
-       //     Friday\Helper\Console::stdout('memory_usage: ' . number_format(memory_get_usage(true), 0, '.', ' ') . "b\n");
-       // }, 2);
-
         $looper->loop();
 
     }
@@ -83,7 +79,6 @@ class Application extends AbstractApplication
      */
     public function handleRequest(RequestEvent $event)
     {
-
         $connectionContent = ConnectionContext::create($event->request, $event->response);
 
 
@@ -95,17 +90,43 @@ class Application extends AbstractApplication
 
         $this->setContext($connectionContent);
 
-        $path = $connectionContent->getRequest()->getPath();
-        if($webRoot = AliasHelper::getAlias('@webroot', false)){
-            if($realpath = @realpath($webRoot . $path)) {
+        $request = $connectionContent->getRequest();
+        $response = $connectionContent->getResponse();
+        $path = $request->getPath();
 
-                if(substr(str_replace('\\', '/', $realpath), strlen($webRoot)) === $path){
-                    if(is_file($realpath)) {
+        if (false !== $assetFileInfo = AssetManager::getPublishedAssetFileInfo($path)) {
+            if ($realPath = @realpath($assetFileInfo['path'])) {
+
+                if($request->getHeaders()->get(' If-None-Match') === $assetFileInfo['tag']){
+                    $response->setStatusCode(304)->send();
+                    return;
+                }
+
+                if (is_file($realPath)) {
+                    $response->getHeaders()
+                        ->add('Cache-Control', 'public, max-age=31536000')
+                        ->add('Last-Modified', date('r', $assetFileInfo['time']))
+                        ->add('ETag', $assetFileInfo['tag']);
+                    try {
+                        $response->sendFile($realPath, false)->send();
+                    } catch (Throwable $throwable) {
+                        Friday::$app->errorHandler->handleException($throwable);
+                    }
+                    return;
+                }
+
+            }
+        }
+
+
+        if ($webRoot = AliasHelper::getAlias('@webroot', false)) {
+            if ($realPath = @realpath($webRoot . $path)) {
+                if (substr(str_replace('\\', '/', $realPath), strlen($webRoot)) === $path) {
+                    if (is_file($realPath)) {
                         $response = $connectionContent->getResponse();
                         try {
-                            $response->sendFile($realpath)->send();
-
-                        }catch (Throwable $throwable){
+                            $response->sendFile($realPath)->send();
+                        } catch (Throwable $throwable) {
                             Friday::$app->errorHandler->handleException($throwable);
                         }
                         return;
@@ -137,9 +158,9 @@ class Application extends AbstractApplication
                                 $result = $result->getResult();
                                 if ($result instanceof Awaitable) {
                                     $result->await(function ($result) use ($connectionContent) {
-                                        if($result instanceof Throwable){
+                                        if ($result instanceof Throwable) {
                                             Friday::$app->errorHandler->handleException($result);
-                                        }elseif ($result instanceof Response) {
+                                        } elseif ($result instanceof Response) {
                                             $response = $result;
                                             $response->send();
                                         } else {
@@ -210,7 +231,6 @@ class Application extends AbstractApplication
             'errorHandler' => ['class' => 'Friday\Web\ErrorHandler'],
         ]);
     }
-
 
 
     /**
@@ -293,7 +313,8 @@ class Application extends AbstractApplication
     /**
      * @return Friday\Base\Component|null
      */
-    public function getView(){
+    public function getView()
+    {
         return $this->getContext()->getView();
     }
 }

@@ -123,10 +123,10 @@ class Buffer extends Component implements WritableStreamInterface
             $this->trigger(static::EVENT_ERROR, new ErrorEvent([
                 'error' => new RuntimeException(
                     $this->lastError['message'],
-                    0,
-                    $this->lastError['number'],
-                    $this->lastError['file'],
-                    $this->lastError['line']
+                   // 0,
+                    $this->lastError['number']
+                  //  $this->lastError['file'],
+                  //  $this->lastError['line']
                 )
             ]));
 
