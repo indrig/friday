@@ -2,6 +2,7 @@
 namespace Friday\Web;
 
 use Friday;
+use Friday\Base\Awaitable;
 use Friday\Base\Component;
 use Friday\Base\Exception\BadMethodCallException;
 use Friday\Base\Exception\InvalidArgumentException;
@@ -213,5 +214,13 @@ class Widget extends Component implements ViewContextInterface
         $class = new ReflectionClass($this);
 
         return dirname($class->getFileName()) . DIRECTORY_SEPARATOR . 'views';
+    }
+
+    /**
+     * @param Awaitable $awaitable
+     * @return string
+     */
+    public function async(Awaitable $awaitable){
+        return $this->getView()->addAwaitableBlock($awaitable);
     }
 }

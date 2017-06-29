@@ -3,6 +3,7 @@ namespace Friday\Web;
 
 use Friday;
 use Friday\Asset\JqueryAsset;
+use Friday\Base\Awaitable;
 use Friday\Helper\AliasHelper;
 use Friday\Helper\ArrayHelper;
 use Friday\Helper\Html;
@@ -73,15 +74,15 @@ class View extends BaseView
     /**
      * This is internally used as the placeholder for receiving the content registered for the head section.
      */
-    const PH_HEAD = '<![CDATA[YII-BLOCK-HEAD]]>';
+    const PH_HEAD = '<![CDATA[FRIDAY-BLOCK-HEAD]]>';
     /**
      * This is internally used as the placeholder for receiving the content registered for the beginning of the body section.
      */
-    const PH_BODY_BEGIN = '<![CDATA[YII-BLOCK-BODY-BEGIN]]>';
+    const PH_BODY_BEGIN = '<![CDATA[FRIDAY-BLOCK-BODY-BEGIN]]>';
     /**
      * This is internally used as the placeholder for receiving the content registered for the end of the body section.
      */
-    const PH_BODY_END = '<![CDATA[YII-BLOCK-BODY-END]]>';
+    const PH_BODY_END = '<![CDATA[FRIDAY-BLOCK-BODY-END]]>';
 
     /**
      * @var AssetBundle[] list of the registered asset bundles. The keys are the bundle names, and the values
@@ -170,9 +171,9 @@ class View extends BaseView
         $content = ob_get_clean();
 
         echo strtr($content, [
-            self::PH_HEAD => $this->renderHeadHtml(),
+            self::PH_HEAD       => $this->renderHeadHtml(),
             self::PH_BODY_BEGIN => $this->renderBodyBeginHtml(),
-            self::PH_BODY_END => $this->renderBodyEndHtml($ajaxMode),
+            self::PH_BODY_END   => $this->renderBodyEndHtml($ajaxMode),
         ]);
 
         $this->clear();
@@ -551,5 +552,23 @@ class View extends BaseView
         }
 
         return empty($lines) ? '' : implode("\n", $lines);
+    }
+
+    /**
+     * @var Awaitable[]
+     */
+    protected  $_awaitableBlocks = [];
+
+    /**
+     * @param Awaitable $awaitable
+     * @return string
+     */
+    public function addAwaitableBlock(Awaitable $awaitable){
+        do{
+            $key = Friday::$app->getSecurity()->generateRandomString();
+        }while(array_key_exists($key, $this->_awaitableBlocks));
+
+        $this->_awaitableBlocks[$key] = $awaitable;
+        return '<!--FRIDAY AWAITABLE BLOCK: ' .$key . '-->';
     }
 }

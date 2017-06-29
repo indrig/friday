@@ -59,6 +59,9 @@ class ConnectionContext extends ServiceLocator implements ContextInterface
      */
     private $_timers;
 
+    /**
+     * @var bool
+     */
     private $_isFinished = false;
 
     /**
@@ -66,12 +69,10 @@ class ConnectionContext extends ServiceLocator implements ContextInterface
      */
     private $_session;
 
-
     /**
      * @var View
      */
     private $_view;
-
 
     /**
      * @var AssetManager
@@ -79,7 +80,7 @@ class ConnectionContext extends ServiceLocator implements ContextInterface
     private $_assetManager;
 
     /**
-     * @var
+     * @var User
      */
     private $_user;
 
@@ -361,12 +362,19 @@ class ConnectionContext extends ServiceLocator implements ContextInterface
         }
     }
 
+    /**
+     * @return bool
+     */
     public function getIsFinished(){
         return $this->_isFinished;
     }
 
+    /**
+     * @return array
+     */
     public function __debugInfo()
     {
         return [];
     }
+
 }
